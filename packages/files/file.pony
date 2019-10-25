@@ -2,8 +2,8 @@ use @_read[I32](fd: I32, buffer: Pointer[None], bytes_to_read: I32) if windows
 use @read[ISize](fd: I32, buffer: Pointer[None], bytes_to_read: USize)
   if not windows
 use @_write[I32](fd: I32, buffer: Pointer[None], bytes_to_send: I32) if windows
-use @writev[ISize](fd: I32, buffer: Pointer[None], num_to_send: I32)
-  if not windows
+use @write[I32](fd: I32, buffer: Pointer[None], bytes_to_send: I32) if not windows
+use @writev[ISize](fd: I32, buffer: Pointer[None], num_to_send: I32) if not windows
 use @_lseeki64[I64](fd: I32, offset: I64, base: I32) if windows
 use @lseek64[I64](fd: I32, offset: I64, base: I32) if linux
 use @lseek[I64](fd: I32, offset: I64, base: I32) if not windows and not linux
@@ -223,6 +223,32 @@ class File
     not (_fd == -1)
 
 
+  fun ref read_byteblock(len: USize): ByteBlock iso^ =>
+    """
+    Read a ByteBlock from the file
+    """
+    if _fd != -1 then
+      let result = recover ByteBlock(len) end
+
+      let r =
+        (ifdef windows then
+          @_read(_fd, result.cpointer(), len.i32())
+        else
+          @read(_fd, result.cpointer(), len)
+        end)
+          .isize()
+
+      match r
+      | 0  => _errno = FileEOF
+      | -1 => _errno = _get_error()
+      end
+
+	  result.truncate(r.usize())
+      result
+    else
+      recover ByteBlock end
+    end
+
   fun ref read(len: USize): Array[U8] iso^ =>
     """
     Returns up to len bytes.
@@ -293,6 +319,34 @@ class File
     end
 
     _pending_writes()
+
+    fun ref write_byteblock_iso(data: ByteBlock iso): ByteBlock iso^ =>
+      """
+      Writes a ByteBlock directory to disk, avoiding making a copy of the data, and returns the iso so it can be reused
+      """
+      _pending_writes()
+
+      var len = ifdef windows then
+        @_write(_fd, data.cpointer(), data.size().i32()).isize()
+      else
+        @write(_fd, data.cpointer(), data.size().i32()).isize()
+      end
+    
+      consume data
+
+  fun ref write_byteblock(data: ByteBlock box): Bool =>
+    """
+    Writes a ByteBlock directory to disk, avoiding making a copy of the data
+    """
+    _pending_writes()
+
+    var len = ifdef windows then
+      @_write(_fd, data.cpointer(), data.size().i32()).isize()
+    else
+      @write(_fd, data.cpointer(), data.size().i32()).isize()
+    end
+    
+    len == data.size().isize()
 
   fun ref write(data: ByteSeq box): Bool =>
     """

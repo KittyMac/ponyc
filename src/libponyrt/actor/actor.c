@@ -533,11 +533,14 @@ void ponyint_actor_final(pony_ctx_t* ctx, pony_actor_t* actor)
 	  ctx->current = actor;
 	  
 	  // Run the actor finaliser if it has one.
-	  if(actor->type->final != NULL)
-	    actor->type->final(actor);
+	  if(actor->type != NULL && actor->type->final != NULL){
+	  	actor->type->final(actor);
+	  }
 
 	  // Run all outstanding object finalisers.
-	  ponyint_heap_final(&actor->heap);
+	  if (actor != NULL) {
+	  	ponyint_heap_final(&actor->heap);
+	  }
 	  
 	  // Restore the current actor.
 	  ctx->current = prev;

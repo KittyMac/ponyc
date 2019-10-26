@@ -26,6 +26,16 @@ class ByteBlock
 	
 	fun _final() =>
 		@free(_ptr.offset(0))
+	
+	fun ref free() =>
+		"""
+		Pre-emptively deallocate the byte block. Technically, we reduce its size to 0 and replace it with a 1 byte block.
+		This should generally only be used when you know for certain you don't want the memory around anymore, yet
+		pony is not yet ready to finalize the block (perhaps its an iso which has been distributed through a few actors)
+		"""
+		_size = 0
+		@free(_ptr)
+		_ptr = recover @malloc(1) end
 
 	new create(len: USize = 0) =>
 		"""
@@ -34,9 +44,25 @@ class ByteBlock
 		_size = len
 		_ptr = recover @malloc(len) end
 	
+	new val from_cpointer(data: Pointer[U8] tag, len:USize) =>
+		"""
+		Create a byte block from a cpointer
+		"""
+		_size = len
+		_ptr = recover @malloc(_size) end
+		@memcpy(_ptr, data, _size)
+	
+	new iso from_cpointer_iso(data: Pointer[U8] tag, len:USize) =>
+		"""
+		Create a byte block from a cpointer
+		"""
+		_size = len
+		_ptr = recover @malloc(_size) end
+		@memcpy(_ptr, data, _size)
+	
 	new val from_array(data: Array[U8] val) =>
 		"""
-		Create a string from an array
+		Create a byte block from an array
 		"""
 		_size = data.size()
 		_ptr = recover @malloc(_size) end
@@ -44,7 +70,7 @@ class ByteBlock
 	
 	new iso from_iso_array(data: Array[U8] iso) =>
 		"""
-		Create a string from an array
+		Create a byte block from an array
 		"""
 		_size = data.size()
 		_ptr = recover @malloc(_size) end

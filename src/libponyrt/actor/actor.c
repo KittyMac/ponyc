@@ -528,18 +528,20 @@ void ponyint_actor_final(pony_ctx_t* ctx, pony_actor_t* actor)
 {
   // This gets run while the cycle detector is handling a message. Set the
   // current actor before running anything.
-  pony_actor_t* prev = ctx->current;
-  ctx->current = actor;
+  if (ctx != NULL && actor != NULL) {
+	  pony_actor_t* prev = ctx->current;
+	  ctx->current = actor;
+	  
+	  // Run the actor finaliser if it has one.
+	  if(actor->type->final != NULL)
+	    actor->type->final(actor);
 
-  // Run the actor finaliser if it has one.
-  if(actor->type->final != NULL)
-    actor->type->final(actor);
-
-  // Run all outstanding object finalisers.
-  ponyint_heap_final(&actor->heap);
-
-  // Restore the current actor.
-  ctx->current = prev;
+	  // Run all outstanding object finalisers.
+	  ponyint_heap_final(&actor->heap);
+	  
+	  // Restore the current actor.
+	  ctx->current = prev;
+  }
 }
 
 void ponyint_actor_sendrelease(pony_ctx_t* ctx, pony_actor_t* actor)

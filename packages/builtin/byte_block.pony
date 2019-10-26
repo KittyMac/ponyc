@@ -1,8 +1,8 @@
 use "files"
 
 use @memcpy[Pointer[None]](dst: Pointer[None], src: Pointer[None], n: USize)
-use @malloc[Pointer[U8]](bytes: USize)
-use @free[None](pointer: Pointer[None] tag)
+use @pony_malloc[Pointer[U8]](bytes: USize)
+use @pony_free[None](pointer: Pointer[None] tag)
 
 class ByteBlock
 	"""
@@ -25,31 +25,31 @@ class ByteBlock
 	var _ptr: Pointer[U8] box
 	
 	fun _final() =>
-		@free(_ptr.offset(0))
+		@pony_free(_ptr)
 	
 	fun ref free() =>
 		"""
-		Pre-emptively deallocate the byte block. Technically, we reduce its size to 0 and replace it with a 1 byte block.
+		Pre-emptively deallocate the byte block. Technically, we reduce its size to 1 and replace it with a 1 byte block.
 		This should generally only be used when you know for certain you don't want the memory around anymore, yet
-		pony is not yet ready to finalize the block (perhaps its an iso which has been distributed through a few actors)
+		pony's gc may not be ready yet to finalize the block
 		"""
-		_size = 0
-		@free(_ptr)
-		_ptr = recover @malloc(1) end
+		_size = 1
+		@pony_free(_ptr)
+		_ptr = recover @pony_malloc(1) end
 
 	new create(len: USize = 0) =>
 		"""
 		Create an byte block of len bytes
 		"""
 		_size = len
-		_ptr = recover @malloc(len) end
+		_ptr = recover @pony_malloc(len) end
 	
 	new val from_cpointer(data: Pointer[U8] tag, len:USize) =>
 		"""
 		Create a byte block from a cpointer
 		"""
 		_size = len
-		_ptr = recover @malloc(_size) end
+		_ptr = recover @pony_malloc(_size) end
 		@memcpy(_ptr, data, _size)
 	
 	new iso from_cpointer_iso(data: Pointer[U8] tag, len:USize) =>
@@ -57,7 +57,7 @@ class ByteBlock
 		Create a byte block from a cpointer
 		"""
 		_size = len
-		_ptr = recover @malloc(_size) end
+		_ptr = recover @pony_malloc(_size) end
 		@memcpy(_ptr, data, _size)
 	
 	new val from_array(data: Array[U8] val) =>
@@ -65,7 +65,7 @@ class ByteBlock
 		Create a byte block from an array
 		"""
 		_size = data.size()
-		_ptr = recover @malloc(_size) end
+		_ptr = recover @pony_malloc(_size) end
 		@memcpy(_ptr, data.cpointer(), _size)
 	
 	new iso from_iso_array(data: Array[U8] iso) =>
@@ -73,7 +73,7 @@ class ByteBlock
 		Create a byte block from an array
 		"""
 		_size = data.size()
-		_ptr = recover @malloc(_size) end
+		_ptr = recover @pony_malloc(_size) end
 		@memcpy(_ptr, data.cpointer(), _size)
 	
     fun val array(): Array[U8] val =>

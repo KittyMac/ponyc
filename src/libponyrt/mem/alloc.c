@@ -13,6 +13,16 @@
 #include <mach/vm_statistics.h>
 #endif
 
+void * pony_malloc(size_t bytes) {
+	return malloc(bytes);
+}
+
+void pony_free(void * p) {
+	if (p != NULL) {
+		free(p);
+	}
+}
+
 void* ponyint_virt_alloc(size_t bytes)
 {
   void* p;

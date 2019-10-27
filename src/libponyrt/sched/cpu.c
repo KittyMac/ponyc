@@ -13,6 +13,7 @@
   #include <unistd.h>
   #include <mach/mach.h>
   #include <mach/thread_policy.h>
+  #include <mach/mach_time.h>
 #elif defined(PLATFORM_IS_WINDOWS)
   #include <processtopologyapi.h>
 #endif

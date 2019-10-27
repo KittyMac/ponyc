@@ -20,15 +20,39 @@
 # 3. Create a fat binary .a of libponyrt.a; this is what you will include in your XCode project
 # 4. [TODO]
 # 
+# TODO: Compile your pony program into your XCode project
+# 
+# - Easily compile your pony program into a .o which you can include in XCode
+# BUILD YOUR PONY CODE WITH:
+# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple arm64-apple-ios -rir
+# 
+# COMPILE THE LLVM ASM
+# /opt/local/bin/llvm-as-mp-7.0 pony.ll
+# 
+# COMPILE THE BITCODE TO A .o
+# /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
+# 
+# COMBINED
+# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple arm64-apple-ios -rir && /opt/local/bin/llvm-as-mp-7.0 pony.ll && /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
+#
+# Drag the .o file to your XCode project and build!
+#
+# TODO: Make the pony runtime play nice on an iOS device
+#
+# 1. Your pony code should call and run the C function iosmain() in one of your actors (this will be the iOS main thread!)
+#
+# 2. Currently crashing in libsystem_c.dylib`flockfile
 
 iphonesdkroot=$(shell xcrun --show-sdk-platform-path | sed 's/MacOSX/iPhoneOS/g')
 iphonesdk="$(iphonesdkroot)/Developer/SDKs/iPhoneOS.sdk"
+iphonesdklib="$(iphonesdkroot)/Developer/SDKs/iPhoneOS.sdk/usr/lib"
 
 ponyc:
 	@IPHONESDK="" $(MAKE) -f Makefile-ponyc LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(CC1)" CXX="$(CXX1)" -j$(sysctl -n hw.ncpu) config=$(config) all
 
 libponyrt:
-	export LDFLAGS="-L$(iphonesdk)/usr/lib"
+	@echo "$(iphonesdklib)"
+	export LDFLAGS="-L$(iphonesdklib)"
 	@echo "Compiling libponyrt for armv7"
 	@IPHONESDK="$(iphonesdk)" $(MAKE) -f Makefile-ponyc arch=armv7 LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(CC1)" CXX="$(CXX1)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
 	@echo "Compiling libponyrt for armv7s"

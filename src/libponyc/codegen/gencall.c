@@ -1181,7 +1181,15 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
       func = declare_ffi(c, f_name, t, args, true);
     } else {
       // Make it varargs.
-      func = declare_ffi_vararg(c, f_name, t);
+	    if(target_is_apple_ios(c->opt->triple))
+	    {
+			// TODO: Still tracking it down, but when compiling for iOS (ARM64) if we allow variable
+			// arg functions their parameters do not make it across correctly. For now, treating
+			// them as instrinsics is less broken than all non-variable arg methods not working.
+			func = declare_ffi(c, f_name, t, args, true);
+		} else {
+			func = declare_ffi_vararg(c, f_name, t);
+		}
     }
 
     size_t index = HASHMAP_UNKNOWN;

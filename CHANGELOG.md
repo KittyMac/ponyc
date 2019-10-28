@@ -9,9 +9,12 @@ All notable changes to the Pony compiler and standard library will be documented
 
 ### Added
 
+- Allow programmatic override of the default runtime options ([PR #3342](https://github.com/ponylang/ponyc/pull/3342))
 
 ### Changed
 
+- `--ponythreads` has been renamed to `--ponymaxthreads` ([PR #3334](https://github.com/ponylang/ponyc/pull/3334))
+- All `--pony*` options that accept a value, will be checked for minimal values ([PR #3303](https://github.com/ponylang/ponyc/pull/3317))
 
 ## [0.32.0] - 2019-09-29
 

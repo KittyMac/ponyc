@@ -12,12 +12,13 @@ In order to do a release, you absolutely must have:
 * Accounts on reddit/hacker news/lobste.rs for posting release notes
 * An account on the [Pony Zulip](https://ponylang.zulipchat.com)
 
-While not strictly required, your life will be made much easier if you:
+While not strictly required, you probably be unable to deal with any errors that arise without:
 
-* Have a [bintray account](https://bintray.com/) and have been granted access `pony-language` organization by a "release admin".
-* Have read and write access to the ponylang [travis-ci](https://travis-ci.org) account
-* Have read and write access to the ponylang [appveyor](https://www.appveyor.com) account
-* Have read and write access to the ponylang [dockerhub organization](https://hub.docker.com/u/ponylang/dashboard/)
+* A [bintray account](https://bintray.com/) and have been granted access `pony-language` organization by a "release admin".
+* Read and write access to the ponylang [travis-ci](https://travis-ci.org) account
+* Read and write access to the ponylang [circleci](https://circleci.com) account
+* Read and write access to the ponylang [appveyor](https://www.appveyor.com) account
+* Read and write access to the ponylang [cloudsmith](https://cloudsmith.io/) account.
 
 ## Prerequisites for specific releases
 
@@ -146,6 +147,21 @@ The pattern for packaging release builds is similar as what we previously saw. T
 
 `0.3.1-1.fc27` (confirm `status` is `succeeded`)
 
+### Wait on Cloudsmith releases
+
+On each release, we upload ponyc binaries for musl and GNU libc builds to Cloudsmith. The releases are built on [CircleCI](https://circleci.com/gh/ponylang/ponyc).
+
+You can verify that the release artifacts were successfully built and uploaded by checking the [ponylang Cloudsmith releases repository](https://cloudsmith.io/~ponylang/repos/releases/packages/) and verifing that packages exist for both GNU libc and musl libc.
+
+Package names will be:
+
+- ponyc-x86-64-unknown-linux-gnu.tar.gz
+- ponyc-x86-64-unknown-linux-musl.tar.gz
+
+and should have a version field listing that matches the current release e.g. `0.3.1`.
+
+In general, you should expect it to take about 30 to 50 minutes to build each package once CircleCI starts running the task.
+
 ### Wait on Homebrew
 
 Periodically check on your Homebrew PR. They have a CI process and everything should flow through smoothly. If it doesn't attempt to fix the problem. If you can't fix the problem, leave a comment on the GitHub issue for this release asking for assistance.
@@ -173,11 +189,11 @@ As part of every release, 6 Docker images are built:
   - release-alpine
   - 0.3.1-alpine
 
-Visit the ponylang dockerhub organization [build page](https://hub.docker.com/r/ponylang/ponyc/builds/) and verify that all 6 images were successfully built. From the time the release starts, it can take several hours for all images to be built. You can track the progress of builds on [build activity page](https://cloud.docker.com/u/ponylang/repository/docker/ponylang/ponyc/builds); scroll down to the bottom of the page to see completed, in-progress, and pending jobs.
+The images are built on [CircleCI](https://circleci.com/gh/ponylang/ponyc). You can track the progress of the builds (including failures) there. You can validate that all the images have been pushed by checking the [tag page](https://hub.docker.com/r/ponylang/ponyc/tags) of the [ponyc DockerHub repository](https://hub.docker.com/r/ponylang/ponyc/).
 
 ### Verify that the Pony Playground updated to the new version
 
-Once the dockerhub images have been updated, visit the [Pony Playground](https://playground.ponylang.io/) and verify that it has been updated to the correct version by compiling some code and checking the compiler version number in the output.
+Once the DockerHub images have been updated, visit the [Pony Playground](https://playground.ponylang.io/) and verify that it has been updated to the correct version by compiling some code and checking the compiler version number in the output.
 
 If it doesn't update automatically, it will need to be done manually. Ping @jemc, @seantallen, or @plietar.
 

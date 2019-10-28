@@ -37,7 +37,7 @@ typedef int SOCKET;
 // headers for get/setsockopt constants
 #ifdef  PLATFORM_IS_MACOSX
 #include <net/if.h>
-#include <net/ndrv.h>
+//#include <net/ndrv.h>
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <netinet/in.h>

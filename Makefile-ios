@@ -1,0 +1,80 @@
+# This makefile eases the compiling of pony for the iOS platform
+#
+# Prerequisities
+# This makefile assumes that you can already compile ponyc normally (you have your llvm paths set)
+#
+# For example:
+# export LDFLAGS="-L/opt/local/lib"
+# export PATH=/usr/local/opt/llvm/bin/:$PATH
+# export CC1=clang
+# export CXX1=clang++
+# export LLVM_CONFIG=/opt/local/bin/llvm-config-mp-7.0
+#
+# Sample command:
+# make -f Makefile-ios config=release all
+#
+# Overview:
+#
+# 1. Compile ponyc as normal
+# 2. Compile libponyrt for all desired arm architectures (currently armv7, armv7s, arm64)
+# 3. Create a fat binary .a of libponyrt.a; this is what you will include in your XCode project
+# 4. [TODO]
+# 
+# TODO: Compile your pony program into your XCode project
+# 
+# - Easily compile your pony program into a .o which you can include in XCode
+# BUILD YOUR PONY CODE WITH:
+# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple arm64-apple-ios -rir
+# 
+# COMPILE THE LLVM ASM
+# /opt/local/bin/llvm-as-mp-7.0 pony.ll
+# 
+# COMPILE THE BITCODE TO A .o
+# /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
+# 
+# COMBINED
+#
+# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple armv7-apple-ios -rbitcode && /opt/local/bin/llc-mp-7.0 -mtriple=armv7-apple-ios pony.bc -o pony.o -filetype=obj
+#
+# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple arm64-apple-ios -rbitcode && /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
+#
+# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple arm64-apple-ios -rir && /opt/local/bin/llvm-as-mp-7.0 pony.ll && /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
+#
+# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/debug/ponyc --triple arm64-apple-ios -rir && /opt/local/bin/llvm-as-mp-7.0 pony.ll && /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
+#
+# Drag the .o file to your XCode project and build!
+#
+# TODO: Make the pony runtime play nice on an iOS device
+#
+# 1. Your pony code should call and run the C function iosmain() in one of your actors (this will be the iOS main thread!)
+#
+# 2. Currently crashing in libsystem_c.dylib`flockfile
+
+iphonesdk_ar=$(shell xcrun --sdk iphoneos --find ar)
+iphonesdk_clang=$(shell xcrun --sdk iphoneos --find clang)
+iphonesdk_clangxx=$(shell xcrun --sdk iphoneos --find clang++)
+iphonesdk_isysroot=$(shell xcrun --sdk iphoneos --show-sdk-path)
+iphonesdklib="$(iphonesdk_isysroot)/usr/lib"
+
+ponyc:
+	@IPHONESDK="" $(MAKE) -f Makefile-ponyc bits=64 LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) all
+
+libponyrt:
+	export LDFLAGS="-L$(iphonesdklib)"
+	@echo "Compiling libponyrt for armv7"
+	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7 LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
+	@echo "Compiling libponyrt for armv7s"
+	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7s LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
+	@echo "Compiling libponyrt for arm64"
+	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=arm64 LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
+	
+	@echo "Making fat binary for libponyrt at build/release/lib/ios/libponyrt.a"
+	mkdir -p build/$(config)/lib/ios/
+	lipo -create -output build/$(config)/lib/ios/libponyrt.a build/$(config)/lib/armv7/libponyrt.a build/$(config)/lib/armv7s/libponyrt.a build/$(config)/lib/arm64/libponyrt.a
+
+all: ponyc libponyrt
+	@echo "all done"
+
+clean:
+	$(MAKE) -f Makefile-ponyc config=$(config) clean
+

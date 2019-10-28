@@ -602,7 +602,7 @@ void ponyint_heap_used(heap_t* heap, size_t size)
 
 bool ponyint_heap_startgc(heap_t* heap)
 {
-  if(heap->used <= heap->next_gc)
+  if(heap->used < heap->next_gc)
     return false;
 
   for(int i = 0; i < HEAP_SIZECLASSES; i++)

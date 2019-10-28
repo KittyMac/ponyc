@@ -23,6 +23,7 @@ else
 	
 	ifneq (,$(findstring iPhoneOS.platform,$(IPHONESDK)))
 	    OSTYPE = ios
+		CROSS_SYSROOT = $(IPHONESDK)
 	endif
 	
   endif
@@ -1165,7 +1166,8 @@ stats:
 	@cloc --read-lang-def=pony.cloc test
 
 clean:
-	@rm -rf $(PONY_BUILD_DIR)
+	@rm -rf build/release
+	@rm -rf build/debug
 	@rm -rf $(package)
 	@rm -rf build/bin
 	@rm -rf stdlib-docs

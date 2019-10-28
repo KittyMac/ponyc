@@ -24,31 +24,11 @@
 # 
 # - Easily compile your pony program into a .o which you can include in XCode
 # BUILD YOUR PONY CODE WITH:
-# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple arm64-apple-ios -rir
-# 
-# COMPILE THE LLVM ASM
-# /opt/local/bin/llvm-as-mp-7.0 pony.ll
-# 
-# COMPILE THE BITCODE TO A .o
-# /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
-# 
-# COMBINED
-#
-# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple armv7-apple-ios -rbitcode && /opt/local/bin/llc-mp-7.0 -mtriple=armv7-apple-ios pony.bc -o pony.o -filetype=obj
-#
-# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple arm64-apple-ios -rbitcode && /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
-#
-# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --triple arm64-apple-ios -rir && /opt/local/bin/llvm-as-mp-7.0 pony.ll && /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
-#
-# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/debug/ponyc --triple arm64-apple-ios -rir && /opt/local/bin/llvm-as-mp-7.0 pony.ll && /opt/local/bin/llc-mp-7.0 -mtriple=arm64-apple-ios pony.bc -o pony.o -filetype=obj
+# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --link-arch arm64 --triple arm64-apple-ios -robj
 #
 # Drag the .o file to your XCode project and build!
 #
 # TODO: Make the pony runtime play nice on an iOS device
-#
-# 1. Your pony code should call and run the C function iosmain() in one of your actors (this will be the iOS main thread!)
-#
-# 2. Currently crashing in libsystem_c.dylib`flockfile
 
 iphonesdk_ar=$(shell xcrun --sdk iphoneos --find ar)
 iphonesdk_clang=$(shell xcrun --sdk iphoneos --find clang)

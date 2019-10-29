@@ -15,6 +15,8 @@ class val Env
     Stdin represented as an actor.
     """
 
+  let cpu_count:U32
+
   let out: OutStream
     """Stdout"""
 
@@ -45,6 +47,7 @@ class val Env
     root = AmbientAuth._create()
     @pony_os_stdout_setup[None]()
 
+	cpu_count = @ponyint_cpu_count[U32]()
     input = Stdin._create(@pony_os_stdin_setup[Bool]())
     out = StdStream._out()
     err = StdStream._err()
@@ -71,6 +74,7 @@ class val Env
     args = args'
     vars = vars'
     exitcode = exitcode'
+	cpu_count = @ponyint_cpu_count[U32]()
 
   fun tag _count_strings(data: Pointer[Pointer[U8]] val): USize =>
     if data.is_null() then

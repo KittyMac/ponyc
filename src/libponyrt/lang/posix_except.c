@@ -34,7 +34,12 @@ PONY_API void pony_error()
   exception.exception_class = PONY_EXCEPTION_CLASS;
 #endif
   exception.exception_cleanup = exception_cleanup;
-  _Unwind_RaiseException(&exception);
+ 
+#if __USING_SJLJ_EXCEPTIONS__
+	_Unwind_SjLj_RaiseException(&exception);
+#else
+	_Unwind_RaiseException(&exception);
+#endif
 
   abort();
 }

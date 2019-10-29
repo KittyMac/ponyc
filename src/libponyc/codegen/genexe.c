@@ -99,8 +99,13 @@ LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env)
   params[2] = LLVMPointerType(LLVMPointerType(c->i8, 0), 0);
 
   LLVMTypeRef ftype = LLVMFunctionType(c->i32, params, 3, false);
-  LLVMValueRef func = LLVMAddFunction(c->module, "main", ftype);
-
+  LLVMValueRef func;
+  
+  if(target_is_apple_ios(c->opt->triple)) {
+	func = LLVMAddFunction(c->module, "pony_main", ftype);
+  }else{
+  	func = LLVMAddFunction(c->module, "main", ftype);
+  }
   codegen_startfun(c, func, NULL, NULL, NULL, false);
 
   LLVMBasicBlockRef start_fail_block = codegen_block(c, "start_fail");
@@ -184,7 +189,13 @@ LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env)
   gencall_runtime(c, "pony_sendv_single", args, 5, "");
 
   // Start the runtime.
-  args[0] = LLVMConstInt(c->i1, 0, false);
+  if(target_is_apple_ios(c->opt->triple)) {
+    // For ios we start pony as a library, because the main() method in the app
+    // calls pony_main() and expects it to return immediately
+	args[0] = LLVMConstInt(c->i1, 1, false);
+  }else{
+  	args[0] = LLVMConstInt(c->i1, 0, false);
+  }
   args[1] = LLVMConstNull(LLVMPointerType(c->i32, 0));
   args[2] = make_lang_features_init(c);
   LLVMValueRef start_success = gencall_runtime(c, "pony_start", args, 3, "");

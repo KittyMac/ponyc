@@ -129,6 +129,13 @@ typedef void (*pony_final_fn)(void* p);
  */
 typedef void (*pony_partial_fn)(void* data);
 
+/** batch size.
+ *
+ * An actor can supply a _batch() function, which will be called to set the
+ * batch size used to determine when an actor becomes overloaded.
+ */
+typedef size_t (*pony_batch_size)();
+
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t
 {
@@ -145,6 +152,7 @@ typedef const struct _pony_type_t
   pony_custom_deserialise_fn custom_deserialise;
   pony_dispatch_fn dispatch;
   pony_final_fn final;
+  pony_batch_size batch_fn;
   uint32_t event_notify;
   uintptr_t** traits;
   void* fields;

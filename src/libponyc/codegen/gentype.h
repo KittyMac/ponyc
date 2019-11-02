@@ -32,6 +32,7 @@ typedef struct compile_type_t
   LLVMValueRef custom_serialise_fn;
   LLVMValueRef custom_deserialise_fn;
   LLVMValueRef final_fn;
+  LLVMValueRef batch_fn;
   LLVMValueRef dispatch_fn;
   LLVMValueRef dispatch_switch;
 

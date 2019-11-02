@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <string.h>
 #include <dtrace.h>
+#include <stdio.h>
 
 #ifdef USE_VALGRIND
 #include <valgrind/helgrind.h>
@@ -352,6 +353,14 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   pony_assert(!ponyint_is_muted(actor));
   ctx->current = actor;
   size_t batch = PONY_SCHED_BATCH;
+  
+  // Grab the custom batch size if there is one
+  if(actor->type != NULL && actor->type->batch_fn != NULL){
+    batch = actor->type->batch_fn();
+    if (batch == 0) {
+      batch = PONY_SCHED_BATCH;
+	}
+  }
 
   pony_msg_t* msg;
   size_t app = 0;
@@ -575,7 +584,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   pony_actor_t* actor = (pony_actor_t*)ponyint_pool_alloc_size(type->size);
   memset(actor, 0, type->size);
   actor->type = type;
-
+  
 #ifdef USE_MEMTRACK
   ctx->mem_used_actors += type->size;
   ctx->mem_allocated_actors += ponyint_pool_used_size(type->size);

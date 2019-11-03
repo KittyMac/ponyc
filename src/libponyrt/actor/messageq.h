@@ -7,6 +7,10 @@ typedef struct messageq_t
 {
   PONY_ATOMIC(pony_msg_t*) head;
   pony_msg_t* tail;
+  
+  // TODO: make this atomic
+  size_t numMessages;
+  
 } messageq_t;
 
 #include "../sched/scheduler.h"

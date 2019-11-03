@@ -39,6 +39,8 @@ typedef struct pony_actor_t
   PONY_ATOMIC(uint8_t) flags;
   PONY_ATOMIC(uint8_t) is_muted;
   PONY_ATOMIC(size_t) muted;
+  
+  size_t batch;
 
   // keep things accessed by other actors on a separate cache line
   alignas(64) heap_t heap; // 52/104 bytes
@@ -90,6 +92,8 @@ PONY_API void pony_apply_backpressure();
 PONY_API void pony_release_backpressure();
 
 void ponyint_maybe_mute(pony_ctx_t* ctx, pony_actor_t* to);
+
+void ponyint_maybe_mute_after_send(pony_ctx_t* ctx, pony_actor_t* to);
 
 bool ponyint_triggers_muting(pony_actor_t* actor);
 

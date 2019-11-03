@@ -352,15 +352,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 {
   pony_assert(!ponyint_is_muted(actor));
   ctx->current = actor;
-  size_t batch = PONY_SCHED_BATCH;
-  
-  // Grab the custom batch size if there is one
-  if(actor->type != NULL && actor->type->batch_fn != NULL){
-    batch = actor->type->batch_fn();
-    if (batch == 0) {
-      batch = PONY_SCHED_BATCH;
-	}
-  }
+  size_t batch = actor->batch;
 
   pony_msg_t* msg;
   size_t app = 0;
@@ -421,13 +413,20 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     // scheduled.
     if(msg == head)
       break;
+	
+	// If we are overloaded, but we're processed enough messages that we
+	// have room left in our mailbox then we can unset being overloaded
+    if(has_flag(actor, FLAG_OVERLOADED) && actor->q.numMessages < actor->batch-1)
+    {
+		ponyint_actor_unsetoverloaded(actor);
+    }
   }
 
   // We didn't hit our app message batch limit. We now believe our queue to be
   // empty, but we may have received further messages.
   pony_assert(app < batch);
   pony_assert(!ponyint_is_muted(actor));
-
+  
   if(has_flag(actor, FLAG_OVERLOADED))
   {
     // if we were overloaded and didn't process a full batch, set ourselves as
@@ -437,7 +436,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     //    the receiver be overloaded or muted
     ponyint_actor_unsetoverloaded(actor);
   }
-
+  
   try_gc(ctx, actor);
 
   if(has_flag(actor, FLAG_UNSCHEDULED))
@@ -584,6 +583,14 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   pony_actor_t* actor = (pony_actor_t*)ponyint_pool_alloc_size(type->size);
   memset(actor, 0, type->size);
   actor->type = type;
+
+  actor->batch = PONY_SCHED_BATCH;
+  if(actor->type != NULL && actor->type->batch_fn != NULL){
+    actor->batch = actor->type->batch_fn();
+    if (actor->batch == 0) {
+      actor->batch = PONY_SCHED_BATCH;
+	}
+  }
   
 #ifdef USE_MEMTRACK
   ctx->mem_used_actors += type->size;
@@ -676,6 +683,8 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
 
   if(has_app_msg)
     ponyint_maybe_mute(ctx, to);
+  
+  ponyint_maybe_mute_after_send(ctx, to);
 
   if(ponyint_actor_messageq_push(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE
@@ -715,6 +724,8 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
 
   if(has_app_msg)
     ponyint_maybe_mute(ctx, to);
+  
+  ponyint_maybe_mute_after_send(ctx, to);
 
   if(ponyint_actor_messageq_push_single(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE
@@ -748,6 +759,22 @@ void ponyint_maybe_mute(pony_ctx_t* ctx, pony_actor_t* to)
     {
       ponyint_sched_mute(ctx, ctx->current, to);
     }
+  }
+}
+
+void ponyint_maybe_mute_after_send(pony_ctx_t* ctx, pony_actor_t* to)
+{
+  if(ctx->current != NULL && ctx->current != to)
+  {
+    // if we're sending to an actor whose queue is overflowing, then we need
+	// to mute ourselves and flag the other actor as overloaded
+	  if(ponyint_is_muted(ctx->current) == false) {
+		if( has_flag(to, FLAG_OVERLOADED) || 
+			( to->q.numMessages >= to->batch - 1 ) ) {
+		  ponyint_sched_mute(ctx, ctx->current, to);
+		  ponyint_actor_setoverloaded(to);
+		}
+	  }
   }
 }
 

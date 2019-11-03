@@ -44,6 +44,8 @@ static bool messageq_push(messageq_t* q, pony_msg_t* first, pony_msg_t* last)
 
   bool was_empty = ((uintptr_t)prev & 1) != 0;
   prev = (pony_msg_t*)((uintptr_t)prev & ~(uintptr_t)1);
+  
+  q->numMessages++;
 
 #ifdef USE_VALGRIND
   // Double fence with Valgrind since we need to have prev in scope for the
@@ -67,6 +69,8 @@ static bool messageq_push_single(messageq_t* q,
 
   bool was_empty = ((uintptr_t)prev & 1) != 0;
   prev = (pony_msg_t*)((uintptr_t)prev & ~(uintptr_t)1);
+  
+  q->numMessages++;
 
   // If we have a single producer, the fence can be replaced with a store
   // release on prev->next.
@@ -87,6 +91,7 @@ void ponyint_messageq_init(messageq_t* q)
   atomic_store_explicit(&q->head, (pony_msg_t*)((uintptr_t)stub | 1),
     memory_order_relaxed);
   q->tail = stub;
+  q->numMessages = 0;
 
 #ifndef PONY_NDEBUG
   messageq_size_debug(q);
@@ -105,6 +110,7 @@ void ponyint_messageq_destroy(messageq_t* q)
   ponyint_pool_free(tail->index, tail);
   atomic_store_explicit(&q->head, NULL, memory_order_relaxed);
   q->tail = NULL;
+  q->numMessages = 0;
 }
 
 bool ponyint_actor_messageq_push(messageq_t* q, pony_msg_t* first,
@@ -237,6 +243,8 @@ pony_msg_t* ponyint_actor_messageq_pop(messageq_t* q
   {
     DTRACE3(ACTOR_MSG_POP, sched->index, (uint32_t) next->id, (uintptr_t) actor);
     q->tail = next;
+	q->numMessages--;
+	
     atomic_thread_fence(memory_order_acquire);
 #ifdef USE_VALGRIND
     ANNOTATE_HAPPENS_AFTER(&tail->next);
@@ -261,6 +269,8 @@ pony_msg_t* ponyint_thread_messageq_pop(messageq_t* q
   {
     DTRACE2(THREAD_MSG_POP, (uint32_t) next->id, (uintptr_t) thr);
     q->tail = next;
+	q->numMessages--;
+	
     atomic_thread_fence(memory_order_acquire);
 #ifdef USE_VALGRIND
     ANNOTATE_HAPPENS_AFTER(&tail->next);

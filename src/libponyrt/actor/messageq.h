@@ -8,8 +8,8 @@ typedef struct messageq_t
   PONY_ATOMIC(pony_msg_t*) head;
   pony_msg_t* tail;
   
-  // TODO: make this atomic
-  size_t numMessages;
+  // TODO: make this atomic?
+  int32_t numMessages;
   
 } messageq_t;
 

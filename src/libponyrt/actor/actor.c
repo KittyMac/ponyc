@@ -586,7 +586,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
 
   actor->batch = PONY_SCHED_BATCH;
   if(actor->type != NULL && actor->type->batch_fn != NULL){
-    actor->batch = actor->type->batch_fn();
+    actor->batch = (int32_t)actor->type->batch_fn();
     if (actor->batch == 0) {
       actor->batch = PONY_SCHED_BATCH;
 	}
@@ -769,8 +769,9 @@ void ponyint_maybe_mute_after_send(pony_ctx_t* ctx, pony_actor_t* to)
     // if we're sending to an actor whose queue is overflowing, then we need
 	// to mute ourselves and flag the other actor as overloaded
 	  if(ponyint_is_muted(ctx->current) == false) {
-		if( has_flag(to, FLAG_OVERLOADED) || 
-			( to->q.numMessages >= to->batch - 1 ) ) {
+		if( has_flag(to, FLAG_OVERLOADED) ) {
+			ponyint_sched_mute(ctx, ctx->current, to);
+		} else if ( to->q.numMessages >= to->batch - 1 ) {
 		  ponyint_sched_mute(ctx, ctx->current, to);
 		  ponyint_actor_setoverloaded(to);
 		}

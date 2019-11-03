@@ -416,7 +416,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 	
 	// If we are overloaded, but we're processed enough messages that we
 	// have room left in our mailbox then we can unset being overloaded
-    if(has_flag(actor, FLAG_OVERLOADED) && actor->q.numMessages < actor->batch-1)
+    if(!ponyint_is_muted(actor) && has_flag(actor, FLAG_OVERLOADED) && actor->q.numMessages < actor->batch-1)
     {
 		ponyint_actor_unsetoverloaded(actor);
     }
@@ -681,10 +681,10 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
         (uintptr_t)ctx->current, (uintptr_t)to);
   }
 
+  ponyint_maybe_overload_target_actor_after_send(ctx, to);
+
   if(has_app_msg)
     ponyint_maybe_mute(ctx, to);
-  
-  ponyint_maybe_mute_after_send(ctx, to);
 
   if(ponyint_actor_messageq_push(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE
@@ -722,10 +722,10 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
         (uintptr_t)ctx->current, (uintptr_t)to);
   }
 
+  ponyint_maybe_overload_target_actor_after_send(ctx, to);
+
   if(has_app_msg)
     ponyint_maybe_mute(ctx, to);
-  
-  ponyint_maybe_mute_after_send(ctx, to);
 
   if(ponyint_actor_messageq_push_single(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE
@@ -762,20 +762,16 @@ void ponyint_maybe_mute(pony_ctx_t* ctx, pony_actor_t* to)
   }
 }
 
-void ponyint_maybe_mute_after_send(pony_ctx_t* ctx, pony_actor_t* to)
+void ponyint_maybe_overload_target_actor_after_send(pony_ctx_t* ctx, pony_actor_t* to)
 {
   if(ctx->current != NULL && ctx->current != to)
   {
-    // if we're sending to an actor whose queue is overflowing, then we need
-	// to mute ourselves and flag the other actor as overloaded
-	  if(ponyint_is_muted(ctx->current) == false) {
-		if( has_flag(to, FLAG_OVERLOADED) ) {
-			ponyint_sched_mute(ctx, ctx->current, to);
-		} else if ( to->q.numMessages >= to->batch - 1 ) {
-		  ponyint_sched_mute(ctx, ctx->current, to);
-		  ponyint_actor_setoverloaded(to);
-		}
-	  }
+    // if we're sending to an actor whose queue is overflowing, then aggressively
+	// flag the other actor is flagged as overloaded
+	if ( has_flag(to, FLAG_OVERLOADED) == false &&  to->q.numMessages >= to->batch - 1 ) {
+	  //fprintf(stderr, "[%d] -> [%d]: set target to be overloaded\n", (int)ctx->current->batch, (int)to->batch);
+	  ponyint_actor_setoverloaded(to);
+	}
   }
 }
 

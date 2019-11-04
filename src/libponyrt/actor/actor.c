@@ -393,6 +393,14 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 #endif
     )) != NULL)
   {
+	  
+  	// If we are overloaded, but we've processed enough messages that we
+  	// have room left in our mailbox then we can unset being overloaded
+    if(has_flag(actor, FLAG_OVERLOADED) && actor->q.numMessages < actor->batch-1)
+    {
+  	  ponyint_actor_unsetoverloaded(actor);
+    }
+	  
     if(handle_message(ctx, actor, msg))
     {
       // If we handle an application message, try to gc.
@@ -776,7 +784,7 @@ void ponyint_maybe_overload_target_actor_after_send(pony_ctx_t* ctx, pony_actor_
 	// Note that we don't start overloading the target now until twice the batch size, because
 	// when this is used with the new _priority feature it allows a high priority actor to be
 	// rescheduled more often.
-	if ( has_flag(to, FLAG_OVERLOADED) == false &&  to->q.numMessages >= (to->batch * 2) - 1 ) {
+	if ( has_flag(to, FLAG_OVERLOADED) == false &&  to->q.numMessages >= to->batch - 1 ) {
 	  ponyint_actor_setoverloaded(to);
 	}
   }

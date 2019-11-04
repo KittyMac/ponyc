@@ -413,13 +413,6 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     // scheduled.
     if(msg == head)
       break;
-	
-	// If we are overloaded, but we're processed enough messages that we
-	// have room left in our mailbox then we can unset being overloaded
-    if(!ponyint_is_muted(actor) && has_flag(actor, FLAG_OVERLOADED) && actor->q.numMessages < actor->batch-1)
-    {
-		ponyint_actor_unsetoverloaded(actor);
-    }
   }
 
   // We didn't hit our app message batch limit. We now believe our queue to be
@@ -583,14 +576,9 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   pony_actor_t* actor = (pony_actor_t*)ponyint_pool_alloc_size(type->size);
   memset(actor, 0, type->size);
   actor->type = type;
-
+  
+  actor->priority = PONY_DEFAULT_ACTOR_PRIORITY;
   actor->batch = PONY_SCHED_BATCH;
-  if(actor->type != NULL && actor->type->batch_fn != NULL){
-    actor->batch = (int32_t)actor->type->batch_fn();
-    if (actor->batch == 0) {
-      actor->batch = PONY_SCHED_BATCH;
-	}
-  }
   
 #ifdef USE_MEMTRACK
   ctx->mem_used_actors += type->size;
@@ -617,6 +605,22 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   // tell the cycle detector we exist if block messages are enabled
   if(!actor_noblock)
     ponyint_cycle_actor_created(ctx, actor);
+
+
+  // hopefully by here our create metho has been run, if not we need to move this lower
+  if(actor->type != NULL && actor->type->priority_fn != NULL){
+    actor->priority = (int32_t)actor->type->priority_fn();
+	if (actor->priority < PONY_MINIMUM_ACTOR_PRIORITY) {
+		actor->priority = PONY_MINIMUM_ACTOR_PRIORITY + 1;
+	}
+  }
+  
+  if(actor->type != NULL && actor->type->batch_fn != NULL){
+    actor->batch = (int32_t)actor->type->batch_fn();
+    if (actor->batch <= 0) {
+      actor->batch = PONY_SCHED_BATCH;
+	}
+  }
 
   DTRACE2(ACTOR_ALLOC, (uintptr_t)ctx->scheduler, (uintptr_t)actor);
   return actor;
@@ -767,9 +771,12 @@ void ponyint_maybe_overload_target_actor_after_send(pony_ctx_t* ctx, pony_actor_
   if(ctx->current != NULL && ctx->current != to)
   {
     // if we're sending to an actor whose queue is overflowing, then aggressively
-	// flag the other actor is flagged as overloaded
-	if ( has_flag(to, FLAG_OVERLOADED) == false &&  to->q.numMessages >= to->batch - 1 ) {
-	  //fprintf(stderr, "[%d] -> [%d]: set target to be overloaded\n", (int)ctx->current->batch, (int)to->batch);
+	// flag the other actor is flagged as overloaded. 
+	//
+	// Note that we don't start overloading the target now until twice the batch size, because
+	// when this is used with the new _priority feature it allows a high priority actor to be
+	// rescheduled more often.
+	if ( has_flag(to, FLAG_OVERLOADED) == false &&  to->q.numMessages >= (to->batch * 2) - 1 ) {
 	  ponyint_actor_setoverloaded(to);
 	}
   }

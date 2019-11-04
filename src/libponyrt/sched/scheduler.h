@@ -19,6 +19,10 @@ typedef struct scheduler_t scheduler_t;
 #define SPECIAL_THREADID_IOCP     -11
 #define SPECIAL_THREADID_EPOLL    -12
 
+// default actor priority
+#define PONY_DEFAULT_ACTOR_PRIORITY 0
+#define PONY_MINIMUM_ACTOR_PRIORITY -9999
+
 #if !defined(PLATFORM_IS_WINDOWS) && !defined(USE_SCHEDULER_SCALING_PTHREADS)
 // Signal to use for suspending/resuming threads via `sigwait`/`pthread_kill`
 // If you change this, remember to change `signals` package accordingly

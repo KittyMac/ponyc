@@ -160,6 +160,7 @@ typedef struct compile_t
   const char* str__init;
   const char* str__final;
   const char* str__batch;
+  const char* str__priority;
   const char* str__event_notify;
   const char* str__serialise_space;
   const char* str__serialise;
@@ -210,6 +211,7 @@ typedef struct compile_t
   LLVMTypeRef dispatch_fn;
   LLVMTypeRef final_fn;
   LLVMTypeRef batch_fn;
+  LLVMTypeRef priority_fn;
   LLVMTypeRef custom_serialise_space_fn;
   LLVMTypeRef custom_deserialise_fn;
 

@@ -879,6 +879,7 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
       add_special(r, t, type, "_event_notify", opt);
       add_special(r, t, type, "_final", opt);
 	  add_special(r, t, type, "_batch", opt);
+	  add_special(r, t, type, "_priority", opt);
       add_fields(r, t, opt);
       break;
 
@@ -1344,6 +1345,12 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
       pony_assert(n->cap == TK_BOX);
       return;
     }
+	
+	if(name == stringtab("_priority"))
+    {
+      pony_assert(n->cap == TK_BOX);
+      return;
+    }
 
     // TODO: if it doesn't use this-> in a constructor, we could reuse the
     // function, which means always reuse in a fun tag
@@ -1590,6 +1597,7 @@ static pony_type_t reach_param_pony =
   NULL,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,
@@ -1725,6 +1733,7 @@ static pony_type_t reach_method_pony =
   NULL,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,
@@ -1788,6 +1797,7 @@ static pony_type_t reach_method_name_pony =
   NULL,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,
@@ -1841,6 +1851,7 @@ static pony_type_t reach_field_pony =
   reach_field_serialise_trace,
   reach_field_serialise,
   reach_field_deserialise,
+  NULL,
   NULL,
   NULL,
   NULL,
@@ -1970,6 +1981,7 @@ static pony_type_t reach_type_pony =
   NULL,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,
@@ -2024,6 +2036,7 @@ static pony_type_t reach_pony =
   reach_serialise_trace,
   reach_serialise,
   reach_deserialise,
+  NULL,
   NULL,
   NULL,
   NULL,

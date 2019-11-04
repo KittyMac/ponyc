@@ -136,6 +136,13 @@ typedef void (*pony_partial_fn)(void* data);
  */
 typedef size_t (*pony_batch_size)();
 
+/** priority.
+ *
+ * An actor can supply a _priority() function, which will determine if this
+ * actor is a higher priority actor than other actors
+ */
+typedef size_t (*pony_actor_priority)();
+
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t
 {
@@ -153,6 +160,7 @@ typedef const struct _pony_type_t
   pony_dispatch_fn dispatch;
   pony_final_fn final;
   pony_batch_size batch_fn;
+  pony_actor_priority priority_fn;
   uint32_t event_notify;
   uintptr_t** traits;
   void* fields;

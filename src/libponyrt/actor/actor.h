@@ -41,6 +41,7 @@ typedef struct pony_actor_t
   PONY_ATOMIC(size_t) muted;
   
   int32_t batch;
+  int32_t priority;
 
   // keep things accessed by other actors on a separate cache line
   alignas(64) heap_t heap; // 52/104 bytes

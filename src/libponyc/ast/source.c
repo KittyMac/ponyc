@@ -124,6 +124,7 @@ static pony_type_t source_pony =
   NULL,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,

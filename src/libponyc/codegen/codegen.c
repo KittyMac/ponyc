@@ -167,6 +167,7 @@ static void init_runtime(compile_t* c)
   c->str__init = stringtab("_init");
   c->str__final = stringtab("_final");
   c->str__batch = stringtab("_batch");
+  c->str__priority = stringtab("_priority");
   c->str__event_notify = stringtab("_event_notify");
   c->str__serialise_space = stringtab("_serialise_space");
   c->str__serialise = stringtab("_serialise");
@@ -248,6 +249,9 @@ static void init_runtime(compile_t* c)
     LLVMFunctionType(c->void_type, params, 1, false), 0);
   
   c->batch_fn = LLVMPointerType(
+    LLVMFunctionType(c->i64, NULL, 0, false), 0);
+ 
+  c->priority_fn = LLVMPointerType(
     LLVMFunctionType(c->i64, NULL, 0, false), 0);
 
   // descriptor, opaque version

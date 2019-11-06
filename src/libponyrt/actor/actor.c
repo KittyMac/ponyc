@@ -405,16 +405,20 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     {
       // If we handle an application message, try to gc.
       app++;
-      try_gc(ctx, actor);
 
       // maybe mute actor; returns true if mute occurs
-      if(maybe_mute(actor))
-        return false;
+      if(maybe_mute(actor)) {
+      	try_gc(ctx, actor);
+		return false;
+      }
+        
 
       // if we've reached our batch limit
       // or if we're polling where we want to stop after one app message
-      if(app == batch || polling)
-        return batch_limit_reached(actor, polling);
+      if(app == batch || polling) {
+      	try_gc(ctx, actor);
+		return batch_limit_reached(actor, polling);
+      }
     }
 
     // Stop handling a batch if we reach the head we found when we were

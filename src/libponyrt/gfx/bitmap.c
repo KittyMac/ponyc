@@ -81,3 +81,16 @@ void pony_bitmap_blit(uint32_t * d_ptr, size_t d_width, size_t d_height, size_t 
 	}
 }
 
+void * pony_bitmap_row_pointers(char * ptr, size_t width, size_t height) {
+    char ** row_pointers = (char **)malloc(sizeof(char *) * height);
+    for (size_t y = 0; y < height; y++)
+	{
+		row_pointers[y] = ptr + (y * width * 4);
+    }
+	return row_pointers;
+}
+
+
+void pony_bitmap_row_pointers_free(char * ptr) {
+	free(ptr);
+}

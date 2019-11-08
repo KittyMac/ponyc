@@ -127,6 +127,16 @@ class ByteBlock
 		"""
 		@memset(_ptr, value.u32(), _size)
 	
+	fun ref update(i:USize, value:U8 = 0)? =>
+		"""
+		replace a single element
+		"""
+		if i < _size then
+			@memset(_ptr.offset(i), value.u32(), 1)
+		else
+			error
+		end
+	
 	fun ref clear() =>
 		"""
 		replace all elements in the block with 0. Just sugar for set(0)

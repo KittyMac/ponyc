@@ -97,3 +97,12 @@ class Bitmap
 	
 	fun ref blit(x:USize, y:USize, o:Bitmap) =>
 		@pony_bitmap_blit[None](_ptr, width, height, x, y, o._ptr, o.width, o.height)
+	
+	
+	fun rowPointers():Pointer[None] =>
+		@pony_bitmap_row_pointers[Pointer[None]](_ptr, width, height)
+	
+	fun rowPointersFree(ptr:Pointer[None]) =>
+		@pony_bitmap_row_pointers_free[None](ptr)
+
+	

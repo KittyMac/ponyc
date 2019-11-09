@@ -62,6 +62,12 @@ class Bitmap
 		height = height'
 		_ptr = @pony_malloc(width * height * 4)
 	
+	new copy(width':USize, height':USize, bytes:Pointer[U8] tag) =>
+		width = width'
+		height = height'
+		_ptr = @pony_malloc(width * height * 4)
+		@memcpy(_ptr, bytes, width * height * 4)
+	
 	fun size(): USize =>
 		width * height * 4
 	

@@ -78,8 +78,106 @@ static bool link_lib(compile_t* c, const char* file_o)
   return true;
 }
 
+static bool reachable_methods(compile_t* c, ast_t* ast)
+{
+  ast_t* id = ast_child(ast);
+  ast_t* type = type_builtin(c->opt, ast, ast_name(id));
+
+  ast_t* def = (ast_t*)ast_data(type);
+  ast_t* members = ast_childidx(def, 4);
+  ast_t* member = ast_child(members);
+
+  while(member != NULL)
+  {
+    switch(ast_id(member))
+    {
+      case TK_NEW:
+      case TK_BE:
+      case TK_FUN:
+      {
+        AST_GET_CHILDREN(member, cap, m_id, typeparams);
+
+        // Mark all non-polymorphic methods as reachable.
+        if(ast_id(typeparams) == TK_NONE)
+          reach(c->reach, type, ast_name(m_id), NULL, c->opt);
+        break;
+      }
+
+      default: {}
+    }
+
+    member = ast_sibling(member);
+  }
+
+  ast_free_unattached(type);
+  return true;
+}
+
+static bool reachable_actors(compile_t* c, ast_t* program)
+{
+  if(c->opt->verbosity >= VERBOSITY_INFO)
+    fprintf(stderr, " Library reachability\n");
+
+  // Look for C-API actors in every package.
+  bool found = false;
+  ast_t* package = ast_child(program);
+
+  while(package != NULL)
+  {
+    ast_t* module = ast_child(package);
+
+    while(module != NULL)
+    {
+      ast_t* entity = ast_child(module);
+
+      while(entity != NULL)
+      {
+        if(ast_id(entity) == TK_ACTOR)
+        {
+          ast_t* c_api = ast_childidx(entity, 5);
+
+          if(ast_id(c_api) == TK_AT)
+          {
+            // We have an actor marked as C-API.
+            if(!reachable_methods(c, entity))
+              return false;
+
+            found = true;
+          }
+        }
+
+        entity = ast_sibling(entity);
+      }
+
+      module = ast_sibling(module);
+    }
+
+    package = ast_sibling(package);
+  }
+
+  if(!found)
+  {
+    // Note: this is no longer an error case.  we provide "pony_main()" to just
+    // run pony with the main actor like normal exes
+    return true;
+  }
+
+  if(c->opt->verbosity >= VERBOSITY_INFO)
+    fprintf(stderr, " Selector painting\n");
+  paint(&c->reach->types);
+
+  plugin_visit_reach(c->reach, c->opt, true);
+
+  return true;
+}
+
 bool genlib(compile_t* c, ast_t* program)
 {
+    if(	!reachable_actors(c, program) ||
+       	!genheader(c))
+      return false;
+	
+	
     errors_t* errors = c->opt->check.errors;
 
     // The first package is the main package. It has to have a Main actor.

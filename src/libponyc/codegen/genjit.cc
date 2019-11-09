@@ -97,7 +97,7 @@ bool gen_jit_and_run(compile_t* c, int* exit_code, jit_symbol_t* symbols,
   if ((t_main == NULL) || (t_env == NULL))
     return false;
 
-  gen_main(c, t_main, t_env);
+  gen_main(c, t_main, t_env, false);
 
   if (!genopt(c, true))
     return false;
@@ -218,7 +218,7 @@ bool gen_jit_and_run(compile_t* c, int* exit_code, jit_symbol_t* symbols,
   if ((t_main == NULL) || (t_env == NULL))
     return false;
 
-  gen_main(c, t_main, t_env);
+  gen_main(c, t_main, t_env, false);
 
   if (!genopt(c, true))
     return false;

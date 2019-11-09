@@ -7,105 +7,12 @@
 #include "../reach/paint.h"
 #include "../type/assemble.h"
 #include "../../libponyrt/mem/pool.h"
+#include "../type/lookup.h"
 #include <string.h>
 
 #ifdef PLATFORM_IS_POSIX_BASED
 #  include <unistd.h>
 #endif
-
-static bool reachable_methods(compile_t* c, ast_t* ast)
-{
-  ast_t* id = ast_child(ast);
-  ast_t* type = type_builtin(c->opt, ast, ast_name(id));
-
-  ast_t* def = (ast_t*)ast_data(type);
-  ast_t* members = ast_childidx(def, 4);
-  ast_t* member = ast_child(members);
-
-  while(member != NULL)
-  {
-    switch(ast_id(member))
-    {
-      case TK_NEW:
-      case TK_BE:
-      case TK_FUN:
-      {
-        AST_GET_CHILDREN(member, cap, m_id, typeparams);
-
-        // Mark all non-polymorphic methods as reachable.
-        if(ast_id(typeparams) == TK_NONE)
-          reach(c->reach, type, ast_name(m_id), NULL, c->opt);
-        break;
-      }
-
-      default: {}
-    }
-
-    member = ast_sibling(member);
-  }
-
-  ast_free_unattached(type);
-  return true;
-}
-
-static bool reachable_actors(compile_t* c, ast_t* program)
-{
-  errors_t* errors = c->opt->check.errors;
-
-  if(c->opt->verbosity >= VERBOSITY_INFO)
-    fprintf(stderr, " Library reachability\n");
-
-  // Look for C-API actors in every package.
-  bool found = false;
-  ast_t* package = ast_child(program);
-
-  while(package != NULL)
-  {
-    ast_t* module = ast_child(package);
-
-    while(module != NULL)
-    {
-      ast_t* entity = ast_child(module);
-
-      while(entity != NULL)
-      {
-        if(ast_id(entity) == TK_ACTOR)
-        {
-          ast_t* c_api = ast_childidx(entity, 5);
-
-          if(ast_id(c_api) == TK_AT)
-          {
-            // We have an actor marked as C-API.
-            if(!reachable_methods(c, entity))
-              return false;
-
-            found = true;
-          }
-        }
-
-        entity = ast_sibling(entity);
-      }
-
-      module = ast_sibling(module);
-    }
-
-    package = ast_sibling(package);
-  }
-
-  if(!found)
-  {
-    errorf(errors, NULL, "no C-API actors found in package '%s'", c->filename);
-    return false;
-  }
-
-  if(c->opt->verbosity >= VERBOSITY_INFO)
-    fprintf(stderr, " Selector painting\n");
-  paint(&c->reach->types);
-
-  plugin_visit_reach(c->reach, c->opt, true);
-
-  return true;
-}
 
 static bool link_lib(compile_t* c, const char* file_o)
 {
@@ -173,11 +80,87 @@ static bool link_lib(compile_t* c, const char* file_o)
 
 bool genlib(compile_t* c, ast_t* program)
 {
-  if(!reachable_actors(c, program) ||
-    !gentypes(c) ||
-    !genheader(c)
-    )
-    return false;
+    errors_t* errors = c->opt->check.errors;
+
+    // The first package is the main package. It has to have a Main actor.
+    const char* main_actor = c->str_Main;
+    const char* env_class = c->str_Env;
+    const char* package_name = c->filename;
+
+    if((c->opt->bin_name != NULL) && (strlen(c->opt->bin_name) > 0))
+      c->filename = c->opt->bin_name;
+
+    ast_t* package = ast_child(program);
+    ast_t* main_def = ast_get(package, main_actor, NULL);
+
+    if(main_def == NULL)
+    {
+      errorf(errors, NULL, "no Main actor found in package '%s'", package_name);
+      return false;
+    }
+
+    // Generate the Main actor and the Env class.
+    ast_t* main_ast = type_builtin(c->opt, main_def, main_actor);
+    ast_t* env_ast = type_builtin(c->opt, main_def, env_class);
+
+    deferred_reification_t* main_create = lookup(c->opt, main_ast, main_ast,
+      c->str_create);
+
+    if(main_create == NULL)
+    {
+      ast_free(main_ast);
+      ast_free(env_ast);
+      return false;
+    }
+
+    deferred_reify_free(main_create);
+
+    if(c->opt->verbosity >= VERBOSITY_INFO)
+      fprintf(stderr, " Reachability\n");
+    reach(c->reach, main_ast, c->str_create, NULL, c->opt);
+    reach(c->reach, main_ast, stringtab("runtime_override_defaults"), NULL, c->opt);
+    reach(c->reach, env_ast, c->str__create, NULL, c->opt);
+
+    if(c->opt->limit == PASS_REACH)
+    {
+      ast_free(main_ast);
+      ast_free(env_ast);
+      return true;
+    }
+
+    if(c->opt->verbosity >= VERBOSITY_INFO)
+      fprintf(stderr, " Selector painting\n");
+    paint(&c->reach->types);
+
+    plugin_visit_reach(c->reach, c->opt, true);
+
+    if(c->opt->limit == PASS_PAINT)
+    {
+      ast_free(main_ast);
+      ast_free(env_ast);
+      return true;
+    }
+
+    if(!gentypes(c))
+    {
+      ast_free(main_ast);
+      ast_free(env_ast);
+      return false;
+    }
+
+    if(c->opt->verbosity >= VERBOSITY_ALL)
+      reach_dump(c->reach);
+
+    reach_type_t* t_main = reach_type(c->reach, main_ast);
+    reach_type_t* t_env = reach_type(c->reach, env_ast);
+
+    ast_free(main_ast);
+    ast_free(env_ast);
+
+    if((t_main == NULL) || (t_env == NULL))
+      return false;
+
+    gen_main(c, t_main, t_env, true);
 
   plugin_visit_compile(c, c->opt);
 

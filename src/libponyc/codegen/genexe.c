@@ -91,7 +91,7 @@ static LLVMValueRef make_lang_features_init(compile_t* c)
   return LLVMBuildBitCast(c->builder, lfi_object, c->void_ptr, "");
 }
 
-LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env)
+LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env, bool use_pony_main)
 {
   LLVMTypeRef params[3];
   params[0] = c->i32;
@@ -101,8 +101,8 @@ LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env)
   LLVMTypeRef ftype = LLVMFunctionType(c->i32, params, 3, false);
   LLVMValueRef func;
   
-  if(target_is_apple_ios(c->opt->triple)) {
-	func = LLVMAddFunction(c->module, "pony_main", ftype);
+  if (use_pony_main) {
+  	func = LLVMAddFunction(c->module, "pony_main", ftype);
   }else{
   	func = LLVMAddFunction(c->module, "main", ftype);
   }
@@ -189,12 +189,10 @@ LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env)
   gencall_runtime(c, "pony_sendv_single", args, 5, "");
 
   // Start the runtime.
-  if(target_is_apple_ios(c->opt->triple)) {
-    // For ios we start pony as a library, because the main() method in the app
-    // calls pony_main() and expects it to return immediately
-	args[0] = LLVMConstInt(c->i1, 1, false);
+  if (use_pony_main) {
+  	args[0] = LLVMConstInt(c->i1, 1, false);
   }else{
-  	args[0] = LLVMConstInt(c->i1, 0, false);
+	args[0] = LLVMConstInt(c->i1, 0, false);
   }
   args[1] = LLVMConstNull(LLVMPointerType(c->i32, 0));
   args[2] = make_lang_features_init(c);
@@ -580,7 +578,7 @@ bool genexe(compile_t* c, ast_t* program)
   if((t_main == NULL) || (t_env == NULL))
     return false;
 
-  gen_main(c, t_main, t_env);
+  gen_main(c, t_main, t_env, false);
 
   plugin_visit_compile(c, c->opt);
 

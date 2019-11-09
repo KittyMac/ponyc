@@ -242,7 +242,7 @@ static void print_types(compile_t* c, FILE* fp, printbuf_t* buf)
 
       // Function signature for the allocator.
       printbuf(buf,
-        "/* Allocate a %s without initialising it. */\n%s* %s_Alloc();\n\n",
+        "/* Allocate a %s without initialising it. */\n%s* %s_Alloc(void);\n\n",
         t->name,
         t->name,
         t->name

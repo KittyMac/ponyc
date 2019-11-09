@@ -134,14 +134,14 @@ typedef void (*pony_partial_fn)(void* data);
  * An actor can supply a _batch() function, which will be called to set the
  * batch size used to determine when an actor becomes overloaded.
  */
-typedef size_t (*pony_batch_size)();
+typedef size_t (*pony_batch_size)(void);
 
 /** priority.
  *
  * An actor can supply a _priority() function, which will determine if this
  * actor is a higher priority actor than other actors
  */
-typedef size_t (*pony_actor_priority)();
+typedef size_t (*pony_actor_priority)(void);
 
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t
@@ -223,7 +223,7 @@ typedef struct pony_actor_pad_t
 } pony_actor_pad_t;
 
 /// The currently executing context.
-PONY_API pony_ctx_t* pony_ctx();
+PONY_API pony_ctx_t* pony_ctx(void);
 
 /** Create a new actor.
  *
@@ -500,7 +500,7 @@ PONY_API bool pony_start(bool library, int* exit_code,
  * Threads that call pony_init() or pony_start() are automatically registered.
  * It's safe, but not necessary, to call this more than once.
  */
-PONY_API void pony_register_thread();
+PONY_API void pony_register_thread(void);
 
 /** Unregisters a non-scheduler thread.
  *
@@ -508,7 +508,7 @@ PONY_API void pony_register_thread();
  * pony_register_thread(). This should never be called from a thread owned by
  * the Pony runtime.
  */
-PONY_API void pony_unregister_thread();
+PONY_API void pony_unregister_thread(void);
 
 PONY_API int32_t pony_scheduler_index(pony_ctx_t* ctx);
 
@@ -518,7 +518,7 @@ PONY_API int32_t pony_scheduler_index(pony_ctx_t* ctx);
  * true. This returns the exit code, defaulting to zero. This call won't return
  * until the runtime actually terminates.
  */
-PONY_API int pony_stop();
+PONY_API int pony_stop(void);
 
 /** Set the exit code.
  *
@@ -531,7 +531,7 @@ PONY_API void pony_exitcode(int code);
  *
  * Get the value of the last pony_exitcode() call.
  */
-PONY_API int pony_get_exitcode();
+PONY_API int pony_get_exitcode(void);
 
 /**
  * If an actor is currently unscheduled, this will reschedule it. This is not
@@ -585,7 +585,7 @@ PONY_API bool pony_try(pony_partial_fn callback, void* data);
  * If pony_error() is called and neither pony_try() nor a try block exist higher
  * in the call stack, the runtime calls the C abort() function.
  */
-PONY_API void pony_error();
+PONY_API void pony_error(void);
 
 #if defined(__cplusplus)
 }

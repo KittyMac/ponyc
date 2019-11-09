@@ -13,6 +13,7 @@ PONY_EXTERN_C_BEGIN
 #define OS_OPENBSD_NAME "openbsd"
 #define OS_LINUX_NAME "linux"
 #define OS_MACOSX_NAME "osx"
+#define OS_IOS_NAME "ios"
 #define OS_WINDOWS_NAME "windows"
 #define OS_POSIX_NAME "posix"
 #define OS_X86_NAME "x86"

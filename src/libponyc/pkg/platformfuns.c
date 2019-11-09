@@ -46,6 +46,12 @@ bool os_is_target(const char* attribute, bool release, bool* out_is_target, pass
     *out_is_target = target_is_macosx(options->triple);
     return true;
   }
+  
+  if(!strcmp(attribute, OS_IOS_NAME))
+  {
+    *out_is_target = target_is_ios(options->triple);
+    return true;
+  }
 
   if(!strcmp(attribute, OS_WINDOWS_NAME))
   {

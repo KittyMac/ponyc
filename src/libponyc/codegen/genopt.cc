@@ -1495,6 +1495,13 @@ bool target_is_macosx(char* t)
   return triple.isMacOSX();
 }
 
+bool target_is_ios(char* t)
+{
+  Triple triple = Triple(t);
+
+  return triple.isiOS();
+}
+
 bool target_is_windows(char* t)
 {
   Triple triple = Triple(t);
@@ -1506,7 +1513,7 @@ bool target_is_posix(char* t)
 {
   Triple triple = Triple(t);
 
-  return triple.isMacOSX() || triple.isOSFreeBSD() || triple.isOSLinux()
+  return triple.isiOS() || triple.isMacOSX() || triple.isOSFreeBSD() || triple.isOSLinux()
     || triple.isOSDragonFly() || triple.isOSOpenBSD();
 }
 

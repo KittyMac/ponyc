@@ -1,6 +1,6 @@
 
 use @pony_bitmap_fillRect[None](s:Pointer[U8], width:USize, height:USize, rX:USize, rY:USize, rW:USize, rH:USize, cR:U8, cG:U8, cB:U8, cA:U8)
-use @pony_bitmap_blit[None](d_ptr:Pointer[U8], d_width:USize, d_height:USize, dX:USize, dY:USize, s_ptr:Pointer[U8], s_width:USize, s_height:USize)
+use @pony_bitmap_blit[None](d_ptr:Pointer[U8], d_width:USize, d_height:USize, dX:USize, dY:USize, s_ptr:Pointer[U8] box, s_width:USize, s_height:USize)
 
 struct RGBA
 	var r:U8 = 0
@@ -34,7 +34,7 @@ struct Rect
 		h = h'
 
 
-class Bitmap
+class val Bitmap
 	"""
 	A contiguos, non-resizable block of memory representing an RGBA image.  Memory for this
 	is allocated outside of pony's normal memory system.
@@ -74,7 +74,7 @@ class Bitmap
 	fun cpointer(offset: USize = 0): Pointer[U8] tag =>
 		_ptr._offset(offset)
 	
-	fun ref clear(c:RGBA) =>
+	fun ref clear(c:RGBA box) =>
 		@pony_bitmap_fillRect[None](_ptr, width, height, 0, 0, width, height, c.r, c.g, c.b, c.a)
 	
 	fun ref getPixel(x: USize, y: USize):RGBA =>
@@ -89,7 +89,7 @@ class Bitmap
 		end
 		RGBA.clear()
 	
-	fun ref setPixel(x: USize, y: USize, c:RGBA) =>
+	fun ref setPixel(x: USize, y: USize, c:RGBA box) =>
 		let i = (y * width * 4) + (x * 4)
 		if (i >= 0) and (i <= ((width * height * 4) - 4)) then
 			_ptr._update(i + 0, c.r)
@@ -97,11 +97,11 @@ class Bitmap
 			_ptr._update(i + 2, c.b)
 			_ptr._update(i + 3, c.a)
 		end
-	
-	fun ref fillRect(r:Rect, c:RGBA) =>
+		
+	fun ref fillRect(r:Rect box, c:RGBA box) =>
 		@pony_bitmap_fillRect[None](_ptr, width, height, r.x, r.y, r.w, r.h, c.r, c.g, c.b, c.a)
 	
-	fun ref blit(x:USize, y:USize, o:Bitmap) =>
+	fun ref blit(x:USize, y:USize, o:Bitmap box) =>
 		@pony_bitmap_blit[None](_ptr, width, height, x, y, o._ptr, o.width, o.height)
 	
 	

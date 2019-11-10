@@ -18,6 +18,7 @@
 
 // default actor batch size
 #define PONY_SCHED_BATCH 100
+#define PONY_MINIMUM_BATCH 4
 
 // Ignore padding at the end of the type.
 pony_static_assert((offsetof(pony_actor_t, gc) + sizeof(gc_t)) ==
@@ -356,7 +357,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 
   pony_msg_t* msg;
   size_t app = 0;
-
+  
 #ifdef USE_ACTOR_CONTINUATIONS
   while(actor->continuation != NULL)
   {
@@ -629,8 +630,8 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   
   if(actor->type != NULL && actor->type->batch_fn != NULL){
     actor->batch = (int32_t)actor->type->batch_fn();
-    if (actor->batch <= 0) {
-      actor->batch = PONY_SCHED_BATCH;
+    if (actor->batch <= PONY_MINIMUM_BATCH) {
+      actor->batch = PONY_MINIMUM_BATCH;
 	}
   }
 

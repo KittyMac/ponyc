@@ -229,7 +229,7 @@ static int string_compare(const void* a, const void* b)
 // the given package AST
 // @return true on success, false on error
 static bool parse_files_in_dir(ast_t* package, const char* dir_path,
-  pass_opt_t* opt)
+  pass_opt_t* opt, bool silent)
 {
   PONY_ERRNO err = 0;
   PONY_DIR* dir = pony_opendir(dir_path, &err);
@@ -237,13 +237,15 @@ static bool parse_files_in_dir(ast_t* package, const char* dir_path,
 
   if(dir == NULL)
   {
-    switch(err)
-    {
-      case EACCES:  errorf(errors, dir_path, "permission denied"); break;
-      case ENOENT:  errorf(errors, dir_path, "does not exist");    break;
-      case ENOTDIR: errorf(errors, dir_path, "not a directory");   break;
-      default:      errorf(errors, dir_path, "unknown error");     break;
-    }
+	  if (!silent) {
+	      switch(err)
+	      {
+	        case EACCES:  errorf(errors, dir_path, "permission denied"); break;
+	        case ENOENT:  errorf(errors, dir_path, "does not exist");    break;
+	        case ENOTDIR: errorf(errors, dir_path, "not a directory");   break;
+	        default:      errorf(errors, dir_path, "unknown error");     break;
+	      }
+	  }
 
     return false;
   }
@@ -995,7 +997,7 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
       if(!parse_source_code(package, magic->src, opt))
         return NULL;
     } else if(magic->mapped_path != NULL) {
-      if(!parse_files_in_dir(package, magic->mapped_path, opt))
+      if(!parse_files_in_dir(package, magic->mapped_path, opt, false))
         return NULL;
     } else {
       return NULL;
@@ -1003,8 +1005,14 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
   }
   else
   {
-    if(!parse_files_in_dir(package, full_path, opt))
+    if(!parse_files_in_dir(package, full_path, opt, false))
       return NULL;
+	
+	// to help code separation, we will also include some standard subdirectories
+	// Its ok if these subdirectories do not exist
+    char unittests[FILENAME_MAX];
+    path_cat(full_path, "unit-tests", unittests);
+    parse_files_in_dir(package, unittests, opt, true);
   }
 
   if(ast_child(package) == NULL)

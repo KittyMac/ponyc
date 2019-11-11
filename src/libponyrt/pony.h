@@ -143,6 +143,13 @@ typedef size_t (*pony_batch_size)(void);
  */
 typedef size_t (*pony_actor_priority)(void);
 
+/** tag.
+ *
+ * An actor can supply a _tag() function, which can allow this actor to
+ * be identified for developmental purposes.
+ */
+typedef size_t (*pony_actor_tag)(void);
+
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t
 {
@@ -161,6 +168,7 @@ typedef const struct _pony_type_t
   pony_final_fn final;
   pony_batch_size batch_fn;
   pony_actor_priority priority_fn;
+  pony_actor_tag tag_fn;
   uint32_t event_notify;
   uintptr_t** traits;
   void* fields;

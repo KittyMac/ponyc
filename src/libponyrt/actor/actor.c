@@ -592,6 +592,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   
   actor->priority = PONY_DEFAULT_ACTOR_PRIORITY;
   actor->batch = PONY_SCHED_BATCH;
+  actor->tag = 0;
   
 #ifdef USE_MEMTRACK
   ctx->mem_used_actors += type->size;
@@ -633,6 +634,10 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
     if (actor->batch <= PONY_MINIMUM_BATCH) {
       actor->batch = PONY_MINIMUM_BATCH;
 	}
+  }
+  
+  if(actor->type != NULL && actor->type->tag_fn != NULL){
+    actor->tag = (int32_t)actor->type->tag_fn();
   }
 
   DTRACE2(ACTOR_ALLOC, (uintptr_t)ctx->scheduler, (uintptr_t)actor);

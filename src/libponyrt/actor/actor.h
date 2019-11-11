@@ -42,6 +42,7 @@ typedef struct pony_actor_t
   
   int32_t batch;
   int32_t priority;
+  int32_t tag;
 
   // keep things accessed by other actors on a separate cache line
   alignas(64) heap_t heap; // 52/104 bytes

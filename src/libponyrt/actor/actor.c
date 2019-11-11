@@ -357,6 +357,12 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 
   pony_msg_t* msg;
   size_t app = 0;
+ 
+#ifdef DISPLAY_STATS
+  if(actor->tag != 0) {
+  	fprintf(stderr, "[%d] run, %d messages, %d batch, %d priority\n", actor->tag, actor->q.numMessages, actor->batch, actor->priority);
+  }
+#endif
   
 #ifdef USE_ACTOR_CONTINUATIONS
   while(actor->continuation != NULL)
@@ -1039,6 +1045,11 @@ bool ponyint_is_muted(pony_actor_t* actor)
 
 void ponyint_mute_actor(pony_actor_t* actor)
 {
+#ifdef DISPLAY_STATS
+	if(actor->tag != 0) {
+		fprintf(stderr, "[%d] muted\n", actor->tag);
+	}
+#endif
    uint8_t is_muted = atomic_fetch_add_explicit(&actor->is_muted, 1, memory_order_relaxed);
    pony_assert(is_muted == 0);
    DTRACE1(ACTOR_MUTED, (uintptr_t)actor);
@@ -1047,6 +1058,11 @@ void ponyint_mute_actor(pony_actor_t* actor)
 
 void ponyint_unmute_actor(pony_actor_t* actor)
 {
+#ifdef DISPLAY_STATS
+	if(actor->tag != 0) {
+		fprintf(stderr, "[%d] unmuted\n", actor->tag);
+	}
+#endif
   uint8_t is_muted = atomic_fetch_sub_explicit(&actor->is_muted, 1, memory_order_relaxed);
   pony_assert(is_muted == 1);
   DTRACE1(ACTOR_UNMUTED, (uintptr_t)actor);

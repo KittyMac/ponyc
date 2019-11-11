@@ -168,7 +168,7 @@ static void init_runtime(compile_t* c)
   c->str__final = stringtab("_final");
   c->str__batch = stringtab("_batch");
   c->str__priority = stringtab("_priority");
-  c->str__priority = stringtab("_tag");
+  c->str__tag = stringtab("_tag");
   c->str__event_notify = stringtab("_event_notify");
   c->str__serialise_space = stringtab("_serialise_space");
   c->str__serialise = stringtab("_serialise");

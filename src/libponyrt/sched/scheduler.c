@@ -963,6 +963,11 @@ static void run(scheduler_t* sched)
 		  if (actor->priority > next->priority) {
 			  // pushing it onto the global queue means someone else might pick it up before
 			  // my higher priority actor will be free to process it.
+#ifdef DISPLAY_STATS
+  if(actor->tag != 0) {
+  	fprintf(stderr, "[%d] rescheduled due to higher priorty than [%d]\n", actor->tag, next->tag);
+  }
+#endif
 			  ponyint_mpmcq_push(&inject, next);
 		  } else {
 	          // If we have a next actor, we go on the back of the queue. Otherwise,

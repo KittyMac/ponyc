@@ -355,6 +355,10 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 
   pony_msg_t* msg;
   size_t app = 0;
+  
+  if(actor->tag == 0 && actor->type != NULL && actor->type->tag_fn != NULL){
+    actor->tag = (int32_t)actor->type->tag_fn(actor);
+  }
 
 #ifdef USE_ACTOR_CONTINUATIONS
   while(actor->continuation != NULL)
@@ -570,7 +574,8 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   pony_actor_t* actor = (pony_actor_t*)ponyint_pool_alloc_size(type->size);
   memset(actor, 0, type->size);
   actor->type = type;
-
+  actor->tag = 0;
+  
 #ifdef USE_MEMTRACK
   ctx->mem_used_actors += type->size;
   ctx->mem_allocated_actors += ponyint_pool_used_size(type->size);
@@ -597,7 +602,6 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   if(!actor_noblock)
     ponyint_cycle_actor_created(ctx, actor);
 
-  DTRACE2(ACTOR_ALLOC, (uintptr_t)ctx->scheduler, (uintptr_t)actor);
   return actor;
 }
 

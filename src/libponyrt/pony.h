@@ -129,6 +129,13 @@ typedef void (*pony_final_fn)(void* p);
  */
 typedef void (*pony_partial_fn)(void* data);
 
+/** tag.
+ *
+ * An actor can supply a _tag() function, which can allow this actor to
+ * be identified for developmental purposes.
+ */
+typedef size_t (*pony_actor_tag)(void* p);
+
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t
 {
@@ -145,6 +152,7 @@ typedef const struct _pony_type_t
   pony_custom_deserialise_fn custom_deserialise;
   pony_dispatch_fn dispatch;
   pony_final_fn final;
+  pony_actor_tag tag_fn;
   uint32_t event_notify;
   uintptr_t** traits;
   void* fields;

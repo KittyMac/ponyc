@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#define UNUSED(x) (void)(x)
+
 // a series of high-efficiency methods for bitmap manipulation, used by the
 // Pony Bitmap class
 
@@ -58,22 +60,36 @@ void pony_bitmap_fillRect(uint32_t * s, size_t width, size_t height, size_t rX, 
 	}
 }
 
-void pony_bitmap_blit(uint32_t * d_ptr, size_t d_width, size_t d_height, size_t dX, size_t dY, uint32_t * s_ptr, size_t s_width, size_t s_height) {
+void pony_bitmap_blit(	uint32_t * d_ptr, size_t d_width, size_t d_height, 
+						uint32_t * s_ptr, size_t s_width, size_t s_height,
+						size_t d_x, size_t d_y,
+						size_t s_x, size_t s_y, size_t r_width, size_t r_height
+						) {
+	UNUSED(s_height);
+	
 	uint32_t * p;
 	uint32_t * e;
 	uint32_t * s;
 
 	size_t minY = 0;
-	size_t maxY = min(d_height - dY, s_height);
+	size_t maxY = min(d_height - d_y, r_height);
 	size_t y = minY;
 	
 	size_t minX = 0;
-	size_t maxX = min(d_width - dX, s_width);
+	size_t maxX = min(d_width - d_x, r_width);
+	
+	// If we are completely outside of the destination bail early
+	if (d_x > d_width || (d_x + r_width) < 0) {
+		return;
+	}
+	if (d_y > d_height || (d_y + r_height) < 0) {
+		return;
+	}
 		
 	while ( y < maxY ) {
-		p = d_ptr + ((y+dY) * d_width) + (dX+minX);
-		e = d_ptr + ((y+dY) * d_width) + (dX+maxX);
-		s = s_ptr + (y * s_width) + maxX;
+		p = d_ptr + ((y + d_y) * d_width) + (d_x + minX);
+		e = d_ptr + ((y + d_y) * d_width) + (d_x + maxX);
+		s = s_ptr + ((y + s_y) * s_width) + (s_x + maxX);
 		while (p < e) {
 			*(p++) = *(s++);
 		}

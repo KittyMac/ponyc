@@ -1,6 +1,9 @@
 
 use @pony_bitmap_fillRect[None](s:Pointer[U8], width:USize, height:USize, rX:USize, rY:USize, rW:USize, rH:USize, cR:U8, cG:U8, cB:U8, cA:U8)
-use @pony_bitmap_blit[None](d_ptr:Pointer[U8], d_width:USize, d_height:USize, dX:USize, dY:USize, s_ptr:Pointer[U8] box, s_width:USize, s_height:USize)
+use @pony_bitmap_blit[None](	d_ptr:Pointer[U8] box, d_width:USize, d_height:USize, 
+								s_ptr:Pointer[U8] box, s_width:USize, s_height:USize,
+								d_x:USize, d_y:USize,
+								s_x:USize, s_y:USize, r_width:USize, r_height:USize)
 
 struct RGBA
 	var r:U8 = 0
@@ -102,7 +105,24 @@ class val Bitmap
 		@pony_bitmap_fillRect[None](_ptr, width, height, r.x, r.y, r.w, r.h, c.r, c.g, c.b, c.a)
 	
 	fun ref blit(x:USize, y:USize, o:Bitmap box) =>
-		@pony_bitmap_blit[None](_ptr, width, height, x, y, o._ptr, o.width, o.height)
+		"""
+		blit the entire destination bitmap into the source bitmap at x,y
+		"""
+		@pony_bitmap_blit(	_ptr, width, height, 
+							o._ptr, o.width, o.height,
+							x, y,
+							0, 0, o.width, o.height)
+	
+	fun ref blitPart(d_x:USize, d_y:USize, o:Bitmap box, s_x:USize, s_y:USize, s_width:USize, s_height:USize) =>
+		"""
+		blit the a subrect of the destination bitmap into the source bitmap at x,y
+		"""
+		@pony_bitmap_blit(	_ptr, width, height, 
+							o._ptr, o.width, o.height,
+							d_x, d_y,
+							s_x, s_y, s_width, s_height)
+	
+	
 	
 	
 	fun rowPointers():Pointer[None] =>

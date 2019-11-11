@@ -698,10 +698,10 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
         (uintptr_t)ctx->current, (uintptr_t)to);
   }
 
-  ponyint_maybe_overload_target_actor_after_send(ctx, to);
-
-  if(has_app_msg)
-    ponyint_maybe_mute(ctx, to);
+  if(has_app_msg) {
+  	ponyint_maybe_overload_target_actor_after_send(ctx, to);
+	ponyint_maybe_mute(ctx, to);
+  }
 
   if(ponyint_actor_messageq_push(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE
@@ -739,10 +739,10 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
         (uintptr_t)ctx->current, (uintptr_t)to);
   }
 
-  ponyint_maybe_overload_target_actor_after_send(ctx, to);
-
-  if(has_app_msg)
-    ponyint_maybe_mute(ctx, to);
+  if(has_app_msg){
+  	ponyint_maybe_overload_target_actor_after_send(ctx, to);
+	ponyint_maybe_mute(ctx, to);
+  }
 
   if(ponyint_actor_messageq_push_single(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE

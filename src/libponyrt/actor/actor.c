@@ -337,6 +337,13 @@ static bool maybe_mute(pony_actor_t* actor)
 
 static bool batch_limit_reached(pony_actor_t* actor, bool polling)
 {
+	
+#ifdef DISPLAY_STATS
+  if(actor->tag != 0) {
+  	fprintf(stderr, "[%d] batch limit reached, %d messages, %d batch, %d priority\n", actor->tag, actor->q.numMessages, actor->batch, actor->priority);
+  }
+#endif
+	
   if(!has_flag(actor, FLAG_OVERLOADED) && !polling)
   {
     // If we hit our batch size, consider this actor to be overloaded
@@ -359,7 +366,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   size_t app = 0;
  
 #ifdef DISPLAY_STATS
-  if(actor->tag != 0) {
+  if(actor->tag != 0 && actor->q.numMessages > actor->batch) {
   	fprintf(stderr, "[%d] run, %d messages, %d batch, %d priority\n", actor->tag, actor->q.numMessages, actor->batch, actor->priority);
   }
 #endif
@@ -380,13 +387,15 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       try_gc(ctx, actor);
 
       // maybe mute actor
-      if(maybe_mute(actor))
-        return false;
+      if(maybe_mute(actor)) {
+      	return false;
+      }
 
       // if we've reached our batch limit
       // or if we're polling where we want to stop after one app message
-      if(app == batch || polling)
-        return batch_limit_reached(actor, polling);
+      if(app == batch || polling){
+      	return batch_limit_reached(actor, polling);
+      }
     }
   }
 #endif

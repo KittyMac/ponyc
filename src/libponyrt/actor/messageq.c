@@ -243,9 +243,13 @@ pony_msg_t* ponyint_actor_messageq_pop(messageq_t* q
   {
     DTRACE3(ACTOR_MSG_POP, sched->index, (uint32_t) next->id, (uintptr_t) actor);
     q->tail = next;
-	q->numMessages--;
 	
     atomic_thread_fence(memory_order_acquire);
+	q->numMessages--;
+	if (q->numMessages < 0) {
+		q->numMessages = 0;
+	}
+	
 #ifdef USE_VALGRIND
     ANNOTATE_HAPPENS_AFTER(&tail->next);
     ANNOTATE_HAPPENS_BEFORE_FORGET_ALL(tail);
@@ -269,9 +273,13 @@ pony_msg_t* ponyint_thread_messageq_pop(messageq_t* q
   {
     DTRACE2(THREAD_MSG_POP, (uint32_t) next->id, (uintptr_t) thr);
     q->tail = next;
-	q->numMessages--;
 	
     atomic_thread_fence(memory_order_acquire);
+	q->numMessages--;
+	if (q->numMessages < 0) {
+		q->numMessages = 0;
+	}
+	
 #ifdef USE_VALGRIND
     ANNOTATE_HAPPENS_AFTER(&tail->next);
     ANNOTATE_HAPPENS_BEFORE_FORGET_ALL(tail);

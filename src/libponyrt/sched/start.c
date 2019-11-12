@@ -10,6 +10,7 @@
 #include "../lang/socket.h"
 #include "../options/options.h"
 #include "ponyassert.h"
+#include "../analysis/analysis.h"
 #include <dtrace.h>
 #include <string.h>
 #include <stdlib.h>
@@ -354,5 +355,6 @@ PONY_API void pony_exitcode(int code)
 
 PONY_API int pony_get_exitcode()
 {
+  endRuntimeAnalyticForActor();
   return atomic_load_explicit(&rt_exit_code, memory_order_relaxed);
 }

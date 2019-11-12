@@ -7,6 +7,7 @@
 #include "../gc/cycle.h"
 #include "../gc/trace.h"
 #include "ponyassert.h"
+#include "../analysis/analysis.h"
 #include <assert.h>
 #include <string.h>
 #include <dtrace.h>
@@ -337,13 +338,6 @@ static bool maybe_mute(pony_actor_t* actor)
 
 static bool batch_limit_reached(pony_actor_t* actor, bool polling)
 {
-	
-#ifdef DISPLAY_STATS
-  if(actor->tag != 0) {
-  	fprintf(stderr, "[%d] batch limit reached, %d messages, %d batch, %d priority\n", actor->tag, actor->q.numMessages, actor->batch, actor->priority);
-  }
-#endif
-	
   if(!has_flag(actor, FLAG_OVERLOADED) && !polling)
   {
     // If we hit our batch size, consider this actor to be overloaded
@@ -365,10 +359,8 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   pony_msg_t* msg;
   size_t app = 0;
  
-#ifdef DISPLAY_STATS
-  if(actor->tag != 0 && actor->q.numMessages > actor->batch) {
-  	fprintf(stderr, "[%d] run, %d messages, %d batch, %d priority\n", actor->tag, actor->q.numMessages, actor->batch, actor->priority);
-  }
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_START);
 #endif
   
 #ifdef USE_ACTOR_CONTINUATIONS
@@ -425,6 +417,9 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // maybe mute actor; returns true if mute occurs
       if(maybe_mute(actor)) {
       	try_gc(ctx, actor);
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
 		return false;
       }
         
@@ -433,6 +428,9 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // or if we're polling where we want to stop after one app message
       if(app == batch || polling) {
       	try_gc(ctx, actor);
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
 		return batch_limit_reached(actor, polling);
       }
     }
@@ -442,6 +440,10 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     if(msg == head)
       break;
   }
+  
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
 
   // We didn't hit our app message batch limit. We now believe our queue to be
   // empty, but we may have received further messages.
@@ -972,6 +974,9 @@ PONY_API void pony_poll(pony_ctx_t* ctx)
 
 void ponyint_actor_setoverloaded(pony_actor_t* actor)
 {
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_OVERLOADED);
+#endif
   pony_assert(!ponyint_is_cycle(actor));
   set_flag(actor, FLAG_OVERLOADED);
   DTRACE1(ACTOR_OVERLOADED, (uintptr_t)actor);
@@ -984,6 +989,9 @@ bool ponyint_actor_overloaded(pony_actor_t* actor)
 
 void ponyint_actor_unsetoverloaded(pony_actor_t* actor)
 {
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_NOT_OVERLOADED);
+#endif
   pony_ctx_t* ctx = pony_ctx();
   unset_flag(actor, FLAG_OVERLOADED);
   DTRACE1(ACTOR_OVERLOADED_CLEARED, (uintptr_t)actor);
@@ -996,6 +1004,9 @@ void ponyint_actor_unsetoverloaded(pony_actor_t* actor)
 PONY_API void pony_apply_backpressure()
 {
   pony_ctx_t* ctx = pony_ctx();
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(ctx->current, ANALYTIC_UNDERPRESSURE);
+#endif
   set_flag(ctx->current, FLAG_UNDER_PRESSURE);
   DTRACE1(ACTOR_UNDER_PRESSURE, (uintptr_t)ctx->current);
 }
@@ -1003,6 +1014,9 @@ PONY_API void pony_apply_backpressure()
 PONY_API void pony_release_backpressure()
 {
   pony_ctx_t* ctx = pony_ctx();
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(ctx->current, ANALYTIC_NOT_UNDERPRESSURE);
+#endif
   unset_flag(ctx->current, FLAG_UNDER_PRESSURE);
   DTRACE1(ACTOR_PRESSURE_RELEASED, (uintptr_t)ctx->current);
   if (!has_flag(ctx->current, FLAG_OVERLOADED))
@@ -1054,10 +1068,8 @@ bool ponyint_is_muted(pony_actor_t* actor)
 
 void ponyint_mute_actor(pony_actor_t* actor)
 {
-#ifdef DISPLAY_STATS
-	if(actor->tag != 0) {
-		fprintf(stderr, "[%d] muted\n", actor->tag);
-	}
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_MUTE);
 #endif
    uint8_t is_muted = atomic_fetch_add_explicit(&actor->is_muted, 1, memory_order_relaxed);
    pony_assert(is_muted == 0);
@@ -1067,10 +1079,8 @@ void ponyint_mute_actor(pony_actor_t* actor)
 
 void ponyint_unmute_actor(pony_actor_t* actor)
 {
-#ifdef DISPLAY_STATS
-	if(actor->tag != 0) {
-		fprintf(stderr, "[%d] unmuted\n", actor->tag);
-	}
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_NOT_MUTE);
 #endif
   uint8_t is_muted = atomic_fetch_sub_explicit(&actor->is_muted, 1, memory_order_relaxed);
   pony_assert(is_muted == 1);

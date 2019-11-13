@@ -354,10 +354,31 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 {
   pony_assert(!ponyint_is_muted(actor));
   ctx->current = actor;
-  size_t batch = actor->batch;
 
   pony_msg_t* msg;
   size_t app = 0;
+  
+  // We call these at the start of each actor run to allow for dynamically
+  // changing these values (and calling it here ensured that the create
+  // method is called first)
+  if(actor->type != NULL && actor->type->priority_fn != NULL){
+    actor->priority = (int32_t)actor->type->priority_fn(actor);
+	if (actor->priority < PONY_MINIMUM_ACTOR_PRIORITY) {
+		actor->priority = PONY_MINIMUM_ACTOR_PRIORITY + 1;
+	}
+  }
+  if(actor->type != NULL && actor->type->batch_fn != NULL){
+    actor->batch = (int32_t)actor->type->batch_fn(actor);
+    if (actor->batch <= PONY_MINIMUM_BATCH) {
+      actor->batch = PONY_MINIMUM_BATCH;
+	}
+  }
+  if(actor->type != NULL && actor->type->tag_fn != NULL){
+    actor->tag = (int32_t)actor->type->tag_fn(actor);
+  }
+  
+  size_t batch = actor->batch;
+  
  
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_START);
@@ -636,26 +657,6 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   // tell the cycle detector we exist if block messages are enabled
   if(!actor_noblock)
     ponyint_cycle_actor_created(ctx, actor);
-
-
-  // hopefully by here our create metho has been run, if not we need to move this lower
-  if(actor->type != NULL && actor->type->priority_fn != NULL){
-    actor->priority = (int32_t)actor->type->priority_fn();
-	if (actor->priority < PONY_MINIMUM_ACTOR_PRIORITY) {
-		actor->priority = PONY_MINIMUM_ACTOR_PRIORITY + 1;
-	}
-  }
-  
-  if(actor->type != NULL && actor->type->batch_fn != NULL){
-    actor->batch = (int32_t)actor->type->batch_fn();
-    if (actor->batch <= PONY_MINIMUM_BATCH) {
-      actor->batch = PONY_MINIMUM_BATCH;
-	}
-  }
-  
-  if(actor->type != NULL && actor->type->tag_fn != NULL){
-    actor->tag = (int32_t)actor->type->tag_fn();
-  }
 
   DTRACE2(ACTOR_ALLOC, (uintptr_t)ctx->scheduler, (uintptr_t)actor);
   return actor;

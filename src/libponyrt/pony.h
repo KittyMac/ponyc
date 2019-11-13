@@ -134,21 +134,21 @@ typedef void (*pony_partial_fn)(void* data);
  * An actor can supply a _batch() function, which will be called to set the
  * batch size used to determine when an actor becomes overloaded.
  */
-typedef size_t (*pony_batch_size)(void);
+typedef size_t (*pony_batch_size)(void* p);
 
 /** priority.
  *
  * An actor can supply a _priority() function, which will determine if this
  * actor is a higher priority actor than other actors
  */
-typedef size_t (*pony_actor_priority)(void);
+typedef size_t (*pony_actor_priority)(void* p);
 
 /** tag.
  *
  * An actor can supply a _tag() function, which can allow this actor to
  * be identified for developmental purposes.
  */
-typedef size_t (*pony_actor_tag)(void);
+typedef size_t (*pony_actor_tag)(void* p);
 
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t

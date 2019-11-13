@@ -725,6 +725,10 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
 	ponyint_maybe_mute(ctx, to);
   }
 
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActorMessage(ctx->current, to, ANALYTIC_MESSAGE_SENT);
+#endif
+
   if(ponyint_actor_messageq_push(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE
     , ctx->scheduler, ctx->current, to
@@ -765,6 +769,10 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
   	ponyint_maybe_overload_target_actor_after_send(ctx, to);
 	ponyint_maybe_mute(ctx, to);
   }
+
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActorMessage(ctx->current, to, ANALYTIC_MESSAGE_SENT);
+#endif
 
   if(ponyint_actor_messageq_push_single(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE

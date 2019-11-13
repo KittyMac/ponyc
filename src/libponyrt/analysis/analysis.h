@@ -22,12 +22,14 @@ enum {
 	ANALYTIC_NOT_UNDERPRESSURE = 6,
 	ANALYTIC_RUN_START = 7,
 	ANALYTIC_RUN_END = 8,
-	ANALYTIC_PRIORITY_RESCHEDULE = 8,
+	ANALYTIC_PRIORITY_RESCHEDULE = 9,
+	ANALYTIC_MESSAGE_SENT = 10,
 };
 
 #define RUNTIME_ANALYSIS 1
 
 extern void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event);
+extern void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event);
 extern void endRuntimeAnalyticForActor();
 
 PONY_EXTERN_C_END

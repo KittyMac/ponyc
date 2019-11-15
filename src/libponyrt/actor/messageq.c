@@ -306,6 +306,10 @@ bool ponyint_messageq_markempty(messageq_t* q)
 #ifdef USE_VALGRIND
   ANNOTATE_HAPPENS_BEFORE(&q->head);
 #endif
-  return atomic_compare_exchange_strong_explicit(&q->head, &tail, head,
+  bool isEmpty = atomic_compare_exchange_strong_explicit(&q->head, &tail, head,
     memory_order_release, memory_order_relaxed);
+  if(isEmpty) {
+    q->numMessages = 0;
+  }
+  return isEmpty;
 }

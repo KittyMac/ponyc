@@ -20,6 +20,7 @@
 // Save timed runtime events and information for later analysis
 static FILE * analyticsFile = NULL;
 static uint64_t startMilliseconds = 0;
+static uint64_t eventsWritten = 0;
 
 uint64_t timeInMilliseconds() {
 	struct timeval timeOfDay;
@@ -54,19 +55,30 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 	confirmRuntimeAnalyticHasStarted();
 	
 	if (analyticsFile != NULL && from->tag != 0 && to->tag != 0) {
+		int32_t batch = from->batch;
+		if (from->priority > from->batch) {
+			batch = from->priority;
+		}
+		
 		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", 
 			(unsigned long)(timeInMilliseconds() - startMilliseconds),
 			(unsigned long)from->uid,
 			(unsigned long)from->tag, 
 			(unsigned long)event, 
 			(unsigned long)from->q.numMessages,
-			(unsigned long)from->batch,
+			(unsigned long)batch,
 			(unsigned long)from->priority,
 			(unsigned long)from->heap.used,
 			(unsigned long)to->uid,
 			(unsigned long)to->tag,
 			(unsigned long)to->q.numMessages
 			);
+			
+		eventsWritten++;
+		if (eventsWritten > 5000) {
+			eventsWritten = 0;
+			fflush(analyticsFile);
+		}
 	}
 }
 
@@ -74,6 +86,11 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 	confirmRuntimeAnalyticHasStarted();
 	
 	if (analyticsFile != NULL && actor->tag != 0) {
+		int32_t batch = actor->batch;
+		if (actor->priority > actor->batch) {
+			batch = actor->priority;
+		}
+		
 		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,0,0,0\n", 
 			// nanoseconds -> milliseconds
 			(unsigned long)(timeInMilliseconds() - startMilliseconds),
@@ -81,10 +98,15 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 			(unsigned long)actor->tag, 
 			(unsigned long)event, 
 			(unsigned long)actor->q.numMessages,
-			(unsigned long)actor->batch,
+			(unsigned long)batch,
 			(unsigned long)actor->priority,
 			(unsigned long)actor->heap.used
 			);
+		eventsWritten++;
+		if (eventsWritten > 5000) {
+			eventsWritten = 0;
+			fflush(analyticsFile);
+		}
 	}
 }
 

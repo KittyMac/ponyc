@@ -356,7 +356,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   ctx->current = actor;
 
   pony_msg_t* msg;
-  size_t app = 0;
+  int32_t app = 0;
   
   // We call these at the start of each actor run to allow for dynamically
   // changing these values (and calling it here ensured that the create
@@ -377,8 +377,10 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     actor->tag = (int32_t)actor->type->tag_fn(actor);
   }
   
-  size_t batch = actor->batch;
-  
+  int32_t batch = actor->batch;
+  if (actor->priority > batch) {
+	  batch = actor->priority;
+  }
  
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_START);
@@ -413,23 +415,22 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   }
 #endif
 
-  // If we have been scheduled, the head will not be marked as empty.
-  pony_msg_t* head = atomic_load_explicit(&actor->q.head, memory_order_relaxed);
-
   while((msg = ponyint_actor_messageq_pop(&actor->q
 #ifdef USE_DYNAMIC_TRACE
     , ctx->scheduler, ctx->current
 #endif
     )) != NULL)
   {
+	
+	// If we are overloaded, but we've processed enough messages that we
+	// have room left in our mailbox then we can unset being overloaded
+	if(has_flag(actor, FLAG_OVERLOADED) && actor->q.numMessages < actor->batch-1)
+	{
+	  ponyint_actor_unsetoverloaded(actor);
+	}
 	  
-  	// If we are overloaded, but we've processed enough messages that we
-  	// have room left in our mailbox then we can unset being overloaded
-    if(has_flag(actor, FLAG_OVERLOADED) && actor->q.numMessages < actor->batch-1)
-    {
-  	  ponyint_actor_unsetoverloaded(actor);
-    }
-	  
+	
+	
     if(handle_message(ctx, actor, msg))
     {
       // If we handle an application message, try to gc.
@@ -437,7 +438,6 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 
       // maybe mute actor; returns true if mute occurs
       if(maybe_mute(actor)) {
-      	try_gc(ctx, actor);
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
 #endif
@@ -456,10 +456,15 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       }
     }
 
+	// Rocco: removed this because I have actors with many more messages to process and
+	// this is preventing them from processing.  With the new dynamic actor priority
+	// system, the actor should process all it can otherwise it will bail for
+	// different reasons.
     // Stop handling a batch if we reach the head we found when we were
     // scheduled.
-    if(msg == head)
+	/*if(msg == head) {
       break;
+  	}*/
   }
   
 #ifdef RUNTIME_ANALYSIS
@@ -834,8 +839,24 @@ void ponyint_maybe_overload_target_actor_after_send(pony_ctx_t* ctx, pony_actor_
 	// Note that we don't start overloading the target now until twice the batch size, because
 	// when this is used with the new _priority feature it allows a high priority actor to be
 	// rescheduled more often.
-	if ( has_flag(to, FLAG_OVERLOADED) == false &&  to->q.numMessages >= to->batch - 1 ) {
-	  ponyint_actor_setoverloaded(to);
+	if ( to->q.numMessages >= to->batch - 1 ) {
+		if (has_flag(to, FLAG_OVERLOADED) == false) {
+			ponyint_actor_setoverloaded(to);
+		}
+	  
+	  	// if we're sending messages to overloaded actors,  we should lower our priority to
+	  	// give them more chances to process the work we're throwing at them
+	  	ctx->current->priority--;
+		if (ctx->current->priority < -2048) {
+			ctx->current->priority = -2048;
+		}
+	}else{
+		// If we're sending messages and not overloading our destinations, then increase our priority
+		// since we could probably be sending messages faster
+		ctx->current->priority++;
+		if (ctx->current->priority > ctx->current->q.numMessages) {
+			ctx->current->priority = ctx->current->q.numMessages;
+		}
 	}
   }
 }

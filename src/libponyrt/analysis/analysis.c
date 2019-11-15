@@ -32,14 +32,16 @@ void confirmRuntimeAnalyticHasStarted() {
 	if (analyticsFile == NULL) {
 		analyticsFile = fopen("/tmp/pony.ponyrt_analytics", "w");
 		
-		fprintf(analyticsFile, "%s,%s,%s,%s,%s,%s,%s,%s,%s\n", 
+		fprintf(analyticsFile, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", 
 			"TIME_OF_EVENT",
+			"ACTOR_A_UUID",
 			"ACTOR_A_TAG", 
 			"EVENT_NUMBER", 
 			"ACTOR_A_NUMBER_OF_MESSAGES", 
 			"ACTOR_A_BATCH_SIZE", 
 			"ACTOR_A_PRIORITY", 
 			"ACTOR_A_HEAP_SIZE", 
+			"ACTOR_B_UUID", 
 			"ACTOR_B_TAG", 
 			"ACTOR_B_NUMBER_OF_MESSAGES"
 			);
@@ -52,14 +54,16 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 	confirmRuntimeAnalyticHasStarted();
 	
 	if (analyticsFile != NULL && from->tag != 0 && to->tag != 0) {
-		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", 
+		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", 
 			(unsigned long)(timeInMilliseconds() - startMilliseconds),
+			(unsigned long)from->uid,
 			(unsigned long)from->tag, 
 			(unsigned long)event, 
 			(unsigned long)from->q.numMessages,
 			(unsigned long)from->batch,
 			(unsigned long)from->priority,
 			(unsigned long)from->heap.used,
+			(unsigned long)to->uid,
 			(unsigned long)to->tag,
 			(unsigned long)to->q.numMessages
 			);
@@ -70,9 +74,10 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 	confirmRuntimeAnalyticHasStarted();
 	
 	if (analyticsFile != NULL && actor->tag != 0) {
-		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,0,0\n", 
+		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,0,0,0\n", 
 			// nanoseconds -> milliseconds
 			(unsigned long)(timeInMilliseconds() - startMilliseconds),
+			(unsigned long)actor->uid,
 			(unsigned long)actor->tag, 
 			(unsigned long)event, 
 			(unsigned long)actor->q.numMessages,

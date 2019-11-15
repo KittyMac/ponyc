@@ -621,6 +621,7 @@ bool ponyint_actor_getnoblock()
 
 PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
 {
+  static uint32_t actorUIDCount = 0;
   pony_assert(type != NULL);
 
   // allocate variable sized actors correctly
@@ -631,6 +632,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   actor->priority = PONY_DEFAULT_ACTOR_PRIORITY;
   actor->batch = PONY_SCHED_BATCH;
   actor->tag = 0;
+  actor->uid = ++actorUIDCount;
   
 #ifdef USE_MEMTRACK
   ctx->mem_used_actors += type->size;

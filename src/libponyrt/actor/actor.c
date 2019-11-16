@@ -299,6 +299,10 @@ static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
 
   ponyint_mark_done(ctx);
   ponyint_heap_endgc(&actor->heap);
+  
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_GC_RAN);
+#endif
 
   DTRACE1(GC_END, (uintptr_t)ctx->scheduler);
 }

@@ -53,7 +53,7 @@ void confirmRuntimeAnalyticHasStarted() {
 void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event) {	
 	confirmRuntimeAnalyticHasStarted();
 	
-	if (analyticsFile != NULL && from->tag != 0 && to->tag != 0) {
+	if (analyticsFile != NULL && from != NULL && to != NULL && from->tag != 0 && to->tag != 0) {
 		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", 
 			(unsigned long)(timeInMilliseconds() - startMilliseconds),
 			(unsigned long)from->uid,
@@ -73,7 +73,7 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {	
 	confirmRuntimeAnalyticHasStarted();
 	
-	if (analyticsFile != NULL && actor->tag != 0) {
+	if (analyticsFile != NULL && actor != NULL && actor->tag != 0) {
 		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,0,0,0\n", 
 			// nanoseconds -> milliseconds
 			(unsigned long)(timeInMilliseconds() - startMilliseconds),

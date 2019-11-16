@@ -360,6 +360,10 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     actor->tag = (int32_t)actor->type->tag_fn(actor);
   }
 
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_START);
+#endif
+
 #ifdef USE_ACTOR_CONTINUATIONS
   while(actor->continuation != NULL)
   {
@@ -376,13 +380,21 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       try_gc(ctx, actor);
 
       // maybe mute actor
-      if(maybe_mute(actor))
-        return false;
+      if(maybe_mute(actor)) {
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
+  		return false;
+      }
 
       // if we've reached our batch limit
       // or if we're polling where we want to stop after one app message
-      if(app == batch || polling)
+      if(app == batch || polling){
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
         return batch_limit_reached(actor, polling);
+      }
     }
   }
 #endif
@@ -403,13 +415,20 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       try_gc(ctx, actor);
 
       // maybe mute actor; returns true if mute occurs
-      if(maybe_mute(actor))
+      if(maybe_mute(actor)){
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
         return false;
-
+	  }
       // if we've reached our batch limit
       // or if we're polling where we want to stop after one app message
-      if(app == batch || polling)
+      if(app == batch || polling) {
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
         return batch_limit_reached(actor, polling);
+	  }
     }
 
     // Stop handling a batch if we reach the head we found when we were
@@ -439,12 +458,19 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   {
     // When unscheduling, don't mark the queue as empty, since we don't want
     // to get rescheduled if we receive a message.
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
     return false;
   }
 
   // If we have processed any application level messages, defer blocking.
-  if(app > 0)
+  if(app > 0) {
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
     return true;
+  }
 
   // note that we're logically blocked
   if(!has_flag(actor, FLAG_BLOCKED | FLAG_SYSTEM | FLAG_BLOCKED_SENT))
@@ -466,6 +492,10 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     ponyint_actor_destroy(actor);
   }
 
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
+#endif
+  
   // Return true (i.e. reschedule immediately) if our queue isn't empty.
   return !empty;
 }
@@ -568,6 +598,7 @@ bool ponyint_actor_getnoblock()
 
 PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
 {
+  static uint32_t actorUIDCount = 1;
   pony_assert(type != NULL);
 
   // allocate variable sized actors correctly
@@ -575,6 +606,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   memset(actor, 0, type->size);
   actor->type = type;
   actor->tag = 0;
+  actor->uid = actorUIDCount++;
   
 #ifdef USE_MEMTRACK
   ctx->mem_used_actors += type->size;
@@ -666,6 +698,10 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
 
   if(has_app_msg)
     ponyint_maybe_mute(ctx, to);
+  
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActorMessage(ctx->current, to, (has_app_msg ? ANALYTIC_APP_MESSAGE_SENT : ANALYTIC_MESSAGE_SENT));
+#endif
 
   if(ponyint_actor_messageq_push(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE
@@ -705,6 +741,10 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
 
   if(has_app_msg)
     ponyint_maybe_mute(ctx, to);
+
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActorMessage(ctx->current, to, (has_app_msg ? ANALYTIC_APP_MESSAGE_SENT : ANALYTIC_MESSAGE_SENT));
+#endif
 
   if(ponyint_actor_messageq_push_single(&to->q, first, last
 #ifdef USE_DYNAMIC_TRACE
@@ -901,6 +941,9 @@ void ponyint_actor_setoverloaded(pony_actor_t* actor)
   pony_assert(!ponyint_is_cycle(actor));
   set_flag(actor, FLAG_OVERLOADED);
   DTRACE1(ACTOR_OVERLOADED, (uintptr_t)actor);
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_OVERLOADED);
+#endif
 }
 
 bool ponyint_actor_overloaded(pony_actor_t* actor)
@@ -917,6 +960,9 @@ void ponyint_actor_unsetoverloaded(pony_actor_t* actor)
   {
     ponyint_sched_start_global_unmute(ctx->scheduler->index, actor);
   }
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_NOT_OVERLOADED);
+#endif
 }
 
 PONY_API void pony_apply_backpressure()
@@ -924,6 +970,9 @@ PONY_API void pony_apply_backpressure()
   pony_ctx_t* ctx = pony_ctx();
   set_flag(ctx->current, FLAG_UNDER_PRESSURE);
   DTRACE1(ACTOR_UNDER_PRESSURE, (uintptr_t)ctx->current);
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(ctx->current, ANALYTIC_UNDERPRESSURE);
+#endif
 }
 
 PONY_API void pony_release_backpressure()
@@ -933,6 +982,9 @@ PONY_API void pony_release_backpressure()
   DTRACE1(ACTOR_PRESSURE_RELEASED, (uintptr_t)ctx->current);
   if (!has_flag(ctx->current, FLAG_OVERLOADED))
     ponyint_sched_start_global_unmute(ctx->scheduler->index, ctx->current);
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(ctx->current, ANALYTIC_NOT_UNDERPRESSURE);
+#endif
 }
 
 bool ponyint_triggers_muting(pony_actor_t* actor)
@@ -984,6 +1036,10 @@ void ponyint_mute_actor(pony_actor_t* actor)
    pony_assert(is_muted == 0);
    DTRACE1(ACTOR_MUTED, (uintptr_t)actor);
    (void)is_muted;
+   
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_MUTE);
+#endif
 }
 
 void ponyint_unmute_actor(pony_actor_t* actor)
@@ -992,6 +1048,10 @@ void ponyint_unmute_actor(pony_actor_t* actor)
   pony_assert(is_muted == 1);
   DTRACE1(ACTOR_UNMUTED, (uintptr_t)actor);
   (void)is_muted;
+  
+#ifdef RUNTIME_ANALYSIS
+  saveRuntimeAnalyticForActor(actor, ANALYTIC_NOT_MUTE);
+#endif
 }
 
 #ifdef USE_MEMTRACK

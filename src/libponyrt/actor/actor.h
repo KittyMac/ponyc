@@ -5,6 +5,7 @@
 #include "../gc/gc.h"
 #include "../mem/heap.h"
 #include "../pony.h"
+#include "../analysis/analysis.h"
 #include <stdint.h>
 #include <stdbool.h>
 #ifndef __cplusplus
@@ -40,7 +41,8 @@ typedef struct pony_actor_t
   PONY_ATOMIC(uint8_t) is_muted;
   PONY_ATOMIC(size_t) muted;
 
-  int32_t tag;
+  int32_t tag;       // developer assigned identifier
+  int32_t uid;       // runtime unique identifier
 
   // keep things accessed by other actors on a separate cache line
   alignas(64) heap_t heap; // 52/104 bytes

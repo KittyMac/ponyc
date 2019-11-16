@@ -354,5 +354,8 @@ PONY_API void pony_exitcode(int code)
 
 PONY_API int pony_get_exitcode()
 {
+#ifdef RUNTIME_ANALYSIS
+  endRuntimeAnalyticForActor();
+#endif
   return atomic_load_explicit(&rt_exit_code, memory_order_relaxed);
 }

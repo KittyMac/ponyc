@@ -79,7 +79,7 @@ void* ponyint_heap_alloc_large_final(pony_actor_t* actor, heap_t* heap,
  */
 void ponyint_heap_used(heap_t* heap, size_t size);
 
-bool ponyint_heap_startgc(heap_t* heap);
+bool ponyint_heap_startgc(heap_t* heap, bool forced);
 
 /**
  * Mark an address in a chunk. Returns true if it was already marked, or false

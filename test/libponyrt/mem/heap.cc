@@ -27,7 +27,7 @@ TEST(Heap, Init)
   ASSERT_EQ((size_t)256, heap.used);
 
   heap.next_gc = 0;
-  ponyint_heap_startgc(&heap);
+  ponyint_heap_startgc(&heap, false);
   ponyint_heap_mark(chunk, p);
   ponyint_heap_endgc(&heap);
   ASSERT_EQ((size_t)128, heap.used);
@@ -39,7 +39,7 @@ TEST(Heap, Init)
   ASSERT_EQ((size_t)1280, heap.used);
 
   heap.next_gc = 0;
-  ponyint_heap_startgc(&heap);
+  ponyint_heap_startgc(&heap, false);
   ponyint_heap_mark_shallow(chunk, p3);
   ponyint_heap_endgc(&heap);
   ASSERT_EQ((size_t)128, heap.used);
@@ -73,7 +73,7 @@ TEST(Heap, Init)
   ASSERT_EQ(256 + adjust_size, heap.used);
 
   heap.next_gc = 0;
-  ponyint_heap_startgc(&heap);
+  ponyint_heap_startgc(&heap, false);
   ponyint_heap_mark_shallow(chunk5, p5);
   ponyint_heap_endgc(&heap);
   ASSERT_EQ(adjust_size, heap.used);

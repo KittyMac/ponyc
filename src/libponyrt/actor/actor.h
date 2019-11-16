@@ -41,8 +41,9 @@ typedef struct pony_actor_t
   PONY_ATOMIC(uint8_t) is_muted;
   PONY_ATOMIC(size_t) muted;
 
-  int32_t tag;       // developer assigned identifier
-  int32_t uid;       // runtime unique identifier
+  bool heap_is_dirty;   // set when an ACQUIRE or RELEASE message is processed
+  int32_t tag;          // developer assigned identifier
+  int32_t uid;          // runtime unique identifier
 
   // keep things accessed by other actors on a separate cache line
   alignas(64) heap_t heap; // 52/104 bytes

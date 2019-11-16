@@ -123,6 +123,8 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
         send_unblock(ctx, actor);
       }
 	  
+	  actor->heap_is_dirty = true;
+	  
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_GC_RAN);
 #endif
@@ -153,6 +155,8 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
         // send unblock if we've sent a block
         send_unblock(ctx, actor);
       }
+	  
+	  actor->heap_is_dirty = true;
 	  
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_GC_RAN);
@@ -295,7 +299,7 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
 
 static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
 {
-  if(!ponyint_heap_startgc(&actor->heap))
+  if(!ponyint_heap_startgc(&actor->heap, actor->heap_is_dirty))
     return;
 
   DTRACE1(GC_START, (uintptr_t)ctx->scheduler);
@@ -307,6 +311,8 @@ static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
 
   ponyint_mark_done(ctx);
   ponyint_heap_endgc(&actor->heap);
+  
+  actor->heap_is_dirty = false;
   
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_GC_RAN);

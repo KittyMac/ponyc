@@ -123,9 +123,6 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
         send_unblock(ctx, actor);
       }
 	  
-#ifdef RUNTIME_ANALYSIS
-  saveRuntimeAnalyticForActor(actor, ANALYTIC_GC_RAN);
-#endif
 
       return false;
     }
@@ -154,10 +151,6 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
         send_unblock(ctx, actor);
       }
 	  
-#ifdef RUNTIME_ANALYSIS
-  saveRuntimeAnalyticForActor(actor, ANALYTIC_GC_RAN);
-#endif
-
       return false;
     }
 

@@ -317,6 +317,11 @@ static void make_prototype(compile_t* c, reach_type_t* t,
     c_t->tag_fn = c_m->func;
     LLVMSetFunctionCallConv(c_m->func, LLVMCCallConv);
     LLVMSetLinkage(c_m->func, LLVMExternalLinkage);
+  } else if(n->name == c->str__freed) {
+    pony_assert(c_t->freed_fn == NULL);
+    c_t->freed_fn = c_m->func;
+    LLVMSetFunctionCallConv(c_m->func, LLVMCCallConv);
+    LLVMSetLinkage(c_m->func, LLVMExternalLinkage);
   } else if(n->name == c->str__serialise_space) {
     c_t->custom_serialise_space_fn = c_m->func;
     LLVMSetFunctionCallConv(c_m->func, LLVMCCallConv);

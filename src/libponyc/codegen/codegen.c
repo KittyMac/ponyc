@@ -167,6 +167,7 @@ static void init_runtime(compile_t* c)
   c->str__init = stringtab("_init");
   c->str__final = stringtab("_final");
   c->str__tag = stringtab("_tag");
+  c->str__freed = stringtab("_freed");
   c->str__event_notify = stringtab("_event_notify");
   c->str__serialise_space = stringtab("_serialise_space");
   c->str__serialise = stringtab("_serialise");
@@ -250,7 +251,12 @@ static void init_runtime(compile_t* c)
   params[0] = c->object_ptr;
   c->tag_fn = LLVMPointerType(
   LLVMFunctionType(c->i64, params, 1, false), 0);
-
+  
+  params[0] = c->object_ptr;
+  params[1] = c->i8;
+  c->freed_fn = LLVMPointerType(
+  LLVMFunctionType(c->void_type, params, 2, false), 0);
+  
   // descriptor, opaque version
   // We need this in order to build our own structure.
   const char* desc_name = genname_descriptor(NULL);

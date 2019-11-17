@@ -1031,6 +1031,7 @@ static pony_type_t cycle_type =
   cycle_dispatch,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,

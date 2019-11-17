@@ -399,6 +399,7 @@ static pony_type_t symbol_pony =
   NULL,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,

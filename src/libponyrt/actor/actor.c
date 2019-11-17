@@ -9,6 +9,7 @@
 #include "ponyassert.h"
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 #include <dtrace.h>
 
 #ifdef USE_VALGRIND
@@ -291,9 +292,11 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
 
 static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
 {
+  size_t used_before = actor->heap.used;
+  
   if(!ponyint_heap_startgc(&actor->heap, actor->heap_is_dirty))
     return;
-
+  
   DTRACE1(GC_START, (uintptr_t)ctx->scheduler);
 
   ponyint_gc_mark(ctx);
@@ -303,6 +306,14 @@ static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
 
   ponyint_mark_done(ctx);
   ponyint_heap_endgc(&actor->heap);
+  
+  size_t used_after = actor->heap.used;
+  
+  if (used_after < used_before) {
+    if(actor->type != NULL && actor->type->freed_fn != NULL){
+      actor->type->freed_fn(actor, actor->heap_is_dirty);
+    }
+  }
   
   actor->heap_is_dirty = false;
   

@@ -324,6 +324,24 @@ static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
   DTRACE1(GC_END, (uintptr_t)ctx->scheduler);
 }
 
+void ponyint_maybe_overload_target_actor_after_send(pony_ctx_t* ctx, pony_actor_t* to)
+{
+  if(ctx->current != NULL && ctx->current != to)
+  {
+    // if we're sending to an actor whose queue is overflowing, then aggressively
+	// flag the other actor is flagged as overloaded. 
+	//
+	// Note that we don't start overloading the target now until twice the batch size, because
+	// when this is used with the new _priority feature it allows a high priority actor to be
+	// rescheduled more often.
+	if ( to->q.num_messages >= PONY_SCHED_BATCH - 1 ) {
+		if (has_flag(to, FLAG_OVERLOADED) == false) {
+			ponyint_actor_setoverloaded(to);
+		}
+	}
+  }
+}
+
 // return true if mute occurs
 static bool maybe_mute(pony_actor_t* actor)
 {
@@ -717,8 +735,10 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
         (uintptr_t)ctx->current, (uintptr_t)to);
   }
 
-  if(has_app_msg)
-    ponyint_maybe_mute(ctx, to);
+  if(has_app_msg) {
+  	ponyint_maybe_overload_target_actor_after_send(ctx, to);
+	ponyint_maybe_mute(ctx, to);
+  }
   
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActorMessage(ctx->current, to, (has_app_msg ? ANALYTIC_APP_MESSAGE_SENT : ANALYTIC_MESSAGE_SENT));
@@ -760,8 +780,10 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
         (uintptr_t)ctx->current, (uintptr_t)to);
   }
 
-  if(has_app_msg)
-    ponyint_maybe_mute(ctx, to);
+  if(has_app_msg) {
+  	ponyint_maybe_overload_target_actor_after_send(ctx, to);
+	ponyint_maybe_mute(ctx, to);
+  }
 
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActorMessage(ctx->current, to, (has_app_msg ? ANALYTIC_APP_MESSAGE_SENT : ANALYTIC_MESSAGE_SENT));

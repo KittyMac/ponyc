@@ -44,6 +44,8 @@ typedef struct pony_actor_t
   bool heap_is_dirty;   // set when an ACQUIRE or RELEASE message is processed
   int32_t tag;          // developer assigned identifier
   int32_t uid;          // runtime unique identifier
+  int32_t priority;     // whether an actor trumps another when rescheduling
+  
 
   // keep things accessed by other actors on a separate cache line
   alignas(64) heap_t heap; // 52/104 bytes

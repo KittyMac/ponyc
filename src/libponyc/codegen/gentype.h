@@ -34,6 +34,7 @@ typedef struct compile_type_t
   LLVMValueRef final_fn;
   LLVMValueRef tag_fn;
   LLVMValueRef freed_fn;
+  LLVMValueRef priority_fn;
   LLVMValueRef dispatch_fn;
   LLVMValueRef dispatch_switch;
 

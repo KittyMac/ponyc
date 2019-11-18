@@ -145,6 +145,13 @@ typedef size_t (*pony_actor_tag)(void* p);
  */
 typedef void (*pony_actor_freed)(void* p, uint32_t wasRemote);
 
+/** priority.
+ *
+ * An actor can supply a _priority() function, which will determine if this
+ * actor is a higher priority actor than other actors
+ */
+typedef size_t (*pony_actor_priority)(void* p);
+
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t
 {
@@ -163,6 +170,7 @@ typedef const struct _pony_type_t
   pony_final_fn final;
   pony_actor_tag tag_fn;
   pony_actor_freed freed_fn;
+  pony_actor_priority priority_fn;
   uint32_t event_notify;
   uintptr_t** traits;
   void* fields;

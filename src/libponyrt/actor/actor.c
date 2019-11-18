@@ -395,8 +395,11 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   pony_msg_t* msg;
   size_t app = 0;
   
-  if(actor->tag == 0 && actor->type != NULL && actor->type->tag_fn != NULL){
+  if(actor->type != NULL && actor->type->tag_fn != NULL){
     actor->tag = (int32_t)actor->type->tag_fn(actor);
+  }
+  if(actor->type != NULL && actor->type->priority_fn != NULL){
+    actor->priority = (int32_t)actor->type->priority_fn(actor);
   }
 
 #ifdef RUNTIME_ANALYSIS
@@ -644,6 +647,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   pony_actor_t* actor = (pony_actor_t*)ponyint_pool_alloc_size(type->size);
   memset(actor, 0, type->size);
   actor->type = type;
+  actor->priority = PONY_DEFAULT_ACTOR_PRIORITY;
   actor->tag = 0;
   actor->uid = actorUIDCount++;
   

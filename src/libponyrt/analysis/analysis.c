@@ -61,7 +61,7 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 			(unsigned long)event, 
 			(unsigned long)from->q.num_messages,
 			(unsigned long)100, //from->batch,
-			(unsigned long)0, //from->priority,
+			(unsigned long)from->priority,
 			(unsigned long)from->heap.used,
 			(unsigned long)to->uid,
 			(unsigned long)to->tag,
@@ -82,7 +82,7 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 			(unsigned long)event, 
 			(unsigned long)actor->q.num_messages,
 			(unsigned long)100, //actor->batch,
-			(unsigned long)0, //actor->priority,
+			(unsigned long)actor->priority,
 			(unsigned long)actor->heap.used
 			);
 	}

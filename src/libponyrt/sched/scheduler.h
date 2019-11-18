@@ -15,6 +15,9 @@ typedef struct scheduler_t scheduler_t;
 #include <platform.h>
 #include "mutemap.h"
 
+// default actor priority
+#define PONY_DEFAULT_ACTOR_PRIORITY 0
+
 #define SPECIAL_THREADID_KQUEUE   -10
 #define SPECIAL_THREADID_IOCP     -11
 #define SPECIAL_THREADID_EPOLL    -12

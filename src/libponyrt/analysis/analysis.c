@@ -11,6 +11,7 @@
 #include "../sched/scheduler.h"
 #include "../sched/cpu.h"
 #include "../mem/pool.h"
+#include "../mem/alloc.h"
 #include "../gc/cycle.h"
 #include "../gc/trace.h"
 #include "ponyassert.h"
@@ -32,7 +33,7 @@ void confirmRuntimeAnalyticHasStarted() {
 	if (analyticsFile == NULL) {
 		analyticsFile = fopen("/tmp/pony.ponyrt_analytics", "w");
 		
-		fprintf(analyticsFile, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", 
+		fprintf(analyticsFile, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", 
 			"TIME_OF_EVENT",
 			"ACTOR_A_UUID",
 			"ACTOR_A_TAG", 
@@ -43,7 +44,8 @@ void confirmRuntimeAnalyticHasStarted() {
 			"ACTOR_A_HEAP_SIZE", 
 			"ACTOR_B_UUID", 
 			"ACTOR_B_TAG", 
-			"ACTOR_B_NUMBER_OF_MESSAGES"
+			"ACTOR_B_NUMBER_OF_MESSAGES",
+			"TOTAL_MEMORY"
 			);
 		
 		startMilliseconds = timeInMilliseconds();		
@@ -54,7 +56,7 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 	confirmRuntimeAnalyticHasStarted();
 	
 	if (analyticsFile != NULL && from != NULL && to != NULL && from->tag != 0 && to->tag != 0) {
-		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", 
+		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", 
 			(unsigned long)(timeInMilliseconds() - startMilliseconds),
 			(unsigned long)from->uid,
 			(unsigned long)from->tag, 
@@ -65,7 +67,8 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 			(unsigned long)from->heap.used,
 			(unsigned long)to->uid,
 			(unsigned long)to->tag,
-			(unsigned long)to->q.num_messages
+			(unsigned long)to->q.num_messages,
+			(unsigned long)ponyint_total_memory()
 			);
 	}
 }
@@ -74,7 +77,7 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 	confirmRuntimeAnalyticHasStarted();
 	
 	if (analyticsFile != NULL && actor != NULL && actor->tag != 0) {
-		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,0,0,0\n", 
+		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,0,0,0,%lu\n", 
 			// nanoseconds -> milliseconds
 			(unsigned long)(timeInMilliseconds() - startMilliseconds),
 			(unsigned long)actor->uid,
@@ -83,7 +86,8 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 			(unsigned long)actor->q.num_messages,
 			(unsigned long)actor->batch,
 			(unsigned long)actor->priority,
-			(unsigned long)actor->heap.used
+			(unsigned long)actor->heap.used,
+			(unsigned long)ponyint_total_memory()
 			);
 	}
 }

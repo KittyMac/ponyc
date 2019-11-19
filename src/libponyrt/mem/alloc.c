@@ -7,11 +7,34 @@
 
 #ifdef PLATFORM_IS_POSIX_BASED
 #include <sys/mman.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #endif
 
 #if defined(PLATFORM_IS_MACOSX)
 #include <mach/vm_statistics.h>
 #endif
+
+static size_t total_memory_allocated = 0;
+
+void ponyint_update_memory_usage() {
+#ifdef PLATFORM_IS_POSIX_BASED
+	struct rusage usage;
+	if(0 == getrusage(RUSAGE_SELF, &usage)) {
+		total_memory_allocated = usage.ru_maxrss; // bytes
+	} else {
+		total_memory_allocated = 0;
+	}
+#endif
+#if defined(PLATFORM_IS_WINDOWS)
+	total_memory_allocated = 0;
+#endif
+}
+
+size_t ponyint_total_memory()
+{
+	return total_memory_allocated;
+}
 
 void* ponyint_virt_alloc(size_t bytes)
 {

@@ -8,6 +8,7 @@
 #include "../asio/asio.h"
 #include "../mem/pagemap.h"
 #include "../mem/pool.h"
+#include "../mem/alloc.h"
 #include "ponyassert.h"
 #include <dtrace.h>
 #include <string.h>
@@ -889,6 +890,8 @@ static void run(scheduler_t* sched)
     // if we're scheduler 0
     if(sched->index == 0)
     {
+      ponyint_update_memory_usage();
+	  
       // if cycle detection is enabled
       if(!ponyint_actor_getnoblock())
       {

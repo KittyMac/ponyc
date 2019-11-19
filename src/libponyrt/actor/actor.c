@@ -384,6 +384,9 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   }
   if(actor->type != NULL && actor->type->batch_fn != NULL){
     actor->batch = (int32_t)actor->type->batch_fn(actor);
+	if (actor->batch <= 0) {
+		actor->batch = 1;
+	}
   }
 
 #ifdef RUNTIME_ANALYSIS

@@ -45,6 +45,7 @@ typedef struct pony_actor_t
   int32_t tag;          // developer assigned identifier
   int32_t uid;          // runtime unique identifier
   int32_t priority;     // whether an actor trumps another when rescheduling
+  int32_t batch;        // number of messages an actor can process in one run
   
 
   // keep things accessed by other actors on a separate cache line

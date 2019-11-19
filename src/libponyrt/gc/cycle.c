@@ -1033,6 +1033,7 @@ static pony_type_t cycle_type =
   NULL,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,

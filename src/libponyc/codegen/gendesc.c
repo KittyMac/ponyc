@@ -26,12 +26,13 @@
 #define DESC_TAG 13
 #define DESC_FREED 14
 #define DESC_PRIORITY 15
-#define DESC_EVENT_NOTIFY 16
-#define DESC_TRAITS 17
-#define DESC_FIELDS 18
-#define DESC_VTABLE 19
+#define DESC_BATCH 16
+#define DESC_EVENT_NOTIFY 17
+#define DESC_TRAITS 18
+#define DESC_FIELDS 19
+#define DESC_VTABLE 20
 
-#define DESC_LENGTH 20
+#define DESC_LENGTH 21
 
 static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   reach_method_t* m)
@@ -339,6 +340,7 @@ void gendesc_basetype(compile_t* c, LLVMTypeRef desc_type)
   params[DESC_TAG] = c->tag_fn;
   params[DESC_FREED] = c->freed_fn;
   params[DESC_PRIORITY] = c->priority_fn;
+  params[DESC_BATCH] = c->batch_fn;
   params[DESC_EVENT_NOTIFY] = c->i32;
   params[DESC_TRAITS] = LLVMPointerType(
     LLVMArrayType(c->intptr, 0), 0);
@@ -393,6 +395,7 @@ void gendesc_type(compile_t* c, reach_type_t* t)
   params[DESC_TAG] = c->tag_fn;
   params[DESC_FREED] = c->freed_fn;
   params[DESC_PRIORITY] = c->priority_fn;
+  params[DESC_BATCH] = c->batch_fn;
   params[DESC_EVENT_NOTIFY] = c->i32;
   params[DESC_TRAITS] = LLVMPointerType(
     LLVMArrayType(c->intptr, c->trait_bitmap_size), 0);
@@ -437,6 +440,7 @@ void gendesc_init(compile_t* c, reach_type_t* t)
   args[DESC_TAG] = make_desc_ptr(c_t->tag_fn, c->tag_fn);
   args[DESC_FREED] = make_desc_ptr(c_t->freed_fn, c->freed_fn);
   args[DESC_PRIORITY] = make_desc_ptr(c_t->priority_fn, c->priority_fn);
+  args[DESC_BATCH] = make_desc_ptr(c_t->batch_fn, c->batch_fn);
   args[DESC_EVENT_NOTIFY] = LLVMConstInt(c->i32, event_notify_index, false);
   args[DESC_TRAITS] = make_trait_bitmap(c, t);
   args[DESC_FIELDS] = make_field_list(c, t);

@@ -152,6 +152,14 @@ typedef void (*pony_actor_freed)(void* p, uint32_t wasRemote);
  */
 typedef size_t (*pony_actor_priority)(void* p);
 
+/** batch.
+ *
+ * An actor can supply a _batch() function, which will determine number of
+ * messages the actor will process in a single run. Also determines when
+ * an actor becomes overloaded.
+ */
+typedef size_t (*pony_actor_batch)(void* p);
+
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t
 {
@@ -171,6 +179,7 @@ typedef const struct _pony_type_t
   pony_actor_tag tag_fn;
   pony_actor_freed freed_fn;
   pony_actor_priority priority_fn;
+  pony_actor_batch batch_fn;
   uint32_t event_notify;
   uintptr_t** traits;
   void* fields;
@@ -216,13 +225,13 @@ typedef struct pony_language_features_init_t
 #ifdef USE_MEMTRACK
 #  define PONY_ACTOR_PAD_SIZE 280
 #else
-#  define PONY_ACTOR_PAD_SIZE 248
+#  define PONY_ACTOR_PAD_SIZE 248 + 64
 #endif
 #elif INTPTR_MAX == INT32_MAX
 #ifdef USE_MEMTRACK
 #  define PONY_ACTOR_PAD_SIZE 176
 #else
-#  define PONY_ACTOR_PAD_SIZE 160
+#  define PONY_ACTOR_PAD_SIZE 160 + 64
 #endif
 #endif
 

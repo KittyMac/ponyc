@@ -324,24 +324,6 @@ static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
   DTRACE1(GC_END, (uintptr_t)ctx->scheduler);
 }
 
-void ponyint_maybe_overload_target_actor_after_send(pony_ctx_t* ctx, pony_actor_t* to)
-{
-  if(ctx->current != NULL && ctx->current != to)
-  {
-    // if we're sending to an actor whose queue is overflowing, then aggressively
-	// flag the other actor is flagged as overloaded. 
-	//
-	// Note that we don't start overloading the target now until twice the batch size, because
-	// when this is used with the new _priority feature it allows a high priority actor to be
-	// rescheduled more often.
-	if ( to->q.num_messages >= PONY_SCHED_BATCH - 1 ) {
-		if (has_flag(to, FLAG_OVERLOADED) == false) {
-			ponyint_actor_setoverloaded(to);
-		}
-	}
-  }
-}
-
 // return true if mute occurs
 static bool maybe_mute(pony_actor_t* actor)
 {
@@ -390,16 +372,18 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 {
   pony_assert(!ponyint_is_muted(actor));
   ctx->current = actor;
-  size_t batch = PONY_SCHED_BATCH;
 
   pony_msg_t* msg;
-  size_t app = 0;
+  int32_t app = 0;
   
   if(actor->type != NULL && actor->type->tag_fn != NULL){
     actor->tag = (int32_t)actor->type->tag_fn(actor);
   }
   if(actor->type != NULL && actor->type->priority_fn != NULL){
     actor->priority = (int32_t)actor->type->priority_fn(actor);
+  }
+  if(actor->type != NULL && actor->type->batch_fn != NULL){
+    actor->batch = (int32_t)actor->type->batch_fn(actor);
   }
 
 #ifdef RUNTIME_ANALYSIS
@@ -419,22 +403,23 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     {
       // If we handle an application message, try to gc.
       app++;
-      try_gc(ctx, actor);
 
       // maybe mute actor
       if(maybe_mute(actor)) {
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
 #endif
+  		try_gc(ctx, actor);
   		return false;
       }
 
       // if we've reached our batch limit
       // or if we're polling where we want to stop after one app message
-      if(app == batch || polling){
+      if(app >= actor->batch || polling){
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
 #endif
+  		try_gc(ctx, actor);
         return batch_limit_reached(actor, polling);
       }
     }
@@ -442,7 +427,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 #endif
 
   // If we have been scheduled, the head will not be marked as empty.
-  pony_msg_t* head = atomic_load_explicit(&actor->q.head, memory_order_relaxed);
+  //pony_msg_t* head = atomic_load_explicit(&actor->q.head, memory_order_relaxed);
 
   while((msg = ponyint_actor_messageq_pop(&actor->q
 #ifdef USE_DYNAMIC_TRACE
@@ -454,29 +439,30 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     {
       // If we handle an application message, try to gc.
       app++;
-      try_gc(ctx, actor);
 
       // maybe mute actor; returns true if mute occurs
       if(maybe_mute(actor)){
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
 #endif
+  		try_gc(ctx, actor);
         return false;
 	  }
       // if we've reached our batch limit
       // or if we're polling where we want to stop after one app message
-      if(app == batch || polling) {
+      if(app >= actor->batch || polling) {
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
 #endif
+  		try_gc(ctx, actor);
         return batch_limit_reached(actor, polling);
 	  }
     }
 
     // Stop handling a batch if we reach the head we found when we were
     // scheduled.
-    if(msg == head)
-      break;
+    //if(msg == head)
+    //  break;
   }
 
   // We didn't hit our app message batch limit. We now believe our queue to be
@@ -648,6 +634,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   memset(actor, 0, type->size);
   actor->type = type;
   actor->priority = PONY_DEFAULT_ACTOR_PRIORITY;
+  actor->batch = PONY_SCHED_BATCH;
   actor->tag = 0;
   actor->uid = actorUIDCount++;
   
@@ -740,7 +727,6 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
   }
 
   if(has_app_msg) {
-  	ponyint_maybe_overload_target_actor_after_send(ctx, to);
 	ponyint_maybe_mute(ctx, to);
   }
   
@@ -785,7 +771,6 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
   }
 
   if(has_app_msg) {
-  	ponyint_maybe_overload_target_actor_after_send(ctx, to);
 	ponyint_maybe_mute(ctx, to);
   }
 

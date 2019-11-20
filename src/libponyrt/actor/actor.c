@@ -627,6 +627,11 @@ bool ponyint_actor_getnoblock()
   return actor_noblock;
 }
 
+size_t ponyint_actor_num_messages(pony_actor_t* actor)
+{
+	return actor->q.num_messages;
+}
+
 PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
 {
   static uint32_t actorUIDCount = 1;

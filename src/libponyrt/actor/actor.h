@@ -89,6 +89,8 @@ void ponyint_actor_setnoblock(bool state);
 
 bool ponyint_actor_getnoblock();
 
+size_t ponyint_actor_num_messages(pony_actor_t* actor);
+
 void ponyint_actor_setoverloaded(pony_actor_t* actor);
 
 void ponyint_actor_unsetoverloaded(pony_actor_t* actor);

@@ -964,7 +964,7 @@ static void run(scheduler_t* sched)
     {
 	    if(next != NULL)
 	    {
-  		  if (actor->priority > next->priority) {
+  		  if (actor->yield == false && actor->priority > next->priority) {
   			  // pushing it onto the global queue means someone else might pick it up before
   			  // my higher priority actor will be free to process it.
   			  ponyint_mpmcq_push(&inject, next);

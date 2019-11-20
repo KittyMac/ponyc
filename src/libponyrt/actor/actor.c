@@ -388,6 +388,9 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 		actor->batch = 1;
 	}
   }
+  
+  // we reset the yield flag here because the scheduler uses it to ignore priority
+  actor->yield = false;
 
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_START);
@@ -453,7 +456,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 	  }
       // if we've reached our batch limit
       // or if we're polling where we want to stop after one app message
-      if(app >= actor->batch || polling) {
+      if(actor->yield || app >= actor->batch || polling) {
 #ifdef RUNTIME_ANALYSIS
   saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
 #endif
@@ -630,6 +633,12 @@ bool ponyint_actor_getnoblock()
 size_t ponyint_actor_num_messages(pony_actor_t* actor)
 {
 	return actor->q.num_messages;
+}
+
+void ponyint_actor_yield(pony_actor_t* actor)
+{
+	// setting to true will cause the actor to end its run early
+	actor->yield = true;
 }
 
 PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)

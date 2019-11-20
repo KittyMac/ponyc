@@ -41,6 +41,7 @@ typedef struct pony_actor_t
   PONY_ATOMIC(uint8_t) is_muted;
   PONY_ATOMIC(size_t) muted;
 
+  bool yield;   // set to true to replace current message at head and end run
   bool heap_is_dirty;   // set when an ACQUIRE or RELEASE message is processed
   int32_t tag;          // developer assigned identifier
   int32_t uid;          // runtime unique identifier

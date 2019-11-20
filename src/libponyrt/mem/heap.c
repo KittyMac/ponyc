@@ -660,6 +660,13 @@ bool ponyint_heap_mark(chunk_t* chunk, void* p)
 
 void ponyint_heap_mark_shallow(chunk_t* chunk, void* p)
 {
+  // Rocco: I've observed numerous crashes where, if pony is running performant enough,
+  // chunk is NULL here.  I have not tracked it down to why, but this keeps it from crashing
+  // and the program completes successfully.
+  if(chunk == NULL) {
+    return;
+  }
+
   if(chunk->size >= HEAP_SIZECLASSES)
   {
     chunk->shallow = 0;

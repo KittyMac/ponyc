@@ -887,11 +887,13 @@ static void run(scheduler_t* sched)
 
   while(true)
   {
+#ifdef RUNTIME_ANALYSIS
+    ponyint_update_memory_usage();
+#endif
+	
     // if we're scheduler 0
     if(sched->index == 0)
     {
-      ponyint_update_memory_usage();
-	  
       // if cycle detection is enabled
       if(!ponyint_actor_getnoblock())
       {

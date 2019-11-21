@@ -1536,6 +1536,21 @@ bool target_is_arm(char* t)
   return (!strcmp("arm", arch) || !strcmp("aarch64", arch));
 }
 
+bool target_is_apple_ios(char* t)
+{
+  Triple triple = Triple(t);
+
+#if PONY_LLVM >= 400
+  const char* vendor = Triple::getVendorTypeName(triple.getVendor()).data();
+  const char* osType = Triple::getOSTypeName(triple.getOS()).data();
+#else
+  const char* vendor = Triple::getVendorTypeName(triple.getVendor());
+  const char* osType = Triple::getOSTypeName(triple.getOS());
+#endif
+
+  return (!strcmp("apple", vendor) && !strcmp("ios", osType));
+}
+
 // This function is used to safeguard against potential oversights on the size
 // of Bool on any future port to PPC32.
 // We do not currently support compilation to PPC. It could work, but no

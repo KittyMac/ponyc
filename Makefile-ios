@@ -4,11 +4,8 @@
 # This makefile assumes that you can already compile ponyc normally (you have your llvm paths set)
 #
 # For example:
-# export LDFLAGS="-L/opt/local/lib"
-# export PATH=/usr/local/opt/llvm/bin/:$PATH
 # export CC1=clang
 # export CXX1=clang++
-# export LLVM_CONFIG=/opt/local/bin/llvm-config-mp-7.0
 #
 # Sample command:
 # make -f Makefile-ios config=release all
@@ -36,17 +33,26 @@ iphonesdk_clangxx=$(shell xcrun --sdk iphoneos --find clang++)
 iphonesdk_isysroot=$(shell xcrun --sdk iphoneos --show-sdk-path)
 iphonesdklib="$(iphonesdk_isysroot)/usr/lib"
 
+root_dir := $(shell pwd)
+pony_lib_llvm_dir := $(root_dir)/lib/llvm
+llvm_config := $(pony_lib_llvm_dir)/dist/bin/llvm-config
+
+export LLVM_CONFIG=/opt/local/bin/llvm-config-mp-7.0
+#llvm_config := $(shell xcrun $(llvm_config) "${@}")
+
 ponyc:
-	@IPHONESDK="" $(MAKE) -f Makefile-ponyc bits=64 LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) all
+#Makefile-lib-llvm default_pic=true
+#Makefile-ponyc
+	@IPHONESDK="" $(MAKE) -f Makefile-lib-llvm default_pic=true bits=64 CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) all
 
 libponyrt:
 	export LDFLAGS="-L$(iphonesdklib)"
 	@echo "Compiling libponyrt for armv7"
-	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7 LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
+	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7 LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
 	@echo "Compiling libponyrt for armv7s"
-	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7s LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
+	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7s LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
 	@echo "Compiling libponyrt for arm64"
-	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=arm64 LLVM_CONFIG="$(LLVM_CONFIG)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
+	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=arm64 LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
 	
 	@echo "Making fat binary for libponyrt at build/release/lib/ios/libponyrt.a"
 	mkdir -p build/$(config)/lib/ios/

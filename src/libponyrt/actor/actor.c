@@ -19,6 +19,13 @@
 // default actor batch size
 #define PONY_SCHED_BATCH 100
 
+// hack to get the padding values needed before at compile time...
+#if INTPTR_MAX == INT64_MAX
+//char (*__kaboom)[  (offsetof(pony_actor_t, gc) + sizeof(gc_t))  ][ (sizeof(pony_actor_pad_t)) ] = 1;
+#elif INTPTR_MAX == INT32_MAX
+//char (*__kaboom)[  (offsetof(pony_actor_t, gc) + sizeof(gc_t))  ][ (sizeof(pony_actor_pad_t)) ] = 1;
+#endif
+
 // Ignore padding at the end of the type.
 pony_static_assert((offsetof(pony_actor_t, gc) + sizeof(gc_t)) ==
    sizeof(pony_actor_pad_t), "Wrong actor pad size!");
@@ -632,7 +639,7 @@ bool ponyint_actor_getnoblock()
 
 size_t ponyint_actor_num_messages(pony_actor_t* actor)
 {
-	return actor->q.num_messages;
+	return (size_t)actor->q.num_messages;
 }
 
 void ponyint_actor_yield(pony_actor_t* actor)

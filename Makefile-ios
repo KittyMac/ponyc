@@ -33,17 +33,13 @@ iphonesdk_clangxx=$(shell xcrun --sdk iphoneos --find clang++)
 iphonesdk_isysroot=$(shell xcrun --sdk iphoneos --show-sdk-path)
 iphonesdklib="$(iphonesdk_isysroot)/usr/lib"
 
-root_dir := $(shell pwd)
-pony_lib_llvm_dir := $(root_dir)/lib/llvm
-llvm_config := $(pony_lib_llvm_dir)/dist/bin/llvm-config
-
-export LLVM_CONFIG=/opt/local/bin/llvm-config-mp-7.0
-#llvm_config := $(shell xcrun $(llvm_config) "${@}")
+# Note: not sure yet how to get this to work with the version of llvm submoduled
+llvm_config=/opt/local/bin/llvm-config-mp-7.0
 
 ponyc:
 #Makefile-lib-llvm default_pic=true
 #Makefile-ponyc
-	@IPHONESDK="" $(MAKE) -f Makefile-lib-llvm default_pic=true bits=64 CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) all
+	@IPHONESDK="" $(MAKE) -f Makefile-ponyc default_pic=true bits=64 LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) all
 
 libponyrt:
 	export LDFLAGS="-L$(iphonesdklib)"

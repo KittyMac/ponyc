@@ -10,6 +10,13 @@
 # Sample command:
 # make -f Makefile-ios config=release all
 #
+# Install LLVM (only necessary until I can get this hooked up to the submoduled llvm)
+#
+#    - curl -o macports.pkg https://distfiles.macports.org/MacPorts/MacPorts-2.6.0-10.14-Mojave.pkg
+#    - sudo installer -verbose -pkg macports.pkg -target /
+#    - sudo /opt/local/bin/port selfupdate
+#    - sudo /opt/local/bin/port install llvm-7.0
+#
 # Overview:
 #
 # 1. Compile ponyc as normal

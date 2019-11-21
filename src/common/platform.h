@@ -26,6 +26,9 @@
  */
 #if defined(__APPLE__) && defined(__MACH__)
 #  define PLATFORM_IS_MACOSX
+#if defined(ARMV2) || defined(__arm__) || defined(__aarch64__)
+#  define PLATFORM_IS_IOS
+#endif
 #elif defined(__linux__)
 #  define PLATFORM_IS_LINUX
 #elif defined(__FreeBSD__)

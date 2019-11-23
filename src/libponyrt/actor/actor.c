@@ -134,8 +134,6 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
         send_unblock(ctx, actor);
       }
 	  
-	  actor->heap_is_dirty = true;
-
       return false;
     }
 

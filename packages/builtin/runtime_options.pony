@@ -92,6 +92,11 @@ struct RuntimeOptions
     Do not send block messages to the cycle detector.
     """
 
+  var ponyanalysis: Bool = false
+    """
+    Generate runtime analysis events
+    """
+
   var ponypin: Bool = false
     """
     Pin scheduler threads to CPU cores. The ASIO thread can also be pinned if

@@ -31,6 +31,7 @@ typedef struct options_t
   double gc_factor;
   bool noyield;
   bool noblock;
+  bool analysis;
   bool pin;
   bool pinasio;
   bool version;
@@ -62,6 +63,7 @@ enum
   OPT_GCFACTOR,
   OPT_NOYIELD,
   OPT_NOBLOCK,
+  OPT_ANALYSIS,
   OPT_PIN,
   OPT_PINASIO,
   OPT_VERSION,
@@ -79,6 +81,7 @@ static opt_arg_t args[] =
   {"ponygcfactor", 0, OPT_ARG_REQUIRED, OPT_GCFACTOR},
   {"ponynoyield", 0, OPT_ARG_NONE, OPT_NOYIELD},
   {"ponynoblock", 0, OPT_ARG_NONE, OPT_NOBLOCK},
+  {"ponyanalysis", 0, OPT_ARG_NONE, OPT_ANALYSIS},
   {"ponypin", 0, OPT_ARG_NONE, OPT_PIN},
   {"ponypinasio", 0, OPT_ARG_NONE, OPT_PINASIO},
   {"ponyversion", 0, OPT_ARG_NONE, OPT_VERSION},
@@ -151,6 +154,7 @@ static int parse_opts(int argc, char** argv, options_t* opt)
       case OPT_GCFACTOR: if(parse_udouble(&opt->gc_factor, 1.0, s.arg_val)) err_out(id, "can't be less than 1.0"); break;
       case OPT_NOYIELD: opt->noyield = true; break;
       case OPT_NOBLOCK: opt->noblock = true; break;
+	  case OPT_ANALYSIS: opt->analysis = true; break;
       case OPT_PIN: opt->pin = true; break;
       case OPT_PINASIO: opt->pinasio = true; break;
       case OPT_VERSION: opt->version = true; break;
@@ -241,6 +245,7 @@ PONY_API int pony_init(int argc, char** argv)
   ponyint_heap_setinitialgc(opt.gc_initial);
   ponyint_heap_setnextgcfactor(opt.gc_factor);
   ponyint_actor_setnoblock(opt.noblock);
+  ponyint_analysis_setanalysis(opt.analysis);
 
   pony_exitcode(0);
 

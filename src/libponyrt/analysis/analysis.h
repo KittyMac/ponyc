@@ -37,6 +37,9 @@ enum {
 #endif
 #endif
 
+extern void ponyint_analysis_setanalysis(bool state);
+bool ponyint_analysis_getanalysis();
+
 extern void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event);
 extern void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event);
 extern void endRuntimeAnalyticForActor();

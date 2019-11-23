@@ -21,6 +21,16 @@
 // Save timed runtime events and information for later analysis
 static FILE * analyticsFile = NULL;
 static uint64_t startMilliseconds = 0;
+static bool analysisEnabled = false;
+
+void ponyint_analysis_setanalysis(bool state) {
+	analysisEnabled = state;
+}
+
+bool ponyint_analysis_getanalysis() {
+	return analysisEnabled;
+}
+
 
 uint64_t timeInMilliseconds() {
 	struct timeval timeOfDay;
@@ -29,6 +39,10 @@ uint64_t timeInMilliseconds() {
 }
 
 void confirmRuntimeAnalyticHasStarted() {
+	if (analysisEnabled == false) {
+		return;
+	}
+	
 	// simple CSV file with TIME,ACTOR_TAG,ANALYTIC_EVENT,NUMBER_OF_MESSAGES,BATCH_SIZE,PRIORITY,TO_ACTOR_TAG,TO_ACTOR_NUMBER_OF_MESSAGES
 	if (analyticsFile == NULL) {
 		analyticsFile = fopen("/tmp/pony.ponyrt_analytics", "w");
@@ -52,7 +66,11 @@ void confirmRuntimeAnalyticHasStarted() {
 	}
 }
 
-void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event) {	
+void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event) {
+	if (analysisEnabled == false) {
+		return;
+	}
+	
 	confirmRuntimeAnalyticHasStarted();
 	
 	if (analyticsFile != NULL && from != NULL && to != NULL && from->tag != 0 && to->tag != 0) {
@@ -73,7 +91,11 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 	}
 }
 
-void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {	
+void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
+	if (analysisEnabled == false) {
+		return;
+	}
+	
 	confirmRuntimeAnalyticHasStarted();
 	
 	if (analyticsFile != NULL && actor != NULL && actor->tag != 0) {

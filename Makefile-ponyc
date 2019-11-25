@@ -175,8 +175,6 @@ LL_FLAGS = -mcpu=$(cpu)
 
 ifeq ($(OSTYPE),ios)
   LL_FLAGS = -mtriple=$(arch)-apple-ios
-  # hack to force PLATFORM_IS_ARM64 to be set in platform.h, even for armv7
-  ALL_CFLAGS += -D__aarch64__=1
 endif
 
 # Determine pointer size in bits.

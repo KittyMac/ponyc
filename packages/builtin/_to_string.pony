@@ -56,7 +56,11 @@ primitive _ToString
       ifdef windows then
         @_snprintf[I32](s.cstring(), s.space(), f.cstring(), x)
       else
-        @snprintf[I32](s.cstring(), s.space(), f.cstring(), x)
+		ifdef ios then
+			@snprintf_Double[I32](s.cstring(), s.space(), f.cstring(), x)
+		else
+			@snprintf[I32](s.cstring(), s.space(), f.cstring(), x)
+		end
       end
 
       s .> recalc()

@@ -1017,6 +1017,14 @@ PONY_API void pony_poll(pony_ctx_t* ctx)
   ponyint_actor_run(ctx, ctx->current, true);
 }
 
+PONY_API void pony_poll_many(pony_ctx_t* ctx)
+{
+  // For some use cases, we actually want the actor being polled to handle as many
+  // messages as they normally would.
+  pony_assert(ctx->current != NULL);
+  ponyint_actor_run(ctx, ctx->current, false);
+}
+
 void ponyint_actor_setoverloaded(pony_actor_t* actor)
 {
   pony_assert(!ponyint_is_cycle(actor));

@@ -588,6 +588,15 @@ PONY_API void pony_become(pony_ctx_t* ctx, pony_actor_t* actor);
 PONY_API void pony_poll(pony_ctx_t* ctx);
 
 /**
+ * Call this to allow an actor to handle as many messages as it can. This will do two
+ * things: first, it will possibly gc, and second it will possibly handle pending
+ * messages.
+ *
+ * A thread must pony_become an actor before it can pony_poll.
+ */
+PONY_API void pony_poll_many(pony_ctx_t* ctx);
+
+/**
  * The pony_try function can be used to handle Pony errors from C code.
  * callback is invoked with data passed as its argument.
  * Returns false if an error was raised, true otherwise.

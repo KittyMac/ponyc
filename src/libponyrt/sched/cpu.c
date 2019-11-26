@@ -20,6 +20,7 @@
 
 #include "cpu.h"
 #include "../mem/pool.h"
+#include "../analysis/analysis.h"
 
 #if defined(PLATFORM_IS_LINUX)
 static uint32_t avail_cpu_count;
@@ -372,7 +373,18 @@ uint64_t ponyint_cpu_tick()
 {
 #if defined PLATFORM_IS_ARM
 # if defined(__APPLE__)
-  return mach_absolute_time();
+
+#if defined(PLATFORM_IS_IOS)
+	mach_timebase_info_data_t info;
+	if (mach_timebase_info(&info) != KERN_SUCCESS) return (uint64_t)-1.0;
+
+	uint64_t elapsed = mach_absolute_time ();
+	uint64_t nanos = elapsed * info.numer / info.denom;
+	return nanos;
+#else
+	return mach_absolute_time();
+#endif
+  
 # else
 #   if defined ARMV6
   // V6 is the earliest arch that has a standard cyclecount

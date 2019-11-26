@@ -29,16 +29,9 @@ enum {
 };
 
 #define RUNTIME_ANALYSIS 1
-/*
-#ifdef PLATFORM_IS_IOS
-#ifdef RUNTIME_ANALYSIS
-#pragma message "Runtime analysis is not compatible with iOS, disabling!"
-#undef RUNTIME_ANALYSIS
-#endif
-#endif*/
 
 extern void ponyint_analysis_setanalysis(bool state);
-bool ponyint_analysis_getanalysis();
+extern bool ponyint_analysis_getanalysis();
 
 extern void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event);
 extern void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event);

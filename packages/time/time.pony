@@ -13,7 +13,7 @@ use @clock_gettime[I32](clock: U32, ts: Pointer[(I64, I64)])
 use @clock_gettime[I32](clock: U32, ts: Pointer[(I32, I32)])
   if ilp32 and (linux or bsd)
 
-use @mach_absolute_time[U64]() if osx or ios
+use @ponyint_cpu_tick[U64]() if osx or ios
 
 type _Clock is (_ClockRealtime | _ClockMonotonic)
 
@@ -73,7 +73,7 @@ primitive Time
     Monotonic unadjusted milliseconds.
     """
     ifdef osx or ios then
-      @mach_absolute_time() / 1000000
+      @ponyint_cpu_tick() / 1000000
     elseif linux or bsd then
       var ts = _clock_gettime(_ClockMonotonic)
       ((ts._1 * 1000) + (ts._2 / 1000000)).u64()
@@ -89,7 +89,7 @@ primitive Time
     Monotonic unadjusted microseconds.
     """
     ifdef osx or ios then
-      @mach_absolute_time() / 1000
+      @ponyint_cpu_tick() / 1000
     elseif linux or bsd then
       var ts = _clock_gettime(_ClockMonotonic)
       ((ts._1 * 1000000) + (ts._2 / 1000)).u64()
@@ -105,7 +105,7 @@ primitive Time
     Monotonic unadjusted nanoseconds.
     """
     ifdef osx or ios then
-      @mach_absolute_time()
+      @ponyint_cpu_tick()
     elseif linux or bsd then
       var ts = _clock_gettime(_ClockMonotonic)
       ((ts._1 * 1000000000) + ts._2).u64()

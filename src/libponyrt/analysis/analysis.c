@@ -16,6 +16,10 @@
 #include "../gc/trace.h"
 #include "ponyassert.h"
 
+#ifdef PLATFORM_IS_IOS
+extern const char * ponyapp_tempDirectory();
+#endif
+
 #define UNUSED(x) (void)(x)
 
 // Save timed runtime events and information for later analysis
@@ -45,7 +49,14 @@ void confirmRuntimeAnalyticHasStarted() {
 	
 	// simple CSV file with TIME,ACTOR_TAG,ANALYTIC_EVENT,NUMBER_OF_MESSAGES,BATCH_SIZE,PRIORITY,TO_ACTOR_TAG,TO_ACTOR_NUMBER_OF_MESSAGES
 	if (analyticsFile == NULL) {
+		
+#ifdef PLATFORM_IS_IOS
+		char path[1024];
+		snprintf(path, 1024, "%s/pony.ponyrt_analytics", ponyapp_tempDirectory());
+		analyticsFile = fopen(path, "w");
+#else
 		analyticsFile = fopen("/tmp/pony.ponyrt_analytics", "w");
+#endif
 		
 		fprintf(analyticsFile, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", 
 			"TIME_OF_EVENT",

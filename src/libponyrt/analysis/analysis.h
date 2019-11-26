@@ -29,13 +29,13 @@ enum {
 };
 
 #define RUNTIME_ANALYSIS 1
-
+/*
 #ifdef PLATFORM_IS_IOS
 #ifdef RUNTIME_ANALYSIS
 #pragma message "Runtime analysis is not compatible with iOS, disabling!"
 #undef RUNTIME_ANALYSIS
 #endif
-#endif
+#endif*/
 
 extern void ponyint_analysis_setanalysis(bool state);
 bool ponyint_analysis_getanalysis();

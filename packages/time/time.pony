@@ -13,7 +13,7 @@ use @clock_gettime[I32](clock: U32, ts: Pointer[(I64, I64)])
 use @clock_gettime[I32](clock: U32, ts: Pointer[(I32, I32)])
   if ilp32 and (linux or bsd)
 
-use @mach_absolute_time[U64]() if osx
+use @mach_absolute_time[U64]() if osx or ios
 
 type _Clock is (_ClockRealtime | _ClockMonotonic)
 
@@ -44,7 +44,7 @@ primitive Time
     The wall-clock adjusted system time with nanoseconds.
     Return: (seconds, nanoseconds)
     """
-    ifdef osx then
+    ifdef osx or ios then
       var ts: (I64, I64) = (0, 0)
       @gettimeofday[I32](addressof ts, U64(0))
       (ts._1, ts._2 * 1000)
@@ -72,7 +72,7 @@ primitive Time
     """
     Monotonic unadjusted milliseconds.
     """
-    ifdef osx then
+    ifdef osx or ios then
       @mach_absolute_time() / 1000000
     elseif linux or bsd then
       var ts = _clock_gettime(_ClockMonotonic)
@@ -88,7 +88,7 @@ primitive Time
     """
     Monotonic unadjusted microseconds.
     """
-    ifdef osx then
+    ifdef osx or ios then
       @mach_absolute_time() / 1000
     elseif linux or bsd then
       var ts = _clock_gettime(_ClockMonotonic)
@@ -104,7 +104,7 @@ primitive Time
     """
     Monotonic unadjusted nanoseconds.
     """
-    ifdef osx then
+    ifdef osx or ios then
       @mach_absolute_time()
     elseif linux or bsd then
       var ts = _clock_gettime(_ClockMonotonic)

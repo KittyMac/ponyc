@@ -36,10 +36,8 @@ bool ponyint_analysis_getanalysis() {
 }
 
 
-uint64_t timeInMilliseconds() {
-	struct timeval timeOfDay;
-	gettimeofday(&timeOfDay, NULL);
-	return timeOfDay.tv_sec * 1000 + (timeOfDay.tv_usec / 1000);
+uint64_t ponyint_analysis_timeInMilliseconds() {
+	return (ponyint_cpu_tick() / 1000 / 1000);
 }
 
 void confirmRuntimeAnalyticHasStarted() {
@@ -73,7 +71,7 @@ void confirmRuntimeAnalyticHasStarted() {
 			"TOTAL_MEMORY"
 			);
 		
-		startMilliseconds = timeInMilliseconds();		
+		startMilliseconds = ponyint_analysis_timeInMilliseconds();		
 	}
 }
 
@@ -86,7 +84,7 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 	
 	if (analyticsFile != NULL && from != NULL && to != NULL && from->tag != 0 && to->tag != 0) {
 		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", 
-			(unsigned long)(timeInMilliseconds() - startMilliseconds),
+			(unsigned long)(ponyint_analysis_timeInMilliseconds() - startMilliseconds),
 			(unsigned long)from->uid,
 			(unsigned long)from->tag, 
 			(unsigned long)event, 
@@ -112,7 +110,7 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 	if (analyticsFile != NULL && actor != NULL && actor->tag != 0) {
 		fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,0,0,0,%lu\n", 
 			// nanoseconds -> milliseconds
-			(unsigned long)(timeInMilliseconds() - startMilliseconds),
+			(unsigned long)(ponyint_analysis_timeInMilliseconds() - startMilliseconds),
 			(unsigned long)actor->uid,
 			(unsigned long)actor->tag, 
 			(unsigned long)event, 

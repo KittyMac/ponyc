@@ -371,19 +371,19 @@ void ponyint_cpu_relax()
 
 uint64_t ponyint_cpu_tick()
 {
-#if defined PLATFORM_IS_ARM
+	// Note: all "apple" platforms should use mach_absolute_time, and they
+	// should properly convert the results to nanoseconds.
 # if defined(__APPLE__)
-
-#if defined(PLATFORM_IS_IOS)
 	mach_timebase_info_data_t info;
 	if (mach_timebase_info(&info) != KERN_SUCCESS) return (uint64_t)-1.0;
 
 	uint64_t elapsed = mach_absolute_time ();
 	uint64_t nanos = elapsed * info.numer / info.denom;
 	return nanos;
-#else
-	return mach_absolute_time();
 #endif
+	
+#if defined PLATFORM_IS_ARM
+# if defined(__APPLE__)
   
 # else
 #   if defined ARMV6

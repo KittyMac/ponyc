@@ -844,7 +844,8 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
 
 void ponyint_maybe_mute(pony_ctx_t* ctx, pony_actor_t* to)
 {
-  if(ctx->current != NULL)
+	pony_actor_t * from = ctx->current;
+  if(from != NULL)
   {
     // only mute a sender IF:
     // 1. the receiver is overloaded/under pressure/muted
@@ -853,11 +854,15 @@ void ponyint_maybe_mute(pony_ctx_t* ctx, pony_actor_t* to)
     // AND
     // 3. we are sending to another actor (as compared to sending to self)
     if(ponyint_triggers_muting(to) &&
-       !has_flag(ctx->current, FLAG_OVERLOADED) &&
-       !has_flag(ctx->current, FLAG_UNDER_PRESSURE) &&
-       ctx->current != to)
+       !has_flag(from, FLAG_OVERLOADED) &&
+       !has_flag(from, FLAG_UNDER_PRESSURE) &&
+       from != to)
     {
-      ponyint_sched_mute(ctx, ctx->current, to);
+  	  // bad things happen if we try to mute an actor which is not scheduled...
+  	  if (has_flag(from, FLAG_UNSCHEDULED)) {
+  		  return;
+  	  }
+      ponyint_sched_mute(ctx, from, to);
     }
   }
 }

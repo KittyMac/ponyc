@@ -388,6 +388,10 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   
   analysisEnabled = ponyint_analysis_getanalysis();
   
+  if(actor == NULL) {
+  	return false;
+  }
+  
   if(actor->type != NULL && actor->type->tag_fn != NULL){
     actor->tag = (int32_t)actor->type->tag_fn(actor);
   }

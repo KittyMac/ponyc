@@ -306,15 +306,25 @@ void ponyint_cpu_affinity(uint32_t cpu)
  */
 void ponyint_cpu_core_pause(uint64_t tsc, uint64_t tsc2, bool yield)
 {
-  // 10m cycles is about 3ms
-  if((tsc2 - tsc) < 10000000)
-    return;
-
 #ifdef PLATFORM_IS_WINDOWS
   DWORD ts = 0;
 #else
   struct timespec ts = {0, 0};
 #endif
+	
+#if defined(PLATFORM_IS_IOS) || defined(PLATFORM_IS_MACOSX)
+	// on apple the numbers here are nanoseconds, not cycles.
+	// If we just use a ratio to determine how long to sleep
+  	// then it seems like we use less cpu while idle but still
+    // allow lots of cpu while busy.
+	ts.tv_nsec = (long)((tsc2 - tsc) / 20);
+	nanosleep(&ts, NULL);
+#endif
+	
+	
+  // 10m cycles is about 3ms
+  if((tsc2 - tsc) < 10000000)
+    return;
 
   if(yield)
   {

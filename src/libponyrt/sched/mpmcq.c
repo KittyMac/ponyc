@@ -40,7 +40,7 @@ static size_t mpmcq_size_debug(mpmcq_t* q)
 {
   size_t count = 0;
 
-#ifdef PLATFORM_IS_X86
+#if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)
   mpmcq_node_t* tail = q->tail.object;
 #else
   mpmcq_node_t* tail = atomic_load_explicit(&q->tail, memory_order_relaxed);
@@ -62,7 +62,7 @@ void ponyint_mpmcq_init(mpmcq_t* q)
   mpmcq_node_t* node = node_alloc(NULL);
 
   atomic_store_explicit(&q->head, node, memory_order_relaxed);
-#ifdef PLATFORM_IS_X86
+#if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)
   q->tail.object = node;
   q->tail.counter = 0;
 #else
@@ -77,7 +77,7 @@ void ponyint_mpmcq_init(mpmcq_t* q)
 void ponyint_mpmcq_destroy(mpmcq_t* q)
 {
   atomic_store_explicit(&q->head, NULL, memory_order_relaxed);
-#ifdef PLATFORM_IS_X86
+#if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)
   node_free(q->tail.object);
   q->tail.object = NULL;
 #else
@@ -128,7 +128,7 @@ void ponyint_mpmcq_push_single(mpmcq_t* q, void* data)
 
 void* ponyint_mpmcq_pop(mpmcq_t* q)
 {
-#ifdef PLATFORM_IS_X86
+#if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)
   PONY_ABA_PROTECTED_PTR(mpmcq_node_t) cmp;
   PONY_ABA_PROTECTED_PTR(mpmcq_node_t) xchg;
   mpmcq_node_t* tail;
@@ -144,7 +144,7 @@ void* ponyint_mpmcq_pop(mpmcq_t* q)
 
   do
   {
-#ifdef PLATFORM_IS_X86
+#if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)
     tail = cmp.object;
 #endif
     // Get the next node rather than the tail. The tail is either a stub or has
@@ -157,12 +157,12 @@ void* ponyint_mpmcq_pop(mpmcq_t* q)
     if(next == NULL)
       return NULL;
 
-#ifdef PLATFORM_IS_X86
+#if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)
     xchg.object = next;
     xchg.counter = cmp.counter + 1;
 #endif
   }
-#ifdef PLATFORM_IS_X86
+#if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)
   while(!bigatomic_compare_exchange_weak_explicit(&q->tail, &cmp, xchg,
     memory_order_relaxed, memory_order_relaxed));
 #else

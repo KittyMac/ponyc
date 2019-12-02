@@ -17,7 +17,7 @@ PONY_ABA_PROTECTED_PTR_DECLARE(mpmcq_node_t)
 typedef struct mpmcq_t
 {
   alignas(64) PONY_ATOMIC(mpmcq_node_t*) head;
-#ifdef PLATFORM_IS_X86
+#if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)
   PONY_ATOMIC_ABA_PROTECTED_PTR(mpmcq_node_t) tail;
 #else
   // On ARM, the ABA problem is dealt with by the hardware with

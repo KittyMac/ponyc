@@ -381,6 +381,10 @@ static bool batch_limit_reached(pony_actor_t* actor, bool polling)
 bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 {
   pony_assert(!ponyint_is_muted(actor));
+  if(ctx == NULL) {
+  	return false;
+  }
+  
   ctx->current = actor;
 
   pony_msg_t* msg;

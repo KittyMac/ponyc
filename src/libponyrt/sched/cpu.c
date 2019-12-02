@@ -28,6 +28,10 @@ static uint32_t* avail_cpu_list;
 static uint32_t avail_cpu_size;
 #endif
 
+#if defined(PLATFORM_IS_MACOSX) || defined(PLATFORM_IS_IOS)
+static uint64_t cpu_throttle_value = 2000;
+#endif
+
 #if defined(PLATFORM_IS_MACOSX) || (defined(PLATFORM_IS_BSD) && !defined(PLATFORM_IS_OPENBSD))
 
 #include <sys/types.h>
@@ -301,6 +305,14 @@ void ponyint_cpu_affinity(uint32_t cpu)
 #endif
 }
 
+
+void ponyint_cpu_throttle(uint64_t v) {
+	cpu_throttle_value = v;
+	if (cpu_throttle_value == 0) {
+		cpu_throttle_value = 1;
+	}
+}
+
 /**
  * Only nanosleep if sufficient cycles have elapsed.
  */
@@ -317,8 +329,18 @@ void ponyint_cpu_core_pause(uint64_t tsc, uint64_t tsc2, bool yield)
 	// If we just use a ratio to determine how long to sleep
   	// then it seems like we use less cpu while idle but still
     // allow lots of cpu while busy.
-	ts.tv_nsec = (long)((tsc2 - tsc) / 20);
-	nanosleep(&ts, NULL);
+	// 10m cycles is about 3ms
+#if !defined(PLATFORM_IS_IOS)
+	if((tsc2 - tsc) < 10000000)
+		return;
+#endif
+    if(yield)
+    {
+		ts.tv_nsec = (long)((tsc2 - tsc) / cpu_throttle_value);
+		nanosleep(&ts, NULL);
+	}
+	
+	return;
 #endif
 	
 	

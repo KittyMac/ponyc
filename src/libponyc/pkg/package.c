@@ -1007,12 +1007,33 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
   {
     if(!parse_files_in_dir(package, full_path, opt, false))
       return NULL;
+		
+	// to help code separate, adopting a standard that a directory which
+	// starts with a "+" will contain more code for this package, and not to be
+	// considered a package in its own right
+    char dirpath[FILENAME_MAX];
+    path_cat(full_path, "/", dirpath);
 	
-	// to help code separation, we will also include some standard subdirectories
-	// Its ok if these subdirectories do not exist
-    char unittests[FILENAME_MAX];
-    path_cat(full_path, "unit-tests", unittests);
-    parse_files_in_dir(package, unittests, opt, true);
+    PONY_ERRNO err = 0;
+    PONY_DIR* dir = pony_opendir(full_path, &err);
+	
+    if(dir != NULL)
+    {
+	    PONY_DIRINFO* d;
+
+	    while((d = pony_dir_entry_next(dir)) != NULL)
+	    {
+	      const char* name = stringtab(pony_dir_info_name(d));
+	      if(name[0] == '+') {
+		      char additionalDirectory[FILENAME_MAX];
+		      path_cat(full_path, name, additionalDirectory);
+		      parse_files_in_dir(package, additionalDirectory, opt, true);
+	      }
+	    }
+
+	    pony_closedir(dir);
+	}
+	
   }
 
   if(ast_child(package) == NULL)

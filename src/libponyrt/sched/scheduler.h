@@ -21,6 +21,7 @@ typedef struct scheduler_t scheduler_t;
 #define SPECIAL_THREADID_KQUEUE   -10
 #define SPECIAL_THREADID_IOCP     -11
 #define SPECIAL_THREADID_EPOLL    -12
+#define SPECIAL_THREADID_ANALYSIS    -13
 
 #if !defined(PLATFORM_IS_WINDOWS) && !defined(USE_SCHEDULER_SCALING_PTHREADS)
 // Signal to use for suspending/resuming threads via `sigwait`/`pthread_kill`

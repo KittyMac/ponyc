@@ -148,34 +148,11 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	return NULL;
 }
 
-void confirmRuntimeAnalyticHasStarted() {
-	
-	if (analysisEnabled == false) {
-		return;
-	}
-	
-	// We use a thread to not slow down the rest of the pony program with storing the events to disk
-	if (analysisThreadRunning == false) {
-		analysisThreadRunning = true;
-		
-		startMilliseconds = ponyint_analysis_timeInMilliseconds();
-		
-		ponyint_messageq_init(&analysisMessageQueue);
-		
-	    if(!ponyint_thread_create(&analysisThreadID, analysisEventStorageThread, -1, NULL)) {
-			analysisThreadRunning = false;
-	    }
-	}
-}
-
-
 void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event) {
 	if (analysisEnabled == false) {
 		return;
 	}
-	
-	confirmRuntimeAnalyticHasStarted();
-	
+		
 	if (analysisThreadRunning && from != NULL && to != NULL && from->tag != 0 && to->tag != 0) {
 		
 	    analysis_msg_t * msg = (analysis_msg_t*) pony_alloc_msg(POOL_INDEX(sizeof(analysis_msg_t)), 0);
@@ -204,9 +181,7 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 	if (analysisEnabled == false) {
 		return;
 	}
-	
-	confirmRuntimeAnalyticHasStarted();
-	
+		
 	if (analysisThreadRunning && actor != NULL && actor->tag != 0) {
 		
 	    analysis_msg_t * msg = (analysis_msg_t*) pony_alloc_msg(POOL_INDEX(sizeof(analysis_msg_t)), 0);
@@ -230,6 +205,28 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 	      );
 
 	}
+}
+
+
+void startRuntimeAnalyticForActor() {
+    
+    if (analysisEnabled == false) {
+        return;
+    }
+    
+    // We use a thread to not slow down the rest of the pony program with storing the events to disk
+    if (analysisThreadRunning == false) {
+        analysisThreadRunning = true;
+        
+        startMilliseconds = ponyint_analysis_timeInMilliseconds();
+        
+        ponyint_messageq_init(&analysisMessageQueue);
+        fprintf(stderr, "starting analysis thread\n");
+        if(!ponyint_thread_create(&analysisThreadID, analysisEventStorageThread, -1, NULL)) {
+            analysisThreadRunning = false;
+            analysisEnabled = false;
+        }
+    }
 }
 
 void endRuntimeAnalyticForActor() {

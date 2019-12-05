@@ -261,6 +261,10 @@ PONY_API bool pony_start(bool library, int* exit_code,
   const pony_language_features_init_t* language_features)
 {
   pony_assert(atomic_load_explicit(&initialised, memory_order_relaxed));
+  
+#ifdef RUNTIME_ANALYSIS
+  startRuntimeAnalyticForActor();
+#endif
 
   // Set to RUNNING_DEFAULT even if library is true so that pony_stop() isn't
   // callable until the runtime has actually started.
@@ -349,6 +353,11 @@ PONY_API int pony_stop()
   atomic_thread_fence(memory_order_acq_rel);
   atomic_store_explicit(&initialised, false, memory_order_relaxed);
   atomic_store_explicit(&running, NOT_RUNNING, memory_order_relaxed);
+  
+#ifdef RUNTIME_ANALYSIS
+  endRuntimeAnalyticForActor();
+#endif
+  
   return ec;
 }
 
@@ -359,8 +368,5 @@ PONY_API void pony_exitcode(int code)
 
 PONY_API int pony_get_exitcode()
 {
-#ifdef RUNTIME_ANALYSIS
-  endRuntimeAnalyticForActor();
-#endif
   return atomic_load_explicit(&rt_exit_code, memory_order_relaxed);
 }

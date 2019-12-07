@@ -13,6 +13,7 @@
 # Install LLVM (only necessary until I can get this hooked up to the submoduled llvm)
 #
 #    - curl -o macports.pkg https://distfiles.macports.org/MacPorts/MacPorts-2.6.0-10.14-Mojave.pkg
+#    - curl -o macports.pkg https://distfiles.macports.org/MacPorts/MacPorts-2.6.2-10.15-Catalina.pkg
 #    - sudo installer -verbose -pkg macports.pkg -target /
 #    - sudo /opt/local/bin/port selfupdate
 #    - sudo /opt/local/bin/port install llvm-7.0
@@ -20,7 +21,7 @@
 # Overview:
 #
 # 1. Compile ponyc as normal
-# 2. Compile libponyrt for all desired arm architectures (currently armv7, armv7s, arm64)
+# 2. Compile libponyrt for all desired arm architectures (currently armv7, arm64)
 # 3. Create a fat binary .a of libponyrt.a; this is what you will include in your XCode project
 # 4. [TODO]
 # 
@@ -40,26 +41,26 @@ iphonesdk_clangxx=$(shell xcrun --sdk iphoneos --find clang++)
 iphonesdk_isysroot=$(shell xcrun --sdk iphoneos --show-sdk-path)
 iphonesdklib="$(iphonesdk_isysroot)/usr/lib"
 
+cpath_macsdk=`xcrun --show-sdk-path --sdk iphoneos`/usr/include/
+cpath_iphonesdk=`xcrun --show-sdk-path --sdk iphoneos`/usr/include/
+
 # Note: not sure yet how to get this to work with the version of llvm submoduled
 llvm_config=/opt/local/bin/llvm-config-mp-7.0
 
+ponyc: export CPATH = cpath_macsdk
 ponyc:
-#Makefile-lib-llvm default_pic=true
-#Makefile-ponyc
-	@IPHONESDK="" $(MAKE) -f Makefile-ponyc default_pic=true bits=64 LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) all
+	@IPHONESDK="" $(MAKE) -f Makefile-lib-llvm default_pic=true arch=x86-64 -j$(sysctl -n hw.ncpu) config=$(config) all
 
+libponyrt: export CPATH = cpath_iphonesdk
 libponyrt:
-	export LDFLAGS="-L$(iphonesdklib)"
 	@echo "Compiling libponyrt for armv7"
 	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7 LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
-	@echo "Compiling libponyrt for armv7s"
-	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7s LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
 	@echo "Compiling libponyrt for arm64"
 	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=arm64 LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
 	
 	@echo "Making fat binary for libponyrt at build/release/lib/ios/libponyrt.a"
 	mkdir -p build/$(config)/lib/ios/
-	lipo -create -output build/$(config)/lib/ios/libponyrt.a build/$(config)/lib/armv7/libponyrt.a build/$(config)/lib/armv7s/libponyrt.a build/$(config)/lib/arm64/libponyrt.a
+	lipo -create -output build/$(config)/lib/ios/libponyrt.a build/$(config)/lib/armv7/libponyrt.a build/$(config)/lib/arm64/libponyrt.a
 
 all: ponyc libponyrt
 	@echo "all done"

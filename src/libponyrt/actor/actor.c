@@ -487,7 +487,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   }
 #endif
   		try_gc(ctx, actor);
-        return batch_limit_reached(actor, polling);
+        return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
 	  }
     }
 

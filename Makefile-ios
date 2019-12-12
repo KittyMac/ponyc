@@ -3,10 +3,6 @@
 # Prerequisities
 # This makefile assumes that you can already compile ponyc normally (you have your llvm paths set)
 #
-# For example:
-# export CC1=clang
-# export CXX1=clang++
-#
 # Sample command:
 # make -f Makefile-ios config=release all
 #

@@ -53,7 +53,7 @@ static bool messageq_push(messageq_t* q, pony_msg_t* first, pony_msg_t* last)
 #endif
   atomic_store_explicit(&prev->next, first, memory_order_relaxed);
   
-  q->num_messages++;
+  atomic_fetch_add_explicit(&q->num_messages, 1, memory_order_relaxed);
 
   return was_empty;
 }
@@ -77,7 +77,7 @@ static bool messageq_push_single(messageq_t* q,
 #endif
   atomic_store_explicit(&prev->next, first, memory_order_release);
   
-  q->num_messages++;
+  atomic_fetch_add_explicit(&q->num_messages, 1, memory_order_relaxed);
 
   return was_empty;
 }
@@ -91,7 +91,8 @@ void ponyint_messageq_init(messageq_t* q)
   atomic_store_explicit(&q->head, (pony_msg_t*)((uintptr_t)stub | 1),
     memory_order_relaxed);
   q->tail = stub;
-  q->num_messages = 0;
+  
+  atomic_store_explicit(&q->num_messages, 0, memory_order_relaxed);
 
 #ifndef PONY_NDEBUG
   messageq_size_debug(q);
@@ -110,7 +111,7 @@ void ponyint_messageq_destroy(messageq_t* q)
   ponyint_pool_free(tail->index, tail);
   atomic_store_explicit(&q->head, NULL, memory_order_relaxed);
   q->tail = NULL;
-  q->num_messages = 0;
+  atomic_store_explicit(&q->num_messages, 0, memory_order_relaxed);
 }
 
 bool ponyint_actor_messageq_push(messageq_t* q, pony_msg_t* first,
@@ -250,10 +251,7 @@ pony_msg_t* ponyint_actor_messageq_pop(messageq_t* q
 #endif
     ponyint_pool_free(tail->index, tail);
 	
-	q->num_messages--;
-	if (q->num_messages < 0) {
-	  q->num_messages = 0;
-	}
+	atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
   }
 
   return next;
@@ -279,10 +277,7 @@ pony_msg_t* ponyint_thread_messageq_pop(messageq_t* q
 #endif
     ponyint_pool_free(tail->index, tail);
 	
-	q->num_messages--;
-	if (q->num_messages < 0) {
-	  q->num_messages = 0;
-	}
+	atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
   }
 
   return next;

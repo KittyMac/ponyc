@@ -151,7 +151,7 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 		return;
 	}
 		
-	if (analysisThreadRunning && from != NULL && to != NULL && from->tag != 0 && to->tag != 0) {
+	if (analysisThreadRunning && from != NULL && to != NULL && from->tag != 0 && to->tag != 0 && from->tag != to->tag) {
 		
 	    analysis_msg_t * msg = (analysis_msg_t*) pony_alloc_msg(POOL_INDEX(sizeof(analysis_msg_t)), 0);
 		msg->timeOfEvent = (unsigned long)(ponyint_analysis_timeInMilliseconds() - startMilliseconds);
@@ -166,6 +166,11 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 		msg->toTag = to->tag;
 		msg->toNumMessages = (unsigned long)to->q.num_messages;
 		msg->totalMemory = ponyint_total_memory();
+		
+		// if we're overloading the save-to-file thread, slow down a little
+		if (analysisMessageQueue.num_messages > 100000) {
+			usleep(5000);
+		}
 			
 		ponyint_thread_messageq_push(&analysisMessageQueue, (pony_msg_t*)msg, (pony_msg_t*)msg
 		#ifdef USE_DYNAMIC_TRACE
@@ -195,6 +200,11 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 		msg->toTag = 0;
 		msg->toNumMessages = 0;
 		msg->totalMemory = ponyint_total_memory();
+		
+		// if we're overloading the save-to-file thread, slow down a little
+		if (analysisMessageQueue.num_messages > 100000) {
+			usleep(5000);
+		}
 			
 		ponyint_thread_messageq_push(&analysisMessageQueue, (pony_msg_t*)msg, (pony_msg_t*)msg
 		#ifdef USE_DYNAMIC_TRACE

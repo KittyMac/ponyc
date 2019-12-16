@@ -592,10 +592,6 @@ void* ponyint_heap_realloc(pony_actor_t* actor, heap_t* heap, void* p,
   // Get new memory and copy from the old memory.
   void* q = ponyint_heap_alloc(actor, heap, size);
   memcpy(q, p, oldsize);
-
-  // free the old memory now that we are done with it
-  ponyint_heap_free(chunk, p);
-    
   return q;
 }
 

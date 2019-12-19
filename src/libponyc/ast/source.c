@@ -1,4 +1,5 @@
 #include "source.h"
+#include "../translate/translate_source.h"
 #include "error.h"
 #include "stringtab.h"
 #include "../../libponyrt/gc/serialise.h"
@@ -36,6 +37,9 @@ source_t* source_open(const char* file, const char** error_msgp)
 
   ssize_t read = fread(source->m, sizeof(char), size, fp);
   source->m[size] = '\0';
+  
+  source->m = translate_source(file, source->m);
+  source->len = strlen(source->m) + 1;
   
   if(read < size)
   {

@@ -20,6 +20,74 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 	return -1;
 }
 
+char * translate_json_clean_pony_name(char * name) {
+	// if our json keys match pony keywords we will get compile errors, so we find those
+	// and deal with it somehow...
+	if (!strcmp(name, "actor")) { return "actorJSON"; }
+	if (!strcmp(name, "addressof")) { return "addressofJSON"; }
+	if (!strcmp(name, "and")) { return "andJSON"; }
+	if (!strcmp(name, "as")) { return "asJSON"; }
+	if (!strcmp(name, "be")) { return "beJSON"; }
+	if (!strcmp(name, "break")) { return "breakJSON"; }
+	if (!strcmp(name, "class")) { return "classJSON"; }
+	if (!strcmp(name, "compile_error")) { return "compile_errorJSON"; }
+	if (!strcmp(name, "compile_intrinsic")) { return "compile_intrinsicJSON"; }
+	
+	if (!strcmp(name, "consume")) { return "consumeJSON"; }
+	if (!strcmp(name, "continue")) { return "continueJSON"; }
+	if (!strcmp(name, "delegate")) { return "delegateJSON"; }
+	if (!strcmp(name, "digestof")) { return "digestofJSON"; }
+	if (!strcmp(name, "do")) { return "doJSON"; }
+	if (!strcmp(name, "else")) { return "elseJSON"; }
+	if (!strcmp(name, "elseif")) { return "elseifJSON"; }
+	if (!strcmp(name, "embed")) { return "embedJSON"; }
+	if (!strcmp(name, "end")) { return "endJSON"; }
+	if (!strcmp(name, "error")) { return "errorJSON"; }
+	
+	if (!strcmp(name, "for")) { return "forJSON"; }
+	if (!strcmp(name, "fun")) { return "funJSON"; }
+	if (!strcmp(name, "if")) { return "ifJSON"; }
+	if (!strcmp(name, "ifdef")) { return "ifdefJSON"; }
+	if (!strcmp(name, "in")) { return "inJSON"; }
+	if (!strcmp(name, "interface")) { return "interfaceJSON"; }
+	if (!strcmp(name, "is")) { return "isJSON"; }
+	if (!strcmp(name, "isnt")) { return "isntJSON"; }
+	if (!strcmp(name, "lambda")) { return "lambdaJSON"; }
+	if (!strcmp(name, "let")) { return "letJSON"; }
+	if (!strcmp(name, "match")) { return "matchJSON"; }
+	if (!strcmp(name, "new")) { return "newJSON"; }
+	if (!strcmp(name, "not")) { return "notJSON"; }
+	if (!strcmp(name, "object")) { return "objectJSON"; }
+	
+	if (!strcmp(name, "primitive")) { return "primitiveJSON"; }
+	if (!strcmp(name, "recover")) { return "recoverJSON"; }
+	if (!strcmp(name, "repeat")) { return "repeatJSON"; }
+	if (!strcmp(name, "return")) { return "returnJSON"; }
+	if (!strcmp(name, "struct")) { return "structJSON"; }
+	if (!strcmp(name, "then")) { return "thenJSON"; }
+	if (!strcmp(name, "trait")) { return "traitJSON"; }
+	if (!strcmp(name, "try")) { return "tryJSON"; }
+	if (!strcmp(name, "type")) { return "typeJSON"; }
+	if (!strcmp(name, "until")) { return "untilJSON"; }
+	
+	if (!strcmp(name, "use")) { return "useJSON"; }
+	if (!strcmp(name, "var")) { return "varJSON"; }
+	if (!strcmp(name, "where")) { return "whereJSON"; }
+	if (!strcmp(name, "while")) { return "whileJSON"; }
+	if (!strcmp(name, "with")) { return "withJSON"; }
+	if (!strcmp(name, "xor")) { return "xorJSON"; }
+	
+	if (!strcmp(name, "iso")) { return "isoJSON"; }
+	if (!strcmp(name, "val")) { return "valJSON"; }
+	if (!strcmp(name, "tag")) { return "tagJSON"; }
+	if (!strcmp(name, "trn")) { return "trnJSON"; }
+	if (!strcmp(name, "box")) { return "boxJSON"; }
+	if (!strcmp(name, "ref")) { return "refJSON"; }
+	
+	return name;
+}
+
+
 void translate_json_register_delayed_object(size_t idx, size_t* delayedObjects)
 {
 	// don't store duplicates
@@ -106,7 +174,8 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 	// },
 	((void)count);
 		
-	char * propertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+	char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+	char * propertyName = translate_json_clean_pony_name(originalPropertyName);
 	
 	idx += 1;
 	
@@ -167,7 +236,8 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 						return translate_json_abort(code, "title for object in array not found");
 					}
 					
-					char * childTitleName = strndup(js + t[childTitleIdx+1].start, t[childTitleIdx+1].end - t[childTitleIdx+1].start);
+					char * originalChildTitleName = strndup(js + t[childTitleIdx+1].start, t[childTitleIdx+1].end - t[childTitleIdx+1].start);
+					char * childTitleName = translate_json_clean_pony_name(originalChildTitleName);
 					
 					code = sdscatprintf(code, ":Array[%s]", childTitleName);
 					
@@ -197,7 +267,8 @@ sds translate_json_add_constructor(sds code, const char *js, jsmntok_t *t, size_
 	
 	while(idx < count) {
 		
-		char * propertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
 		if (t[idx+1].type == JSMN_OBJECT)
 		{
 			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
@@ -205,16 +276,16 @@ sds translate_json_add_constructor(sds code, const char *js, jsmntok_t *t, size_
 				return translate_json_abort(code, "type for property not found");
 			} else {
 				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as String else \"\" end\n", propertyName, propertyName);
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as String else \"\" end\n", propertyName, originalPropertyName);
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I64 else 0 end\n", propertyName, propertyName);
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I64 else 0 end\n", propertyName, originalPropertyName);
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as F64 else 0.0 end\n", propertyName, propertyName);
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as F64 else 0.0 end\n", propertyName, originalPropertyName);
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else false end\n", propertyName, propertyName);
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else false end\n", propertyName, originalPropertyName);
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
 					
@@ -249,7 +320,7 @@ sds translate_json_add_constructor(sds code, const char *js, jsmntok_t *t, size_
 						arrayType = strndup(js + t[child2TitleIdx+1].start, t[child2TitleIdx+1].end - t[child2TitleIdx+1].start);
 					}
 					
-					code = sdscatprintf(code, "    let %sArr = try obj.data(\"%s\")? as JsonArray else JsonArray end\n", propertyName, propertyName);
+					code = sdscatprintf(code, "    let %sArr = try obj.data(\"%s\")? as JsonArray else JsonArray end\n", propertyName, originalPropertyName);
 					code = sdscatprintf(code, "    %s = Array[%s](%sArr.data.size())\n", propertyName, arrayType, propertyName);
 					code = sdscatprintf(code, "    for item in %sArr.data.values() do\n", propertyName);
 					if (jsoneq(js, &t[typeIdx + 1], "object") == 0) {
@@ -258,13 +329,6 @@ sds translate_json_add_constructor(sds code, const char *js, jsmntok_t *t, size_
 						code = sdscatprintf(code, "      try %s.push(item as %s) end\n", propertyName, arrayType);
 					}
 					code = sdscatprintf(code, "    end\n");
-					
-					//code = sdscatprintf(code, "    for item in arr.data.values() do\n");
-					//code = sdscatprintf(code, "      try array.push(item as %s) end\n", type);						
-					//code = sdscatprintf(code, "    end\n");
-					
-					
-					//code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else false end\n", propertyName, propertyName);
 				}
 			}
 		}
@@ -357,7 +421,8 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						
 						code = sdscatprintf(code, "  fun ref apply(i: USize):%s ? =>\n", type);
 						code = sdscatprintf(code, "    array(i)?\n\n");
-						
+						code = sdscatprintf(code, "  fun values():ArrayValues[%s, this->Array[%s]]^ =>\n", type, type);
+						code = sdscatprintf(code, "    array.values()\n\n");
 						
 						code = sdscatprintf(code, "\n");
 					} else {
@@ -457,9 +522,11 @@ char* translate_json(const char* file_name, const char* source_code)
 	pony_code[code_len] = 0;
 	sdsfree(code);
 	
+	/*
 	fprintf(stderr, "========================== autogenerated pony code ==========================\n");
 	fprintf(stderr, "%s", pony_code);
 	fprintf(stderr, "=============================================================================\n");
+	*/
 	
 	return pony_code;
 }

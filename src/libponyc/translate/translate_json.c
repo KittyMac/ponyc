@@ -188,6 +188,59 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t cou
 			if (jsoneq(js, &t[idx], "type") == 0) {
 				idx += 1;
 				type = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+				
+
+				if (strcmp(type, "array") == 0)
+				{
+					code = sdscatprintf(code, "class %s\n", title);
+					
+					idx++;
+					
+					size_t itemsIdx = translate_json_get_named_child_index(js, t, t[idx].parent, count, "items");
+					
+					if (itemsIdx > 0) {
+						
+						size_t typeIdx = translate_json_get_named_child_index(js, t, itemsIdx+1, count, "type");
+						char * type = NULL;
+						if (typeIdx == 0) {
+							return translate_json_abort(code, "type for items not found");
+						} else {
+							if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
+								type = "String";
+							}
+							if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
+								type = "I64";
+							}
+							if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
+								type = "F64";
+							}
+							if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+								type = "Bool";
+							}
+						}
+						
+						idx = translate_json_get_next_sibling(t, idx, count);
+						
+						
+						code = sdscatprintf(code, "  let array:Array[%s]\n\n", type);
+						
+						code = sdscatprintf(code, "  new create(arr:JsonArray) =>\n");
+						code = sdscatprintf(code, "    array = Array[%s](arr.data.size())\n", type);
+						code = sdscatprintf(code, "    for item in arr.data.values() do\n");
+						code = sdscatprintf(code, "      try array.push(item as %s) end\n", type);						
+						code = sdscatprintf(code, "    end\n");
+						
+						code = sdscatprintf(code, "  fun apply(i: USize):%s ? =>\n", type);
+						code = sdscatprintf(code, "    array(i)?\n");
+						
+						
+						//code = translate_json_add_constructor(code, js, t, objectIdx, count);
+						
+						
+					} else {
+						return translate_json_abort(code, "\"array\" is not followed by \"items\"");
+					}
+				}
 			}
 			
 			if (jsoneq(js, &t[idx], "properties") == 0) {
@@ -216,8 +269,6 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t cou
 					} else {
 						return translate_json_abort(code, "\"properties\" is not an \"object\"");
 					}
-					
-					
 				}
 				else
 				{

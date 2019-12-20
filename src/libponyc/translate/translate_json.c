@@ -63,14 +63,16 @@ sds translate_json_add_use(sds code)
 
 sds translate_json_add_primitive(sds code, char * class_name)
 {
+	((void) class_name);
 	// we use a primitive to expose API to read and write the serialized objects
+	/*
 	code = sdscatprintf(code, "primitive %s\n", class_name);
 	code = sdscatprintf(code, "  fun read() =>\n");
 	code = sdscatprintf(code, "    None\n");
 	code = sdscatprintf(code, "  fun write() =>\n");
 	code = sdscatprintf(code, "    None\n");
 	code = sdscatprintf(code, "\n");
-	
+	*/
 	return code;
 }
 
@@ -109,11 +111,44 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 			if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
 				code = sdscatprintf(code, ":I64 val");
 			}
-		}
-	
-		code = sdscatprintf(code, "\n\n");
+			code = sdscatprintf(code, "\n\n");
+		}		
 	} else {
 		return translate_json_abort(code, "property is not an object");
+	}
+		
+	return code;
+}
+
+sds translate_json_add_constructor(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
+{
+	// property are like:
+	// "firstName": {
+	//   "type": "string",
+	//   "description": "The person's first name."
+	// },
+	
+	code = sdscatprintf(code, "  new create(obj:JsonObject) =>\n");
+	
+	while(idx < count) {
+		
+		char * propertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		if (t[idx+1].type == JSMN_OBJECT)
+		{
+			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
+			if (typeIdx == 0) {
+				return translate_json_abort(code, "type for property not found");
+			} else {
+				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as String else \"\" end\n", propertyName, propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I64 else 0 end\n", propertyName, propertyName);
+				}
+			}
+		}
+		
+		idx = translate_json_get_next_sibling(t, idx, count);
 	}
 		
 	return code;
@@ -156,10 +191,16 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t cou
 					
 					if (strcmp(type, "object") == 0) {
 						idx++;
+						
+						size_t objectIdx = idx;
 						while(idx < count) {
 							code = translate_json_add_property(code, js, t, idx, count);
 							idx = translate_json_get_next_sibling(t, idx, count);
 						}
+						
+						code = translate_json_add_constructor(code, js, t, objectIdx, count);
+						
+						
 					} else {
 						return translate_json_abort(code, "\"properties\" is not an \"object\"");
 					}
@@ -182,75 +223,8 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t cou
 
 	// if we get here, we encountered an invalid key
 	return translate_json_abort(code, "expected an object but didn't find one");
-
-	/*
-		// we're a normal key / value pair
-		char * key = strndup(js + &t[0].start, &t[0].end - &t[0].start);
-		char * value = strndup(js + &t[1].start, &t[1].end - &t[1].start);
-		code = sdscatprintf(code, "class %s\n", class_name);
-		code = sdscatprintf(code, "  // TODO: array of stuff named 'root'\n");
-		return translate_json_add_objects(code, class_name, js, t + 1, count - 1);
-	*/
-	
-	/*
-	char * key = strndup(js + t->start, t->end - t->start);
-
-	//char * class_name = translate_class_name(file_name);
-    if (t->type == JSMN_PRIMITIVE) {
-		fprintf(stderr, "*** primitive\n");
-    }
-    if (t->type == JSMN_STRING) {
-		fprintf(stderr, "*** string\n");
-    }
-    if (t->type == JSMN_OBJECT) {
-		fprintf(stderr, "*** object\n");
-    }
-    if (t->type == JSMN_ARRAY) {
-		fprintf(stderr, "*** array\n");
-    }
-	
-	fprintf(stderr, "*** %s\n", key);
-
-	return translate_json_addroot(code, js, file_name, t + 1, count - 1);
-*/
-	/*
-	if (t->type == JSMN_OBJECT) {
-	return translate_json_dump(code, js, t + 1, count - 1);
-	}
-	if (t->type == JSMN_ARRAY) {
-	fprintf(stderr, "*** array\n");
-	}
-
-
-	code = sdscatprintf(code, "class %s\n", class_name);*/
-
-
-	//return code;
 }
 
-sds translate_json_dump(sds code, const char *js, jsmntok_t *t, size_t count)
-{
-	((void)js);
-	
-	//char * class_name = translate_class_name(file_name);
-	//code = sdscatprintf(code, "class %s\n", class_name);
-	fprintf(stderr, "count: %d\n", (int)count);
-	
-    if (t->type == JSMN_PRIMITIVE) {
-		fprintf(stderr, "*** primitive\n");
-    }
-    if (t->type == JSMN_STRING) {
-		fprintf(stderr, "*** string\n");
-    }
-    if (t->type == JSMN_OBJECT) {
-		fprintf(stderr, "*** object\n");
-    }
-    if (t->type == JSMN_ARRAY) {
-		fprintf(stderr, "*** array\n");
-    }
-	
-	return code;
-}
 
 char* translate_json(const char* file_name, const char* source_code)
 {

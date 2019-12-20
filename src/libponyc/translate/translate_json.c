@@ -111,6 +111,12 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 			if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
 				code = sdscatprintf(code, ":I64 val");
 			}
+			if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
+				code = sdscatprintf(code, ":F64 val");
+			}
+			if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+				code = sdscatprintf(code, ":Bool val");
+			}
 			code = sdscatprintf(code, "\n\n");
 		}		
 	} else {
@@ -144,6 +150,12 @@ sds translate_json_add_constructor(sds code, const char *js, jsmntok_t *t, size_
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
 					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I64 else 0 end\n", propertyName, propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as F64 else 0.0 end\n", propertyName, propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else false end\n", propertyName, propertyName);
 				}
 			}
 		}

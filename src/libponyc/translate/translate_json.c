@@ -268,18 +268,7 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 	code = sdscatprintf(code, "  fun appendJson(json':String iso):String iso^ =>\n");
 	code = sdscatprintf(code, "    var json = consume json'\n");
 	code = sdscatprintf(code, "    json.push('{')\n");
-	
-	/*
-	
-	code = sdscatprintf(code, "    for item in array.values() do\n");
-	code = sdscatprintf(code, "      item.appendJson(json)\n");
-	code = sdscatprintf(code, "      json.push(',')\n");
-	code = sdscatprintf(code, "    end\n");
-	code = sdscatprintf(code, "    try json.pop()? end\n");
-	
-	code = sdscatprintf(code, "    consume json\n");
-	*/
-	
+		
 	while(idx < count) {
 		
 		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
@@ -352,13 +341,12 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 					}
 					code = sdscatprintf(code, "      json.push(',')\n");
 					code = sdscatprintf(code, "    end\n");
-					code = sdscatprintf(code, "    try json.pop()? end\n");
+					code = sdscatprintf(code, "    if %s.size() > 0 then try json.pop()? end end\n", propertyName);
 					code = sdscatprintf(code, "    json.push(']')\n");
 				}
 			}
+			code = sdscatprintf(code, "    json.push(',')\n");
 		}
-		
-		code = sdscatprintf(code, "    json.push(',')\n");
 		
 		idx = translate_json_get_next_sibling(t, idx, count);
 	}
@@ -638,7 +626,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						}
 						code = sdscatprintf(code, "      json.push(',')\n");
 						code = sdscatprintf(code, "    end\n");
-						code = sdscatprintf(code, "    try json.pop()? end\n");
+						code = sdscatprintf(code, "    if array.size() > 0 then try json.pop()? end end\n");
 						code = sdscatprintf(code, "    json.push(']')\n");
 						code = sdscatprintf(code, "    consume json\n");
 						

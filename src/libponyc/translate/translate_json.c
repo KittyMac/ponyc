@@ -323,7 +323,7 @@ sds translate_json_add_constructor(sds code, const char *js, jsmntok_t *t, size_
 					code = sdscatprintf(code, "    let %sArr = try obj.data(\"%s\")? as JsonArray else JsonArray end\n", propertyName, originalPropertyName);
 					code = sdscatprintf(code, "    %s = Array[%s](%sArr.data.size())\n", propertyName, arrayType, propertyName);
 					code = sdscatprintf(code, "    for item in %sArr.data.values() do\n", propertyName);
-					if (jsoneq(js, &t[typeIdx + 1], "object") == 0) {
+					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
 						code = sdscatprintf(code, "      try %s.push(%s(item as JsonObject)) end\n", propertyName, arrayType);
 					} else {
 						code = sdscatprintf(code, "      try %s.push(item as %s) end\n", propertyName, arrayType);

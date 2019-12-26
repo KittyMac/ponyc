@@ -190,7 +190,7 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 			code = sdscatprintf(code, "  // %s\n", propertyDescription);
 		}
 	
-		code = sdscatprintf(code, "  let %s", propertyName);
+		code = sdscatprintf(code, "  var %s", propertyName);
 		if (typeIdx == 0) {
 			return translate_json_abort(code, "type for property not found");
 		} else {
@@ -255,7 +255,198 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 	return code;
 }
 
-sds translate_json_add_constructor(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
+sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
+{
+	// property are like:
+	// "firstName": {
+	//   "type": "string",
+	//   "description": "The person's first name."
+	// },
+	
+	code = sdscatprintf(code, "  fun string(): String iso^ =>\n");
+	code = sdscatprintf(code, "    appendJson(recover String(1024) end)\n");
+	code = sdscatprintf(code, "  fun appendJson(json':String iso):String iso^ =>\n");
+	code = sdscatprintf(code, "    var json = consume json'\n");
+	code = sdscatprintf(code, "    json.push('{')\n");
+	
+	/*
+	
+	code = sdscatprintf(code, "    for item in array.values() do\n");
+	code = sdscatprintf(code, "      item.appendJson(json)\n");
+	code = sdscatprintf(code, "      json.push(',')\n");
+	code = sdscatprintf(code, "    end\n");
+	code = sdscatprintf(code, "    try json.pop()? end\n");
+	
+	code = sdscatprintf(code, "    consume json\n");
+	*/
+	
+	while(idx < count) {
+		
+		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
+		if (t[idx+1].type == JSMN_OBJECT)
+		{
+			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
+			if (typeIdx == 0) {
+				return translate_json_abort(code, "type for property not found");
+			} else {
+				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
+					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", propertyName);
+					code = sdscatprintf(code, "    json.push(':')\n");
+					code = sdscatprintf(code, "    json.push('\"')\n");
+					code = sdscatprintf(code, "    json.append(%s.string())\n", propertyName);
+					code = sdscatprintf(code, "    json.push('\"')\n");
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0 || 
+					jsoneq(js, &t[typeIdx + 1], "number") == 0 || 
+					jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", propertyName);
+					code = sdscatprintf(code, "    json.push(':')\n");
+					code = sdscatprintf(code, "    json.append(%s.string())\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
+					
+					size_t childItemsIdx = translate_json_get_named_child_index(js, t, t[typeIdx].parent, count, "items");
+					if (childItemsIdx == 0) {
+						return translate_json_abort(code, "items for array not found");
+					}
+					
+					size_t childTypeIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "type");
+					if (childTypeIdx == 0) {
+						return translate_json_abort(code, "type for items in array not found");
+					}
+					
+					char * arrayType = NULL;
+					bool isObject = false;
+					if (jsoneq(js, &t[childTypeIdx + 1], "string") == 0) {
+						arrayType = "String";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
+						arrayType = "Integer";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
+						arrayType = "Number";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
+						arrayType = "Boolean";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
+						size_t child2TitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
+						if (child2TitleIdx == 0) {
+							return translate_json_abort(code, "title for object in array not found");
+						}
+						arrayType = strndup(js + t[child2TitleIdx+1].start, t[child2TitleIdx+1].end - t[child2TitleIdx+1].start);
+						isObject = true;
+					}
+					
+					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", propertyName);
+					code = sdscatprintf(code, "    json.push(':')\n");
+					code = sdscatprintf(code, "    json.push('[')\n");
+					code = sdscatprintf(code, "    for item in %s.values() do\n", propertyName);
+					if (!isObject) {
+						code = sdscatprintf(code, "      json.push('\"')\n");
+						code = sdscatprintf(code, "      json.append(item.string())\n");
+						code = sdscatprintf(code, "      json.push('\"')\n");
+					} else {
+						code = sdscatprintf(code, "      json = item.appendJson(consume json)\n");
+					}
+					code = sdscatprintf(code, "      json.push(',')\n");
+					code = sdscatprintf(code, "    end\n");
+					code = sdscatprintf(code, "    try json.pop()? end\n");
+					code = sdscatprintf(code, "    json.push(']')\n");
+				}
+			}
+		}
+		
+		code = sdscatprintf(code, "    json.push(',')\n");
+		
+		idx = translate_json_get_next_sibling(t, idx, count);
+	}
+	
+	code = sdscatprintf(code, "    try json.pop()? end\n");
+	code = sdscatprintf(code, "    json.push('}')\n");
+	code = sdscatprintf(code, "    consume json\n");
+		
+	return code;
+}
+
+sds translate_json_add_empty_constructor(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
+{
+	// property are like:
+	// "firstName": {
+	//   "type": "string",
+	//   "description": "The person's first name."
+	// },
+	
+	code = sdscatprintf(code, "  new empty() =>\n");
+	
+	while(idx < count) {
+		
+		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
+		if (t[idx+1].type == JSMN_OBJECT)
+		{
+			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
+			if (typeIdx == 0) {
+				return translate_json_abort(code, "type for property not found");
+			} else {
+				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
+					code = sdscatprintf(code, "    %s = \"\"\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
+					code = sdscatprintf(code, "    %s = 0\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
+					code = sdscatprintf(code, "    %s = 0.0\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+					code = sdscatprintf(code, "    %s = false\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
+					
+					size_t childItemsIdx = translate_json_get_named_child_index(js, t, t[typeIdx].parent, count, "items");
+					if (childItemsIdx == 0) {
+						return translate_json_abort(code, "items for array not found");
+					}
+					
+					size_t childTypeIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "type");
+					if (childTypeIdx == 0) {
+						return translate_json_abort(code, "type for items in array not found");
+					}
+					
+					char * arrayType = NULL;
+					if (jsoneq(js, &t[childTypeIdx + 1], "string") == 0) {
+						arrayType = "String";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
+						arrayType = "Integer";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
+						arrayType = "Number";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
+						arrayType = "Boolean";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
+						size_t child2TitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
+						if (child2TitleIdx == 0) {
+							return translate_json_abort(code, "title for object in array not found");
+						}
+						arrayType = strndup(js + t[child2TitleIdx+1].start, t[child2TitleIdx+1].end - t[child2TitleIdx+1].start);
+					}
+					
+					code = sdscatprintf(code, "    %s = Array[%s]\n", propertyName, arrayType);
+				}
+			}
+		}
+		
+		idx = translate_json_get_next_sibling(t, idx, count);
+	}
+		
+	return code;
+}
+
+sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
 {
 	// property are like:
 	// "firstName": {
@@ -375,6 +566,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						size_t typeIdx = translate_json_get_named_child_index(js, t, itemsIdx+1, count, "type");
 						size_t titleIdx = translate_json_get_named_child_index(js, t, itemsIdx+1, count, "title");
 						char * type = NULL;
+						bool isObject = false;
 						if (typeIdx == 0) {
 							return translate_json_abort(code, "type for items not found");
 						} else {
@@ -401,6 +593,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 								translate_json_register_delayed_object(itemsIdx+1, delayedObjects);
 								
 								type = title2;
+								isObject = true;
 							}
 						}
 						
@@ -409,6 +602,9 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						
 						code = sdscatprintf(code, "  let array:Array[%s]\n\n", type);
 						
+						
+						code = sdscatprintf(code, "  new empty() =>\n");
+						code = sdscatprintf(code, "    array = Array[%s]\n", type);
 						code = sdscatprintf(code, "  new create(arr:JsonArray) =>\n");
 						code = sdscatprintf(code, "    array = Array[%s](arr.data.size())\n", type);
 						code = sdscatprintf(code, "    for item in arr.data.values() do\n");
@@ -423,6 +619,28 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						code = sdscatprintf(code, "    array(i)?\n\n");
 						code = sdscatprintf(code, "  fun values():ArrayValues[%s, this->Array[%s]]^ =>\n", type, type);
 						code = sdscatprintf(code, "    array.values()\n\n");
+						code = sdscatprintf(code, "  fun ref push(value:%s) =>\n", type);
+						code = sdscatprintf(code, "    array.push(value)\n\n");
+						code = sdscatprintf(code, "  fun ref pop():%s^ ? =>\n", type);
+						code = sdscatprintf(code, "    array.pop()?\n\n");
+						code = sdscatprintf(code, "  fun string(): String iso^ =>\n");
+						code = sdscatprintf(code, "    appendJson(recover String(1024) end)\n");
+						code = sdscatprintf(code, "  fun appendJson(json':String iso):String iso^ =>\n");
+						code = sdscatprintf(code, "    var json = consume json'\n");
+						code = sdscatprintf(code, "    json.push('[')\n");
+						code = sdscatprintf(code, "    for item in array.values() do\n");
+						if (!isObject) {
+							code = sdscatprintf(code, "      json.push('\"')\n");
+							code = sdscatprintf(code, "      json.append(item.string())\n");
+							code = sdscatprintf(code, "      json.push('\"')\n");
+						} else {
+							code = sdscatprintf(code, "      json = item.appendJson(consume json)\n");
+						}
+						code = sdscatprintf(code, "      json.push(',')\n");
+						code = sdscatprintf(code, "    end\n");
+						code = sdscatprintf(code, "    try json.pop()? end\n");
+						code = sdscatprintf(code, "    json.push(']')\n");
+						code = sdscatprintf(code, "    consume json\n");
 						
 						code = sdscatprintf(code, "\n");
 					} else {
@@ -451,8 +669,9 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 							idx = translate_json_get_next_sibling(t, idx, count);
 						}
 						
-						code = translate_json_add_constructor(code, js, t, objectIdx, count);
-						
+						code = translate_json_add_empty_constructor(code, js, t, objectIdx, count);
+						code = translate_json_add_read_constructor(code, js, t, objectIdx, count);
+						code = translate_json_add_append_json(code, js, t, objectIdx, count);
 						
 					} else {
 						return translate_json_abort(code, "\"properties\" is not an \"object\"");

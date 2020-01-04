@@ -400,19 +400,22 @@ void ponyint_cpu_relax()
 #if defined(PLATFORM_IS_X86) && !defined(PLATFORM_IS_VISUAL_STUDIO)
   asm volatile("pause" ::: "memory");
 #endif
-}
+} 
 
 uint64_t ponyint_cpu_tick()
 {
 	// Note: all "apple" platforms should use mach_absolute_time, and they
 	// should properly convert the results to nanoseconds.
 # if defined(__APPLE__)
-	mach_timebase_info_data_t info;
-	if (mach_timebase_info(&info) != KERN_SUCCESS) return (uint64_t)-1.0;
+	static mach_timebase_info_data_t info;
+	static bool mach_timebase_init = false;
+	
+	if (mach_timebase_init == false) {
+		if (mach_timebase_info(&info) != KERN_SUCCESS) return (uint64_t)-1.0;
+		mach_timebase_init = true;
+	}
 
-	uint64_t elapsed = mach_absolute_time ();
-	uint64_t nanos = elapsed * info.numer / info.denom;
-	return nanos;
+	return mach_absolute_time () * info.numer / info.denom;
 #endif
 	
 #if defined PLATFORM_IS_ARM

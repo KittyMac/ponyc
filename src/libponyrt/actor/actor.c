@@ -664,7 +664,11 @@ bool ponyint_actor_getnoblock()
 
 size_t ponyint_actor_num_messages(pony_actor_t* actor)
 {
-	return (size_t)actor->q.num_messages;
+	size_t n = actor->q.num_messages;
+	if (n < 0) {
+		return 0;
+	}
+	return n;
 }
 
 void ponyint_actor_yield(pony_actor_t* actor)

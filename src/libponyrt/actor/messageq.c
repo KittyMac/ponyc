@@ -252,6 +252,9 @@ pony_msg_t* ponyint_actor_messageq_pop(messageq_t* q
     ponyint_pool_free(tail->index, tail);
 	
 	atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
+	if (q->num_messages < 0) {
+		q->num_messages = 0;
+	}
   }
 
   return next;
@@ -278,6 +281,9 @@ pony_msg_t* ponyint_thread_messageq_pop(messageq_t* q
     ponyint_pool_free(tail->index, tail);
 	
 	atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
+	if (q->num_messages < 0) {
+		q->num_messages = 0;
+	}
   }
 
   return next;

@@ -280,7 +280,7 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 				return translate_json_abort(code, "type for property not found");
 			} else {
 				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
-					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", propertyName);
+					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
 					code = sdscatprintf(code, "    json.push(':')\n");
 					code = sdscatprintf(code, "    json.push('\"')\n");
 					code = sdscatprintf(code, "    json.append(%s.string())\n", propertyName);
@@ -289,7 +289,7 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0 || 
 					jsoneq(js, &t[typeIdx + 1], "number") == 0 || 
 					jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
-					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", propertyName);
+					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
 					code = sdscatprintf(code, "    json.push(':')\n");
 					code = sdscatprintf(code, "    json.append(%s.string())\n", propertyName);
 				}
@@ -311,10 +311,10 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 						arrayType = "String";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-						arrayType = "Integer";
+						arrayType = "I64";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-						arrayType = "Number";
+						arrayType = "F64";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
 						arrayType = "Boolean";
@@ -328,7 +328,7 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 						isObject = true;
 					}
 					
-					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", propertyName);
+					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
 					code = sdscatprintf(code, "    json.push(':')\n");
 					code = sdscatprintf(code, "    json.push('[')\n");
 					code = sdscatprintf(code, "    for item in %s.values() do\n", propertyName);
@@ -407,10 +407,10 @@ sds translate_json_add_empty_constructor(sds code, const char *js, jsmntok_t *t,
 						arrayType = "String";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-						arrayType = "Integer";
+						arrayType = "I64";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-						arrayType = "Number";
+						arrayType = "F64";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
 						arrayType = "Boolean";
@@ -483,10 +483,10 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 						arrayType = "String";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-						arrayType = "Integer";
+						arrayType = "I64";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-						arrayType = "Number";
+						arrayType = "F64";
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
 						arrayType = "Boolean";

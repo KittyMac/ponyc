@@ -24,6 +24,11 @@ PONY_API FILE* pony_os_stderr()
   return stderr;
 }
 
+PONY_API FILE* pony_os_stdin()
+{
+  return stdin;
+}
+
 static bool is_stdout_tty = false;
 static bool is_stderr_tty = false;
 

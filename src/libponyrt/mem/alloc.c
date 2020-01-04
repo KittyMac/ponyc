@@ -16,8 +16,15 @@
 #endif
 
 static size_t total_memory_allocated = 0;
+static bool has_requested_total_memory = false;
 
 void ponyint_update_memory_usage() {
+	// as getting the total OS memory usage is expensive, don't collect it
+	// unless someone has asked for it before.
+	if (has_requested_total_memory == false) {
+		return;
+	}
+	
 #ifdef PLATFORM_IS_POSIX_BASED
 	struct rusage usage;
 	if(0 == getrusage(RUSAGE_SELF, &usage)) {
@@ -33,6 +40,11 @@ void ponyint_update_memory_usage() {
 
 size_t ponyint_total_memory()
 {
+	if (has_requested_total_memory == false) {
+		has_requested_total_memory = true;
+		ponyint_update_memory_usage();
+	}
+	
 	return total_memory_allocated;
 }
 

@@ -1,6 +1,7 @@
 #include "package.h"
 #include "program.h"
 #include "use.h"
+#include "../translate/translate_source.h"
 #include "../codegen/codegen.h"
 #include "../ast/source.h"
 #include "../ast/parser.h"
@@ -19,9 +20,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
-
-
-#define EXTENSION ".pony"
 
 
 #ifdef PLATFORM_IS_WINDOWS
@@ -264,9 +262,7 @@ static bool parse_files_in_dir(ast_t* package, const char* dir_path,
     if(name[0] == '.')
       continue;
 
-    const char* p = strrchr(name, '.');
-
-    if((p != NULL) && (strcmp(p, EXTENSION) == 0))
+    if(translate_valid_source_file(name))
     {
       if((count * sizeof(const char*)) == buf_size)
       {

@@ -887,13 +887,11 @@ static void run(scheduler_t* sched)
 
   while(true)
   {
-#ifdef RUNTIME_ANALYSIS
     static int not_all_the_time = 0;
 	not_all_the_time++;
-    if((not_all_the_time % 10 == 0) && ponyint_analysis_getanalysis()) {
+    if((not_all_the_time % 10 == 0)) {
       ponyint_update_memory_usage();
     }
-#endif
 	
     // if we're scheduler 0
     if(sched->index == 0)

@@ -7,7 +7,7 @@
 PONY_EXTERN_C_BEGIN
 
 void gen_send_message(compile_t* c, reach_method_t* m, LLVMValueRef args[],
-  ast_t* args_ast);
+  ast_t* args_ast, bool canError);
 
 LLVMValueRef gen_funptr(compile_t* c, ast_t* ast);
 

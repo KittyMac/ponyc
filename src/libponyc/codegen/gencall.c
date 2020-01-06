@@ -522,7 +522,7 @@ LLVMValueRef gen_funptr(compile_t* c, ast_t* ast)
 }
 
 void gen_send_message(compile_t* c, reach_method_t* m, LLVMValueRef args[],
-  ast_t* args_ast)
+  ast_t* args_ast, bool canError)
 {
   // Allocate the message, setting its size and ID.
   compile_method_t* c_m = (compile_method_t*)m->c_method;
@@ -605,7 +605,10 @@ void gen_send_message(compile_t* c, reach_method_t* m, LLVMValueRef args[],
 
   if(ast_id(m->fun->ast) == TK_NEW) {
   	send = gencall_runtime(c, "pony_sendv_single", msg_args, 5, "");
-	gencall_runtime(c, "pony_actor_synchronous_run_one", msg_args, 2, "");
+	// actor constructors are allowed to be synchronous if they are partial
+	if(canError) {
+		gencall_runtime(c, "pony_actor_synchronous_run_one", msg_args, 2, "");
+	}
   }else{
   	send = gencall_runtime(c, "pony_sendv", msg_args, 5, "");
   }
@@ -733,6 +736,8 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   AST_GET_CHILDREN(ast, postfix, positional, named, question);
   AST_GET_CHILDREN(postfix, receiver, method);
   ast_t* typeargs = NULL;
+  
+  bool err = (ast_id(question) == TK_QUESTION);
 
   deferred_reification_t* reify = c->frame->reify;
 
@@ -850,7 +855,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
     // If we're sending a message, trace and send here instead of calling the
     // sender to trace the most specific types possible.
     codegen_debugloc(c, ast);
-    gen_send_message(c, m, args, positional);
+    gen_send_message(c, m, args, positional, err);
     codegen_debugloc(c, NULL);
     switch(ast_id(postfix))
     {

@@ -552,7 +552,7 @@ static bool genfun_be(compile_t* c, reach_type_t* t, reach_method_t* m)
   LLVMGetParams(c_m->func, param_vals);
 
   // Send the arguments in a message to 'this'.
-  gen_send_message(c, m, param_vals, params);
+  gen_send_message(c, m, param_vals, params, false);
 
   // Return None.
   LLVMBuildRet(c->builder, c->none_instance);
@@ -611,6 +611,8 @@ static bool genfun_newbe(compile_t* c, reach_type_t* t, reach_method_t* m)
   AST_GET_CHILDREN(m->fun->ast, cap, id, typeparams, params, result, can_error,
     body);
 
+  bool err = (ast_id(can_error) == TK_QUESTION);
+
   // Generate the handler.
   codegen_startfun(c, c_m->func_handler, c_m->di_file, c_m->di_method, m->fun,
     false);
@@ -632,7 +634,7 @@ static bool genfun_newbe(compile_t* c, reach_type_t* t, reach_method_t* m)
   LLVMGetParams(c_m->func, param_vals);
 
   // Send the arguments in a message to 'this'.
-  gen_send_message(c, m, param_vals, params);
+  gen_send_message(c, m, param_vals, params, err);
 
   // Return 'this'.
   LLVMBuildRet(c->builder, param_vals[0]);

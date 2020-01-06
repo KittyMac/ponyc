@@ -810,6 +810,13 @@ PONY_API void pony_sendv_synchronous_constructor(pony_ctx_t* ctx, pony_actor_t* 
   ctx->current = to;
   handle_message(ctx, ctx->current, msg);
   ctx->current = saved;
+  
+  // schedule the actor, since we handled its first message synchronously
+  // and its not gauranteed that the constructor will result in more messages
+  // we still need to hit the logic in ponyint_actor_run()
+  if(!has_flag(to, FLAG_UNSCHEDULED) && !ponyint_is_muted(to)) {
+    ponyint_sched_add(ctx, to);
+  }
 }
 
 PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,

@@ -182,6 +182,7 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 	// "firstName": {
 	//   "type": "string",
 	//   "description": "The person's first name."
+	//   "default": "The person's first name."
 	// },
 	((void)count);
 		
@@ -195,10 +196,16 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 	{
 		size_t typeIdx = translate_json_get_named_child_index(js, t, idx, count, "type");
 		size_t descriptionIdx = translate_json_get_named_child_index(js, t, idx, count, "description");
+		size_t defaultIdx = translate_json_get_named_child_index(js, t, idx, count, "default");
 	
 		if (descriptionIdx != 0) {
 			char * propertyDescription = strndup(js + t[descriptionIdx+1].start, t[descriptionIdx+1].end - t[descriptionIdx+1].start);
 			code = sdscatprintf(code, "  // %s\n", propertyDescription);
+		}
+		
+		char * defaultValue = NULL;
+		if (defaultIdx != 0) {
+			defaultValue = strndup(js + t[defaultIdx+1].start, t[defaultIdx+1].end - t[defaultIdx+1].start);
 		}
 	
 		code = sdscatprintf(code, "  var %s", propertyName);
@@ -206,16 +213,32 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 			return translate_json_abort(code, "type for property not found");
 		} else {
 			if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
-				code = sdscatprintf(code, ":String val");
+				if (defaultValue != NULL) {
+					code = sdscatprintf(code, ":String val = \"%s\"", defaultValue);
+				} else {
+					code = sdscatprintf(code, ":String val = \"\"");
+				}
 			}
 			if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-				code = sdscatprintf(code, ":I64 val");
+				if (defaultValue != NULL) {
+					code = sdscatprintf(code, ":I64 val = %s", defaultValue);
+				} else {
+					code = sdscatprintf(code, ":I64 val = 0");
+				}
 			}
 			if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-				code = sdscatprintf(code, ":F64 val");
+				if (defaultValue != NULL) {
+					code = sdscatprintf(code, ":F64 val = %s", defaultValue);
+				} else {
+					code = sdscatprintf(code, ":F64 val = 0.0");
+				}
 			}
 			if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
-				code = sdscatprintf(code, ":Bool val");
+				if (defaultValue != NULL) {
+					code = sdscatprintf(code, ":Bool val = %s", defaultValue);
+				} else {
+					code = sdscatprintf(code, ":Bool val = false");
+				}
 			}
 			if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
 				size_t childItemsIdx = translate_json_get_named_child_index(js, t, t[typeIdx].parent, count, "items");
@@ -229,20 +252,20 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 				}
 				
 				if (jsoneq(js, &t[childTypeIdx + 1], "string") == 0) {
-					code = sdscatprintf(code, ":Array[String]");
+					code = sdscatprintf(code, ":Array[String] = Array[String]");
 				}
 				if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-					code = sdscatprintf(code, ":Array[I64]");
+					code = sdscatprintf(code, ":Array[I64] = Array[I64]");
 				}
 				if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-					code = sdscatprintf(code, ":Array[F64]");
+					code = sdscatprintf(code, ":Array[F64] = Array[F64]");
 				}
 				if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
-					code = sdscatprintf(code, ":Array[Bool]");
+					code = sdscatprintf(code, ":Array[Bool] = Array[Bool]");
 				}
 				if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
 					char * objectTypeName = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
-					code = sdscatprintf(code, ":Array[%s]", objectTypeName);
+					code = sdscatprintf(code, ":Array[%s] = Array[%s]", objectTypeName, objectTypeName);
 					translate_json_register_delayed_object(childItemsIdx+1, delayedObjects);
 				}
 				if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
@@ -255,7 +278,7 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 					char * originalChildTitleName = strndup(js + t[childTitleIdx+1].start, t[childTitleIdx+1].end - t[childTitleIdx+1].start);
 					char * childTitleName = translate_json_clean_pony_name(originalChildTitleName);
 					
-					code = sdscatprintf(code, ":Array[%s]", childTitleName);
+					code = sdscatprintf(code, ":Array[%s] = Array[%s]", childTitleName, childTitleName);
 					
 					translate_json_register_delayed_object(childItemsIdx+1, delayedObjects);
 				}
@@ -378,155 +401,10 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 	return code;
 }
 
-sds translate_json_add_empty_constructor(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
+sds translate_json_add_empty_constructor(sds code)
 {
-	// property are like:
-	// "firstName": {
-	//   "type": "string",
-	//   "description": "The person's first name."
-	// },
-	
 	code = sdscatprintf(code, "  new empty() =>\n");
-	
-	while(idx < count) {
-		
-		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
-		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
-		if (t[idx+1].type == JSMN_OBJECT)
-		{
-			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
-			if (typeIdx == 0) {
-				return translate_json_abort(code, "type for property not found");
-			} else {
-				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
-					code = sdscatprintf(code, "    %s = \"\"\n", propertyName);
-				}
-				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-					code = sdscatprintf(code, "    %s = 0\n", propertyName);
-				}
-				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-					code = sdscatprintf(code, "    %s = 0.0\n", propertyName);
-				}
-				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
-					code = sdscatprintf(code, "    %s = false\n", propertyName);
-				}
-				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
-					
-					size_t childItemsIdx = translate_json_get_named_child_index(js, t, t[typeIdx].parent, count, "items");
-					if (childItemsIdx == 0) {
-						return translate_json_abort(code, "items for array not found");
-					}
-					
-					size_t childTypeIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "type");
-					if (childTypeIdx == 0) {
-						return translate_json_abort(code, "type for items in array not found");
-					}
-					
-					char * arrayType = NULL;
-					if (jsoneq(js, &t[childTypeIdx + 1], "string") == 0) {
-						arrayType = "String";
-					}
-					if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-						arrayType = "I64";
-					}
-					if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-						arrayType = "F64";
-					}
-					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
-						arrayType = "Boolean";
-					}
-					if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
-						arrayType = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
-					}
-					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
-						size_t child2TitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
-						if (child2TitleIdx == 0) {
-							return translate_json_abort(code, "title for object in array not found");
-						}
-						arrayType = strndup(js + t[child2TitleIdx+1].start, t[child2TitleIdx+1].end - t[child2TitleIdx+1].start);
-					}
-					
-					code = sdscatprintf(code, "    %s = Array[%s]\n", propertyName, arrayType);
-				}
-			}
-		}
-		
-		idx = translate_json_get_next_sibling(t, idx, count);
-	}
-		
-	return code;
-}
-
-sds translate_json_read_constructor_shared_init(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
-{
-	while(idx < count) {
-		
-		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
-		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
-		if (t[idx+1].type == JSMN_OBJECT)
-		{
-			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
-			if (typeIdx == 0) {
-				return translate_json_abort(code, "type for property not found");
-			} else {
-				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
-					code = sdscatprintf(code, "    %s = \"\"\n", propertyName);
-				}
-				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-					code = sdscatprintf(code, "    %s = 0\n", propertyName);
-				}
-				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-					code = sdscatprintf(code, "    %s = 0.0\n", propertyName);
-				}
-				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
-					code = sdscatprintf(code, "    %s = false\n", propertyName);
-				}
-				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
-					
-					size_t childItemsIdx = translate_json_get_named_child_index(js, t, t[typeIdx].parent, count, "items");
-					if (childItemsIdx == 0) {
-						return translate_json_abort(code, "items for array not found");
-					}
-					
-					size_t childTypeIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "type");
-					if (childTypeIdx == 0) {
-						return translate_json_abort(code, "type for items in array not found");
-					}
-					
-					char * arrayType = NULL;
-					bool isObject = false;
-					if (jsoneq(js, &t[childTypeIdx + 1], "string") == 0) {
-						arrayType = "String";
-					}
-					if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-						arrayType = "I64";
-					}
-					if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-						arrayType = "F64";
-					}
-					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
-						arrayType = "Boolean";
-					}
-					if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
-						arrayType = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
-						isObject = true;
-					}
-					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
-						size_t child2TitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
-						if (child2TitleIdx == 0) {
-							return translate_json_abort(code, "title for object in array not found");
-						}
-						arrayType = strndup(js + t[child2TitleIdx+1].start, t[child2TitleIdx+1].end - t[child2TitleIdx+1].start);
-						isObject = true;
-					}
-					
-					code = sdscatprintf(code, "    %s = Array[%s]()\n", propertyName, arrayType);
-				}
-			}
-		}
-		
-		idx = translate_json_get_next_sibling(t, idx, count);
-	}
+	code = sdscatprintf(code, "    None\n");
 	
 	return code;
 }
@@ -545,11 +423,9 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 	code = sdscatprintf(code, "    let doc1 = JsonDoc\n");
 	code = sdscatprintf(code, "    doc1.parse(jsonString)?\n");
 	code = sdscatprintf(code, "    let obj = doc1.data as JsonObject\n");
-	code = translate_json_read_constructor_shared_init(code, js, t, idx, count);
 	code = sdscatprintf(code, "    _read(obj)?\n");
 	
 	code = sdscatprintf(code, "  new fromJson(obj:JsonObject)? =>\n");
-	code = translate_json_read_constructor_shared_init(code, js, t, idx, count);
 	code = sdscatprintf(code, "    _read(obj)?\n");	
 	
 	code = sdscatprintf(code, "  fun ref _read(obj:JsonObject)? =>\n");
@@ -621,7 +497,6 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 					}
 					
 					code = sdscatprintf(code, "    let %sArr = try obj.data(\"%s\")? as JsonArray else JsonArray end\n", propertyName, originalPropertyName);
-					code = sdscatprintf(code, "    %s = Array[%s](%sArr.data.size())\n", propertyName, arrayType, propertyName);
 					code = sdscatprintf(code, "    for item in %sArr.data.values() do\n", propertyName);
 					if (isObject) {
 						code = sdscatprintf(code, "      try %s.push(%s.fromJson(item as JsonObject)?) end\n", propertyName, arrayType);
@@ -713,21 +588,18 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						idx = translate_json_get_next_sibling(t, idx, count);
 						
 						
-						code = sdscatprintf(code, "  let array:Array[%s]\n\n", type);
+						code = sdscatprintf(code, "  let array:Array[%s] = Array[%s]\n\n", type, type);
 						
 						
 						code = sdscatprintf(code, "  new empty() =>\n");
-						code = sdscatprintf(code, "    array = Array[%s]\n", type);
+						code = sdscatprintf(code, "    None\n");
 						
 						code = sdscatprintf(code, "  new fromString(jsonString:String val)? =>\n");
 						code = sdscatprintf(code, "    let doc1 = JsonDoc\n");
 						code = sdscatprintf(code, "    doc1.parse(jsonString)?\n");
-						code = sdscatprintf(code, "    let arr = doc1.data as JsonArray\n");
-						code = sdscatprintf(code, "    array = Array[%s](arr.data.size())\n", type);
-						code = sdscatprintf(code, "    _read(arr)?\n");
+						code = sdscatprintf(code, "    _read(doc1.data as JsonArray)?\n");
 						
 						code = sdscatprintf(code, "  new fromJson(arr:JsonArray)? =>\n");
-						code = sdscatprintf(code, "    array = Array[%s](arr.data.size())\n", type);
 						code = sdscatprintf(code, "    _read(arr)?\n");
 						
 						code = sdscatprintf(code, "  fun ref _read(arr:JsonArray)? =>\n");
@@ -793,7 +665,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 							idx = translate_json_get_next_sibling(t, idx, count);
 						}
 						
-						code = translate_json_add_empty_constructor(code, js, t, objectIdx, count);
+						code = translate_json_add_empty_constructor(code);
 						code = translate_json_add_read_constructor(code, js, t, objectIdx, count);
 						code = translate_json_add_append_json(code, js, t, objectIdx, count);
 						
@@ -866,9 +738,9 @@ char* translate_json(const char* file_name, const char* source_code)
 	sdsfree(code);
 	
 	
-	//fprintf(stderr, "========================== autogenerated pony code ==========================\n");
-	//fprintf(stderr, "%s", pony_code);
-	//fprintf(stderr, "=============================================================================\n");
+	fprintf(stderr, "========================== autogenerated pony code ==========================\n");
+	fprintf(stderr, "%s", pony_code);
+	fprintf(stderr, "=============================================================================\n");
 	
 	
 	return pony_code;

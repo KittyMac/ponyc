@@ -604,15 +604,16 @@ void gen_send_message(compile_t* c, reach_method_t* m, LLVMValueRef args[],
   LLVMValueRef send;
 
   if(ast_id(m->fun->ast) == TK_NEW) {
-  	send = gencall_runtime(c, "pony_sendv_single", msg_args, 5, "");
 	// actor constructors are allowed to be synchronous if they are partial
-	if(canError) {
-		gencall_runtime(c, "pony_actor_synchronous_run_one", msg_args, 2, "");
-	}
+	if(canError) {	
+	  send = gencall_runtime_can_error(c, "pony_sendv_synchronous_constructor", msg_args, 3, "");
+  	}else{
+      send = gencall_runtime(c, "pony_sendv_single", msg_args, 5, "");
+  	}
   }else{
   	send = gencall_runtime(c, "pony_sendv", msg_args, 5, "");
   }
-    
+  
   LLVMSetMetadataStr(send, "pony.msgsend", md);
 
   ponyint_pool_free_size(params_buf_size, param_types);
@@ -736,8 +737,6 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   AST_GET_CHILDREN(ast, postfix, positional, named, question);
   AST_GET_CHILDREN(postfix, receiver, method);
   ast_t* typeargs = NULL;
-  
-  bool err = (ast_id(question) == TK_QUESTION);
 
   deferred_reification_t* reify = c->frame->reify;
 
@@ -826,8 +825,9 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   LLVMValueRef func = dispatch_function(c, t, m, args[0]);
 
   bool is_message = false;
+  bool is_partial_actor_constructor = ((ast_id(postfix) == TK_NEWBEREF) && (ast_id(question) == TK_QUESTION));
 
-  if((ast_id(postfix) == TK_BEREF) || (ast_id(postfix) == TK_BECHAIN))
+  if((ast_id(postfix) == TK_NEWBEREF) || (ast_id(postfix) == TK_BEREF) || (ast_id(postfix) == TK_BECHAIN))
   {
     switch(t->underlying)
     {
@@ -855,7 +855,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
     // If we're sending a message, trace and send here instead of calling the
     // sender to trace the most specific types possible.
     codegen_debugloc(c, ast);
-    gen_send_message(c, m, args, positional, err);
+    gen_send_message(c, m, args, positional, is_partial_actor_constructor);
     codegen_debugloc(c, NULL);
     switch(ast_id(postfix))
     {
@@ -1320,8 +1320,24 @@ LLVMValueRef gencall_runtime(compile_t* c, const char *name,
   LLVMValueRef func = LLVMGetNamedFunction(c->module, name);
 
   pony_assert(func != NULL);
-
+  
   return LLVMBuildCall(c->builder, func, args, count, ret);
+}
+
+LLVMValueRef gencall_runtime_can_error(compile_t* c, const char *name,
+  LLVMValueRef* args, int count, const char* ret)
+{
+  LLVMValueRef func = LLVMGetNamedFunction(c->module, name);
+
+  pony_assert(func != NULL);
+  
+  LLVMValueRef result;
+  if(c->frame->invoke_target != NULL)
+    result = invoke_fun(c, func, args, count, ret, false);
+  else
+    result = LLVMBuildCall(c->builder, func, args, count, ret);
+
+  return result;
 }
 
 LLVMValueRef gencall_create(compile_t* c, reach_type_t* t)

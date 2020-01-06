@@ -359,15 +359,15 @@ static void init_runtime(compile_t* c)
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex,
     inacc_or_arg_mem_attr);
   
-  
-  // void pony_actor_synchronous_run_one(pony_ctx_t* ctx, pony_actor_t* actor)
+  // void pony_sendv_synchronous_constructor(i8*, __object*, $message*, $message*, i1)
   params[0] = c->void_ptr;
   params[1] = c->object_ptr;
-  type = LLVMFunctionType(c->void_type, params, 2, false);
-  value = LLVMAddFunction(c->module, "pony_actor_synchronous_run_one", type);
+  params[2] = c->msg_ptr;
+  type = LLVMFunctionType(c->void_type, params, 3, false);
+  value = LLVMAddFunction(c->module, "pony_sendv_synchronous_constructor", type);
 
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeReturnIndex, noalias_attr);
 
   // i8* pony_alloc(i8*, intptr)
   params[0] = c->void_ptr;

@@ -231,7 +231,6 @@ void startRuntimeAnalyticForActor() {
         startMilliseconds = ponyint_analysis_timeInMilliseconds();
         
         ponyint_messageq_init(&analysisMessageQueue);
-        fprintf(stderr, "starting analysis thread\n");
         if(!ponyint_thread_create(&analysisThreadID, analysisEventStorageThread, -1, NULL)) {
             analysisThreadRunning = false;
             analysisEnabled = false;

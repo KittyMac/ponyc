@@ -603,11 +603,13 @@ void gen_send_message(compile_t* c, reach_method_t* m, LLVMValueRef args[],
   msg_args[4] = LLVMConstInt(c->i1, 1, false);
   LLVMValueRef send;
 
-  if(ast_id(m->fun->ast) == TK_NEW)
-    send = gencall_runtime(c, "pony_sendv_single", msg_args, 5, "");
-  else
-    send = gencall_runtime(c, "pony_sendv", msg_args, 5, "");
-
+  if(ast_id(m->fun->ast) == TK_NEW) {
+  	send = gencall_runtime(c, "pony_sendv_single", msg_args, 5, "");
+	gencall_runtime(c, "pony_actor_synchronous_run_one", msg_args, 2, "");
+  }else{
+  	send = gencall_runtime(c, "pony_sendv", msg_args, 5, "");
+  }
+    
   LLVMSetMetadataStr(send, "pony.msgsend", md);
 
   ponyint_pool_free_size(params_buf_size, param_types);
@@ -820,8 +822,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   bool is_message = false;
 
-  if((ast_id(postfix) == TK_NEWBEREF) || (ast_id(postfix) == TK_BEREF) ||
-    (ast_id(postfix) == TK_BECHAIN))
+  if((ast_id(postfix) == TK_BEREF) || (ast_id(postfix) == TK_BECHAIN))
   {
     switch(t->underlying)
     {

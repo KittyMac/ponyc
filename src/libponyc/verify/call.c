@@ -8,7 +8,7 @@
 static bool check_partial_function_call(pass_opt_t* opt, ast_t* ast)
 {
   pony_assert((ast_id(ast) == TK_FUNREF) || (ast_id(ast) == TK_FUNCHAIN) ||
-    (ast_id(ast) == TK_NEWREF));
+    (ast_id(ast) == TK_NEWREF) || (ast_id(ast) == TK_NEWBEREF));
   AST_GET_CHILDREN(ast, receiver, method);
 
   // Receiver might be wrapped in another funref/newref
@@ -128,7 +128,7 @@ static bool check_partial_ffi_call(pass_opt_t* opt, ast_t* ast)
 bool verify_function_call(pass_opt_t* opt, ast_t* ast)
 {
   pony_assert((ast_id(ast) == TK_FUNREF) || (ast_id(ast) == TK_FUNCHAIN) ||
-    (ast_id(ast) == TK_NEWREF));
+    (ast_id(ast) == TK_NEWREF) || (ast_id(ast) == TK_NEWBEREF));
 
   ast_inheritflags(ast);
   ast_setmightsend(ast);
@@ -142,8 +142,7 @@ bool verify_function_call(pass_opt_t* opt, ast_t* ast)
 bool verify_behaviour_call(pass_opt_t* opt, ast_t* ast)
 {
   (void)opt;
-  pony_assert((ast_id(ast) == TK_BEREF) || (ast_id(ast) == TK_BECHAIN) ||
-    (ast_id(ast) == TK_NEWBEREF));
+  pony_assert((ast_id(ast) == TK_BEREF) || (ast_id(ast) == TK_BECHAIN));
 
   ast_inheritflags(ast);
   ast_setsend(ast);

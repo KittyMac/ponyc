@@ -802,6 +802,17 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
   }
 }
 
+PONY_API void pony_actor_synchronous_run_one(pony_ctx_t* ctx, pony_actor_t* actor)
+{
+	// this is called by another actor to have this actor synchronously execute its
+	// constructor.  This basically calls ponyint_actor_run() with polling set to
+	// true (so we execute only the first message, the caller is responsible for
+	// ensuring it is the constructor)
+	pony_actor_t * saved = ctx->current;
+	ponyint_actor_run(ctx, actor, true);
+	ctx->current = saved;
+}
+
 PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
   pony_msg_t* first, pony_msg_t* last, bool has_app_msg)
 {

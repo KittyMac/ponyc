@@ -533,10 +533,10 @@ ast_result_t pass_verify(ast_t** astp, pass_opt_t* options)
     case TK_BE:           r = verify_fun(options, ast); break;
     case TK_FUNREF:
     case TK_FUNCHAIN:
+	case TK_NEWBEREF:
     case TK_NEWREF:       r = verify_function_call(options, ast); break;
     case TK_BEREF:
-    case TK_BECHAIN:
-    case TK_NEWBEREF:     r = verify_behaviour_call(options, ast); break;
+    case TK_BECHAIN:      r = verify_behaviour_call(options, ast); break;
     case TK_FFICALL:      r = verify_ffi_call(options, ast); break;
     case TK_TRY:
     case TK_TRY_NO_CHECK: r = verify_try(options, ast); break;

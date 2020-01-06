@@ -88,7 +88,7 @@ static const permission_def_t _method_def[DEF_METHOD_COUNT] =
   { "trait behaviour",        "N N N N X" },
   { "interface behaviour",    "N N N N X" },
   { "type alias behaviour",   NULL },
-  { "actor constructor",      "N N N N Y" },
+  { "actor constructor",      "N N N X Y" },
   { "class constructor",      "X N N X Y" },
   { "struct constructor",     "X N N X Y" },
   { "primitive constructor",  "N N N X Y" },

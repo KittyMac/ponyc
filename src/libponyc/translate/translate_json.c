@@ -10,7 +10,18 @@
 #define MAX_TOKENS 128
 #define MAX_DELAYED_OBJECTS 128
 
+#define OBJREFLEN 8
+
 // converts a JSON Schema file to Pony classes. Used in source.c.
+
+static int jsonprefix(const char *json, jsmntok_t *tok, const char *s) {
+	int n = (int)strlen(s);
+	if (tok->type == JSMN_STRING && n <= tok->end - tok->start &&
+		strncmp(json + tok->start, s, n) == 0) {
+		return 0;
+	}
+	return -1;
+}
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 	if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
@@ -229,6 +240,11 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 				if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
 					code = sdscatprintf(code, ":Array[Bool]");
 				}
+				if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
+					char * objectTypeName = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
+					code = sdscatprintf(code, ":Array[%s]", objectTypeName);
+					translate_json_register_delayed_object(childItemsIdx+1, delayedObjects);
+				}
 				if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
 					
 					size_t childTitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
@@ -318,6 +334,10 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
 						arrayType = "Boolean";
+					}
+					if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
+						arrayType = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
+						isObject = true;
 					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
 						size_t child2TitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
@@ -415,6 +435,9 @@ sds translate_json_add_empty_constructor(sds code, const char *js, jsmntok_t *t,
 					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
 						arrayType = "Boolean";
 					}
+					if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
+						arrayType = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
+					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
 						size_t child2TitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
 						if (child2TitleIdx == 0) {
@@ -479,6 +502,7 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 					}
 					
 					char * arrayType = NULL;
+					bool isObject = false;
 					if (jsoneq(js, &t[childTypeIdx + 1], "string") == 0) {
 						arrayType = "String";
 					}
@@ -491,18 +515,23 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
 						arrayType = "Boolean";
 					}
+					if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
+						arrayType = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
+						isObject = true;
+					}
 					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
 						size_t child2TitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
 						if (child2TitleIdx == 0) {
 							return translate_json_abort(code, "title for object in array not found");
 						}
 						arrayType = strndup(js + t[child2TitleIdx+1].start, t[child2TitleIdx+1].end - t[child2TitleIdx+1].start);
+						isObject = true;
 					}
 					
 					code = sdscatprintf(code, "    let %sArr = try obj.data(\"%s\")? as JsonArray else JsonArray end\n", propertyName, originalPropertyName);
 					code = sdscatprintf(code, "    %s = Array[%s](%sArr.data.size())\n", propertyName, arrayType, propertyName);
 					code = sdscatprintf(code, "    for item in %sArr.data.values() do\n", propertyName);
-					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
+					if (isObject) {
 						code = sdscatprintf(code, "      try %s.push(%s(item as JsonObject)) end\n", propertyName, arrayType);
 					} else {
 						code = sdscatprintf(code, "      try %s.push(item as %s) end\n", propertyName, arrayType);
@@ -570,6 +599,10 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 							if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
 								type = "Bool";
 							}
+							if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
+								type = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);
+								isObject = true;
+							}
 							if (jsoneq(js, &t[typeIdx + 1], "object") == 0) {
 								// embedded object, we need to make a class for this (later)
 								if (titleIdx == 0) {
@@ -596,7 +629,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						code = sdscatprintf(code, "  new create(arr:JsonArray) =>\n");
 						code = sdscatprintf(code, "    array = Array[%s](arr.data.size())\n", type);
 						code = sdscatprintf(code, "    for item in arr.data.values() do\n");
-						if (jsoneq(js, &t[typeIdx + 1], "object") == 0) {
+						if (isObject) {
 							code = sdscatprintf(code, "      try array.push(%s(item as JsonObject)) end\n", type);
 						} else {
 							code = sdscatprintf(code, "      try array.push(item as %s) end\n", type);
@@ -729,11 +762,11 @@ char* translate_json(const char* file_name, const char* source_code)
 	pony_code[code_len] = 0;
 	sdsfree(code);
 	
-	/*
-	fprintf(stderr, "========================== autogenerated pony code ==========================\n");
-	fprintf(stderr, "%s", pony_code);
-	fprintf(stderr, "=============================================================================\n");
-	*/
+	
+	//fprintf(stderr, "========================== autogenerated pony code ==========================\n");
+	//fprintf(stderr, "%s", pony_code);
+	//fprintf(stderr, "=============================================================================\n");
+	
 	
 	return pony_code;
 }

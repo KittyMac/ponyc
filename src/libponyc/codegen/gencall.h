@@ -18,6 +18,9 @@ LLVMValueRef gen_pattern_eq(compile_t* c, ast_t* pattern,
 
 LLVMValueRef gen_ffi(compile_t* c, ast_t* ast);
 
+LLVMValueRef gencall_runtime_can_error(compile_t* c, const char *name,
+  LLVMValueRef* args, int count, const char* ret);
+  
 LLVMValueRef gencall_runtime(compile_t* c, const char *name,
   LLVMValueRef* args, int count, const char* ret);
 

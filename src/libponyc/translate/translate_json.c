@@ -457,6 +457,80 @@ sds translate_json_add_empty_constructor(sds code, const char *js, jsmntok_t *t,
 	return code;
 }
 
+sds translate_json_read_constructor_shared_init(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
+{
+	while(idx < count) {
+		
+		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
+		if (t[idx+1].type == JSMN_OBJECT)
+		{
+			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
+			if (typeIdx == 0) {
+				return translate_json_abort(code, "type for property not found");
+			} else {
+				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
+					code = sdscatprintf(code, "    %s = \"\"\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
+					code = sdscatprintf(code, "    %s = 0\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
+					code = sdscatprintf(code, "    %s = 0.0\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+					code = sdscatprintf(code, "    %s = false\n", propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
+					
+					size_t childItemsIdx = translate_json_get_named_child_index(js, t, t[typeIdx].parent, count, "items");
+					if (childItemsIdx == 0) {
+						return translate_json_abort(code, "items for array not found");
+					}
+					
+					size_t childTypeIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "type");
+					if (childTypeIdx == 0) {
+						return translate_json_abort(code, "type for items in array not found");
+					}
+					
+					char * arrayType = NULL;
+					bool isObject = false;
+					if (jsoneq(js, &t[childTypeIdx + 1], "string") == 0) {
+						arrayType = "String";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
+						arrayType = "I64";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
+						arrayType = "F64";
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
+						arrayType = "Boolean";
+					}
+					if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
+						arrayType = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
+						isObject = true;
+					}
+					if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
+						size_t child2TitleIdx = translate_json_get_named_child_index(js, t, childItemsIdx+1, count, "title");
+						if (child2TitleIdx == 0) {
+							return translate_json_abort(code, "title for object in array not found");
+						}
+						arrayType = strndup(js + t[child2TitleIdx+1].start, t[child2TitleIdx+1].end - t[child2TitleIdx+1].start);
+						isObject = true;
+					}
+					
+					code = sdscatprintf(code, "    %s = Array[%s]()\n", propertyName, arrayType);
+				}
+			}
+		}
+		
+		idx = translate_json_get_next_sibling(t, idx, count);
+	}
+	
+	return code;
+}
+
 sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
 {
 	// property are like:
@@ -465,7 +539,25 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 	//   "description": "The person's first name."
 	// },
 	
-	code = sdscatprintf(code, "  new create(obj:JsonObject) =>\n");
+	
+	
+	code = sdscatprintf(code, "  new fromString(jsonString:String val)? =>\n");
+	code = sdscatprintf(code, "    let doc1 = JsonDoc\n");
+	code = sdscatprintf(code, "    doc1.parse(jsonString)?\n");
+	code = sdscatprintf(code, "    let obj = doc1.data as JsonObject\n");
+	code = translate_json_read_constructor_shared_init(code, js, t, idx, count);
+	code = sdscatprintf(code, "    _read(obj)?\n");
+	
+	code = sdscatprintf(code, "  new fromJson(obj:JsonObject)? =>\n");
+	code = translate_json_read_constructor_shared_init(code, js, t, idx, count);
+	code = sdscatprintf(code, "    _read(obj)?\n");	
+	
+	code = sdscatprintf(code, "  fun ref _read(obj:JsonObject)? =>\n");
+	
+	// this looks odd, but i want future versions of this to throw an error if a required field
+	// is not there. But the compiler won't let us make it partial if there is no error clause 
+	// in the method (even if it is never called)
+	code = sdscatprintf(code, "    if false then error end\n");
 	
 	while(idx < count) {
 		
@@ -532,7 +624,7 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 					code = sdscatprintf(code, "    %s = Array[%s](%sArr.data.size())\n", propertyName, arrayType, propertyName);
 					code = sdscatprintf(code, "    for item in %sArr.data.values() do\n", propertyName);
 					if (isObject) {
-						code = sdscatprintf(code, "      try %s.push(%s(item as JsonObject)) end\n", propertyName, arrayType);
+						code = sdscatprintf(code, "      try %s.push(%s.fromJson(item as JsonObject)?) end\n", propertyName, arrayType);
 					} else {
 						code = sdscatprintf(code, "      try %s.push(item as %s) end\n", propertyName, arrayType);
 					}
@@ -626,13 +718,24 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						
 						code = sdscatprintf(code, "  new empty() =>\n");
 						code = sdscatprintf(code, "    array = Array[%s]\n", type);
-						code = sdscatprintf(code, "  new create(arr:JsonArray) =>\n");
+						
+						code = sdscatprintf(code, "  new fromString(jsonString:String val)? =>\n");
+						code = sdscatprintf(code, "    let doc1 = JsonDoc\n");
+						code = sdscatprintf(code, "    doc1.parse(jsonString)?\n");
+						code = sdscatprintf(code, "    let arr = doc1.data as JsonArray\n");
 						code = sdscatprintf(code, "    array = Array[%s](arr.data.size())\n", type);
+						code = sdscatprintf(code, "    _read(arr)?\n");
+						
+						code = sdscatprintf(code, "  new fromJson(arr:JsonArray)? =>\n");
+						code = sdscatprintf(code, "    array = Array[%s](arr.data.size())\n", type);
+						code = sdscatprintf(code, "    _read(arr)?\n");
+						
+						code = sdscatprintf(code, "  fun ref _read(arr:JsonArray)? =>\n");
 						code = sdscatprintf(code, "    for item in arr.data.values() do\n");
 						if (isObject) {
-							code = sdscatprintf(code, "      try array.push(%s(item as JsonObject)) end\n", type);
+							code = sdscatprintf(code, "      array.push(%s.fromJson(item as JsonObject)?)\n", type);
 						} else {
-							code = sdscatprintf(code, "      try array.push(item as %s) end\n", type);
+							code = sdscatprintf(code, "      array.push(item as %s)\n", type);
 						}
 						code = sdscatprintf(code, "    end\n");
 						

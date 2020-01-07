@@ -281,7 +281,7 @@ class iso _TestMap is UnitTest
     let rand = Rand(seed)
 
     var map = Map[USize, None]
-    for n in mut.Range(0, 100) do
+    for _ in mut.Range(0, 100) do
       try
         map(USize.max_value())?
       else
@@ -300,7 +300,6 @@ class iso _TestMap is UnitTest
     let ops = gen_ops(300, rand)?
     for op in ops.values() do
       h.log(op.str())
-      let prev = a
       a = op(a, b)?
 
       var n: USize = 0
@@ -401,7 +400,7 @@ class iso _TestMapVsMap is UnitTest
     end
 
     var c: USize = 0
-    for (k, v) in p_map.pairs() do
+    for (k, _) in p_map.pairs() do
       c = c + 1
       m_map.remove(k)?
     end

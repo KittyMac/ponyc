@@ -747,7 +747,7 @@ primitive I128 is SignedInteger[I128, U128]
     ifdef native128 then
       this / y
     else
-      (let q, let r) = divrem(y)
+      (let q, let _) = divrem(y)
       q
     end
 
@@ -755,7 +755,7 @@ primitive I128 is SignedInteger[I128, U128]
     ifdef native128 then
       this % y
     else
-      (let q, let r) = divrem(y)
+      (let _, let r) = divrem(y)
       r
     end
 

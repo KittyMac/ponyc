@@ -674,7 +674,7 @@ primitive U128 is UnsignedInteger[U128]
     ifdef native128 then
       this / y
     else
-      (let q, let r) = divrem(y)
+      (let q, let _) = divrem(y)
       q
     end
 
@@ -682,7 +682,7 @@ primitive U128 is UnsignedInteger[U128]
     ifdef native128 then
       this % y
     else
-      (let q, let r) = divrem(y)
+      (let _, let r) = divrem(y)
       r
     end
 

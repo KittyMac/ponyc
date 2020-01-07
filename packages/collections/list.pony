@@ -308,7 +308,7 @@ class List[A] is Seq[A]
     offset.
     """
     try
-      for i in Range(0, offset) do
+      for _ in Range(0, offset) do
         if iter.has_next() then
           iter.next()?
         else
@@ -316,7 +316,7 @@ class List[A] is Seq[A]
         end
       end
 
-      for i in Range(0, len) do
+      for _ in Range(0, len) do
         if iter.has_next() then
           push(iter.next()?)
         else
@@ -536,7 +536,7 @@ class List[A] is Seq[A]
       try
         var node = index(n)?
 
-        for i in Range(n, size()) do
+        for _ in Range(n, size()) do
           l.push(node()?)
           node = node.next() as this->ListNode[A]
         end
@@ -554,7 +554,7 @@ class List[A] is Seq[A]
       try
         var node = head()?
 
-        for i in Range(0, n.min(size())) do
+        for _ in Range(0, n.min(size())) do
           l.push(node()?)
           node = node.next() as this->ListNode[A]
         end
@@ -573,7 +573,7 @@ class List[A] is Seq[A]
       try
         var node = head()?
 
-        for i in Range(0, size()) do
+        for _ in Range(0, size()) do
           let item = node()?
           if f(item) then l.push(item) else return l end
           node = node.next() as this->ListNode[A]

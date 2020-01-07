@@ -308,7 +308,7 @@ primitive _OptionParser
   =>
     // Grab the token-arg if provided, else consume an arg if one is required.
     let arg = match targ
-      | (let fn: None) if spec._requires_arg() =>
+      | (let _:None) if spec._requires_arg() =>
         try args.shift()? else None end
       else
         targ

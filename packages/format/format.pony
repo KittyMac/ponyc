@@ -69,21 +69,21 @@ primitive Format
       match align
       | AlignLeft =>
         s.append(str)
-        for i in Range(s.size(), s.space()) do
+        for _ in Range(s.size(), s.space()) do
           s.push_utf32(fill)
         end
       | AlignRight =>
-        for i in Range(0, len - copy_len) do
+        for _ in Range(0, len - copy_len) do
           s.push_utf32(fill)
         end
         s.append(str)
       | AlignCenter =>
         let half = (len - copy_len) / 2
-        for i in Range(0, half) do
+        for _ in Range(0, half) do
           s.push_utf32(fill)
         end
         s.append(str)
-        for i in Range(s.size(), s.space()) do
+        for _ in Range(s.size(), s.space()) do
           s.push_utf32(fill)
         end
       end

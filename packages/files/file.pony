@@ -359,7 +359,7 @@ class File
           _unsynced_data = true
           _unsynced_metadata = true
         end
-        for d in Range[USize](0, num_written, 1) do
+        for _ in Range[USize](0, num_written, 1) do
           _pending_writev.shift()?
         end
       end

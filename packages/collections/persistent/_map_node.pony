@@ -206,7 +206,7 @@ class val _MapSubNodes[K: Any #share, V: Any #share, H: mut.HashFunction[K] val]
       ns.nodes.delete(c_idx.usize_unsafe())?
     else
       match nodes(c_idx.usize_unsafe())?
-      | let entry: _MapEntry[K, V, H] val => error
+      | let _: _MapEntry[K, V, H] val => error
       | let sns: _MapSubNodes[K, V, H] val =>
         let sn = sns.remove(depth + 1, hash, k)?
         if (sn.nodes.size() == 1) and (sn.data_map != 0) then

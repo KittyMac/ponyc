@@ -18,7 +18,7 @@ class _TimingWheel
     _adjust = if index > 0 then 1 else 0 end
     _list = Array[List[Timer]](_max())
 
-    for i in Range(0, _max()) do
+    for _ in Range(0, _max()) do
       _list.push(List[Timer])
     end
 
@@ -30,7 +30,7 @@ class _TimingWheel
     let slot = ((timer._next() >> _shift) - _adjust) and _mask()
 
     try
-      let list = _list(slot.usize())?
+      _list(slot.usize())?
       _list(slot.usize())?.append_node(timer._get_node())
       _pending = _pending or (1 << slot)
     end

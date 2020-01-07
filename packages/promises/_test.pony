@@ -116,7 +116,7 @@ class iso _TestPromisesJoin is UnitTest
     h.long_test(2_000_000_000)
     h.expect_action("abc")
     (let a, let b, let c) = (Promise[String], Promise[String], Promise[String])
-    let abc = Promises[String].join([a; b; c].values())
+    let _ = Promises[String].join([a; b; c].values())
       .next[String]({(l) => String.join(l.values()) })
       .next[None]({(s) =>
         if
@@ -138,7 +138,7 @@ class iso _TestPromisesJoinThenReject is UnitTest
     h.long_test(2_000_000_000)
     h.expect_action("rejected")
     (let a, let b, let c) = (Promise[String], Promise[String], Promise[String])
-    let abc = Promises[String].join([a; b; c].values())
+    let _ = Promises[String].join([a; b; c].values())
       .next[String]({(l) => String.join(l.values()) },
         {() => h.complete_action("rejected"); "string"})
 

@@ -31,7 +31,7 @@ primitive _JsonPrint
 
     match d
     | let x: Bool => buf.append(x.string())
-    | let x: None => buf.append("null")
+    | let _: None => buf.append("null")
     | let x: String =>
       buf = _escaped_string(consume buf, x)
 

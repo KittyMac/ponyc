@@ -60,7 +60,7 @@ class iso _TestMinimalWithHelp is UnitTest
 
     let args: Array[String] = ["--help"]
     // test for successful parsing
-    let cmdErr = CommandParser(cs).parse(args) as Command
+    CommandParser(cs).parse(args) as Command
 
 class iso _TestBadName is UnitTest
   fun name(): String => "ponycli/badname"
@@ -496,7 +496,7 @@ class iso _TestMustBeLeaf is UnitTest
     h.log("Parsed: " + cmdErr.string())
 
     match cmdErr
-    | let se: SyntaxError => None
+    | let _: SyntaxError => None
     else
       h.fail("expected syntax error for non-leaf command: " + cmdErr.string())
     end

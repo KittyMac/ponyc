@@ -53,7 +53,7 @@ class val FilePath
           error
         end
         tmp_path
-      | let b: AmbientAuth =>
+      | let _: AmbientAuth =>
         Path.abs(path')
       end
 

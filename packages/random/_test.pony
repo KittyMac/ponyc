@@ -120,7 +120,7 @@ class iso _TestMT is UnitTest
     h.assert_eq[U64](mt.next(), 16395391805201036549)
     h.assert_eq[U64](mt.next(), 2550532686790805254)
 
-    for i in Range(0, 99_900) do
+    for _ in Range(0, 99_900) do
       mt.next()
     end
 

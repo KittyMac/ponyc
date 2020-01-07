@@ -49,7 +49,7 @@ class HashMap[K, V, H: HashFunction[K] val]
     """
     (let i, let found) = _search(key)
 
-    if found then
+    if found == true then
       _array(i)? as (_, this->V)
     else
       error
@@ -61,7 +61,7 @@ class HashMap[K, V, H: HashFunction[K] val]
     returns None. If there was no previous value, this may trigger a resize.
     """
     try
-      (let i, let found) = _search(key)
+      (let i, _) = _search(key)
 
       match _array(i)? = (consume key, consume value)
       | (_, let v: V) =>
@@ -107,14 +107,11 @@ class HashMap[K, V, H: HashFunction[K] val]
         (let pkey, let pvalue) = (_array(i)? = _MapEmpty) as (K^, V^)
 
         let new_value = f(consume pvalue, consume value)
-        let new_value' = new_value
 
         _array(i)? = (consume pkey, consume new_value)
 
         return _array(i)? as (_, V)
       else
-        let key' = key
-
         _array(i)? = (consume key, consume value)
         _size = _size + 1
 
@@ -136,7 +133,6 @@ class HashMap[K, V, H: HashFunction[K] val]
     let value' = value
     try
       (let i, let found) = _search(key)
-      let key' = key
       _array(i)? = (consume key, consume value)
 
       if not found then
@@ -171,7 +167,6 @@ class HashMap[K, V, H: HashFunction[K] val]
 
     try
       (let i, let found) = _search(key)
-      let key' = key
 
       if not found then
         _array(i)? = (consume key, consume value)

@@ -61,7 +61,7 @@ primitive _FileHelper
         // Since we embed paths, we use the posix separator, even on Windows.
         let dir_head = Path.split(f, "/")
         let fp = FilePath(top.path, dir_head._1)?
-        let r = fp.mkdir()
+        fp.mkdir()
         if dir_head._2 != "" then
           Directory(fp)?.create_file(dir_head._2)?.dispose()
         end
@@ -632,7 +632,7 @@ class iso _TestFileLongLine is UnitTest
       let filepath = FilePath(h.env.root as AmbientAuth, path)?
       with file = File(filepath) do
         var longline = "foobar"
-        for d in Range(0, 10) do
+        for _ in Range(0, 10) do
           longline = longline + longline
         end
         file.print(longline)
@@ -1001,7 +1001,7 @@ class _TestFileLinesMultiLine is UnitTest
         with file = OpenFile(tmp_file) as File do
           let fl = FileLines(file)
           var lines_returned: USize = 0
-          for read_line in fl do
+          for _ in fl do
             lines_returned = lines_returned + 1
           end
           let expected_line_count = lines_and_count._2

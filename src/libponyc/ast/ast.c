@@ -1069,6 +1069,21 @@ size_t ast_index(ast_t* ast)
   return idx;
 }
 
+bool ast_mark_used(ast_t* ast, const char* name)
+{
+  do
+  {
+    if(ast->symtab != NULL)
+    {
+      if(symtab_mark_used(ast->symtab, name)){
+      	return true;
+      }
+    }
+    ast = ast->parent;
+  } while((ast != NULL) && (token_get_id(ast->t) != TK_PROGRAM));
+  return false;
+}
+
 ast_t* ast_get(ast_t* ast, const char* name, sym_status_t* status)
 {
   // Searches all parent scopes, but not the program scope, because the name

@@ -581,7 +581,7 @@ static ast_result_t sugar_with(pass_opt_t* opt, ast_t** astp)
     pony_assert(ast_id(p) == TK_SEQ);
     AST_GET_CHILDREN(p, idseq, init);
     const char* init_name = package_hygienic_id(&opt->check);
-
+	
     BUILD(assign, idseq,
       NODE(TK_ASSIGN,
         NODE(TK_LET, ID(init_name) NONE)
@@ -594,11 +594,15 @@ static ast_result_t sugar_with(pass_opt_t* opt, ast_t** astp)
 
     ast_add(replace, assign);
     ast_add(try_body, local);
-    ast_add(try_else, local);
-    build_with_dispose(try_then, idseq);
-    ast_add(try_then, local);
+	if(ast_id(try_else) == TK_NONE) {
+		ast_add(try_else, local);
+	}
+	if(ast_id(try_then) != TK_NONE) {
+	    build_with_dispose(try_then, idseq);
+	    ast_add(try_then, local);
+	}
   }
-
+  
   ast_replace(astp, replace);
   return AST_OK;
 }

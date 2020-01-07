@@ -423,7 +423,7 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
   if(is_name_dontcare(name))
   {
     ast_setid(ast, TK_DONTCAREREF);
-
+    ast_mark_used(ast, name);
     return true;
   }
 
@@ -447,7 +447,7 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
 
   // Save the found definition in the AST, so we don't need to look it up again.
   ast_setdata(ast, (void*)def);
-
+  
   switch(ast_id(def))
   {
     case TK_PACKAGE:
@@ -461,6 +461,7 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
       }
 
       ast_setid(ast, TK_PACKAGEREF);
+	  ast_mark_used(ast, name);
       return true;
     }
 
@@ -477,7 +478,8 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
 
       ast_add(ast, ast_from(ast, TK_NONE));    // 1st child: package reference
       ast_append(ast, ast_from(ast, TK_NONE)); // 3rd child: type args
-
+	  
+	  ast_mark_used(ast, name);
       return true;
     }
 
@@ -516,6 +518,8 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
         return false;
 
       ast_setid(ast, TK_PARAMREF);
+	  
+	  ast_mark_used(ast, name);
       return true;
     }
 
@@ -533,7 +537,8 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
         ast_setid(ast, TK_VARREF);
       else
         ast_setid(ast, TK_LETREF);
-
+	  
+	  ast_mark_used(ast, name);
       return true;
     }
 
@@ -619,7 +624,8 @@ static bool refer_this_dot(pass_opt_t* opt, ast_t* ast)
 
     default: {}
   }
-
+  
+  ast_mark_used(ast, name);
   return true;
 }
 
@@ -631,14 +637,15 @@ static bool refer_multi_dot(pass_opt_t* opt, ast_t* ast)
   // get fully qualified string identifier without `this`
   const char* name = generate_multi_dot_name(ast, NULL);
 
-  // use this string to check status using `valid_reference` function.
+  // use this string to check status ast_mark_used(ast)reference` function.
   sym_status_t status;
   ast_get(ast, name, &status);
 
 
   if(!valid_reference(opt, ast, status))
     return false;
-
+  
+  ast_mark_used(ast, name);
   return true;
 }
 
@@ -1262,8 +1269,10 @@ static bool refer_local(pass_opt_t* opt, ast_t* ast)
 
   AST_GET_CHILDREN(ast, id, type);
   pony_assert(type != NULL);
+  
+  const char * name = ast_name(id);
 
-  bool is_dontcare = is_name_dontcare(ast_name(id));
+  bool is_dontcare = is_name_dontcare(name);
 
   if(ast_id(type) == TK_NONE)
   {
@@ -1289,6 +1298,7 @@ static bool refer_local(pass_opt_t* opt, ast_t* ast)
   if(is_dontcare)
     ast_setid(ast, TK_DONTCARE);
 
+  ast_mark_used(ast, name);
   return true;
 }
 

@@ -649,7 +649,7 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
   // Can't use ast here, it might have changed
   symtab_t* symtab = ast_get_symtab(*astp);
 
-  if(symtab != NULL && !symtab_check_all_defined(symtab, options->check.errors))
+  if(symtab != NULL && !symtab_check_all_defined(symtab, options->check.errors, options->allow_unused_vars))
     return AST_ERROR;
 
   return AST_OK;

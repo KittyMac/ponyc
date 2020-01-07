@@ -89,7 +89,7 @@ bool symtab_add(symtab_t* symtab, const char* name, ast_t* def,
 
   if(no_case != name)
   {
-    symbol_t s1 = {no_case, def, SYM_NOCASE, 0};
+    symbol_t s1 = {no_case, def, SYM_NOCASE, 0, 0};
     size_t index = HASHMAP_UNKNOWN;
     symbol_t* s2 = symtab_get(symtab, &s1, &index);
 
@@ -101,7 +101,7 @@ bool symtab_add(symtab_t* symtab, const char* name, ast_t* def,
     symtab_putindex(symtab, sym_dup(&s1), index);
   }
 
-  symbol_t s1 = {name, def, status, 0};
+  symbol_t s1 = {name, def, status, 0, 0};
   size_t index = HASHMAP_UNKNOWN;
   symbol_t* s2 = symtab_get(symtab, &s1, &index);
 
@@ -114,9 +114,26 @@ bool symtab_add(symtab_t* symtab, const char* name, ast_t* def,
   return true;
 }
 
+bool symtab_mark_used(symtab_t* symtab, const char* name)
+{
+  symbol_t s1 = {name, NULL, SYM_NONE, 0, 0};
+  size_t index = HASHMAP_UNKNOWN;
+  symbol_t* s2 = symtab_get(symtab, &s1, &index);
+
+  if(s2 != NULL)
+  {
+	if(s2->status == SYM_DEFINED) {
+    	s2->used_count = 1;
+	}
+    return (s2->used_count > 0);
+  }
+    
+  return false;
+}
+
 ast_t* symtab_find(symtab_t* symtab, const char* name, sym_status_t* status)
 {
-  symbol_t s1 = {name, NULL, SYM_NONE, 0};
+  symbol_t s1 = {name, NULL, SYM_NONE, 0, 0};
   size_t index = HASHMAP_UNKNOWN;
   symbol_t* s2 = symtab_get(symtab, &s1, &index);
 
@@ -142,7 +159,7 @@ ast_t* symtab_find_case(symtab_t* symtab, const char* name,
 {
   // Same as symtab_get, but is partially case insensitive. That is, type names
   // are compared as uppercase and other symbols are compared as lowercase.
-  symbol_t s1 = {name, NULL, SYM_NONE, 0};
+  symbol_t s1 = {name, NULL, SYM_NONE, 0, 0};
   size_t index = HASHMAP_UNKNOWN;
   symbol_t* s2 = symtab_get(symtab, &s1, &index);
 
@@ -167,7 +184,7 @@ ast_t* symtab_find_case(symtab_t* symtab, const char* name,
 
 void symtab_set_status(symtab_t* symtab, const char* name, sym_status_t status)
 {
-  symbol_t s1 = {name, NULL, status, 0};
+  symbol_t s1 = {name, NULL, status, 0, 0};
   size_t index = HASHMAP_UNKNOWN;
   symbol_t* s2 = symtab_get(symtab, &s1, &index);
 
@@ -294,21 +311,40 @@ bool symtab_merge_public(symtab_t* dst, symtab_t* src)
   return true;
 }
 
-bool symtab_check_all_defined(symtab_t* symtab, errors_t* errors)
+bool symtab_check_all_defined(symtab_t* symtab, errors_t* errors, bool allowUnusedVars)
 {
   bool r = true;
   size_t i = HASHMAP_BEGIN;
   symbol_t* sym;
-
+  
   while((sym = symtab_next(symtab, &i)) != NULL)
   {
     // Ignore entries with a NULL def field, that means it was not declared in
     // this scope
-    if(sym->def != NULL && sym->status == SYM_UNDEFINED)
+    if(sym->def != NULL)
     {
-      ast_error(errors, sym->def,
-        "Local variable %s is not assigned a value in all code paths", sym->name);
-      r = false;
+		if (sym->status == SYM_UNDEFINED) {
+	        ast_error(errors, sym->def,
+	          "Local variable %s is not assigned a value in all code paths", sym->name);
+	        r = false;
+		}
+      	if (allowUnusedVars == false && sym->status == SYM_DEFINED && sym->used_count == 0) {
+			token_id token = ast_id(sym->def);
+			
+			// Note: future things we could add to the "unused" listing.  Such as
+			// behaviours and functions which no one calls.
+			if (	token != TK_FUN && 
+					token != TK_PARAM && 
+					token != TK_NEW && 
+					token != TK_FVAR && 
+					token != TK_FLET && 
+					token != TK_BE && 
+					token != TK_TYPEPARAM) {
+		        ast_error(errors, sym->def,
+		          "Local variable %s is unused in all code paths (token: %d)", sym->name, token);
+		        r = false;
+			}
+      	}
     }
   }
 

@@ -455,7 +455,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 #endif
 
   // If we have been scheduled, the head will not be marked as empty.
-  //pony_msg_t* head = atomic_load_explicit(&actor->q.head, memory_order_relaxed);
+  pony_msg_t* head = atomic_load_explicit(&actor->q.head, memory_order_relaxed);
 
   while((msg = ponyint_actor_messageq_pop(&actor->q
 #ifdef USE_DYNAMIC_TRACE
@@ -493,8 +493,8 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 
     // Stop handling a batch if we reach the head we found when we were
     // scheduled.
-    //if(msg == head)
-    //  break;
+    if(msg == head)
+      break;
   }
 
   // We didn't hit our app message batch limit. We now believe our queue to be

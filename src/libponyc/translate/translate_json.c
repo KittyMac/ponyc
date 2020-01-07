@@ -214,32 +214,37 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 		} else {
 			if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
 				if (defaultValue != NULL) {
-					code = sdscatprintf(code, ":String val = \"%s\"", defaultValue);
+					code = sdscatprintf(code, ":String = \"%s\"", defaultValue);
 				} else {
-					code = sdscatprintf(code, ":String val = \"\"");
+					code = sdscatprintf(code, ":String = \"\"");
 				}
 			}
 			if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
 				if (defaultValue != NULL) {
-					code = sdscatprintf(code, ":I64 val = %s", defaultValue);
+					code = sdscatprintf(code, ":I64 = %s", defaultValue);
 				} else {
-					code = sdscatprintf(code, ":I64 val = 0");
+					code = sdscatprintf(code, ":I64 = 0");
 				}
 			}
 			if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
 				if (defaultValue != NULL) {
-					code = sdscatprintf(code, ":F64 val = %s", defaultValue);
+					code = sdscatprintf(code, ":F64 = %s", defaultValue);
 				} else {
-					code = sdscatprintf(code, ":F64 val = 0.0");
+					code = sdscatprintf(code, ":F64 = 0.0");
 				}
 			}
 			if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
 				if (defaultValue != NULL) {
-					code = sdscatprintf(code, ":Bool val = %s", defaultValue);
+					code = sdscatprintf(code, ":Bool = %s", defaultValue);
 				} else {
-					code = sdscatprintf(code, ":Bool val = false");
+					code = sdscatprintf(code, ":Bool = false");
 				}
 			}
+			if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
+				char * objectTypeName = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);
+				code = sdscatprintf(code, ":%s = %s.empty()", objectTypeName, objectTypeName);
+			}
+			
 			if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
 				size_t childItemsIdx = translate_json_get_named_child_index(js, t, t[typeIdx].parent, count, "items");
 				if (childItemsIdx == 0) {
@@ -266,7 +271,6 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 				if (jsonprefix(js, &t[childTypeIdx + 1], "#object") == 0) {
 					char * objectTypeName = strndup(js + t[childTypeIdx + 1].start + OBJREFLEN, (t[childTypeIdx + 1].end - t[childTypeIdx + 1].start) - OBJREFLEN);
 					code = sdscatprintf(code, ":Array[%s] = Array[%s]", objectTypeName, objectTypeName);
-					translate_json_register_delayed_object(childItemsIdx+1, delayedObjects);
 				}
 				if (jsoneq(js, &t[childTypeIdx + 1], "object") == 0) {
 					
@@ -331,6 +335,11 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
 					code = sdscatprintf(code, "    json.push(':')\n");
 					code = sdscatprintf(code, "    json.append(%s.string())\n", propertyName);
+				}
+				if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
+					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
+					code = sdscatprintf(code, "    json.push(':')\n");
+					code = sdscatprintf(code, "    json = %s.appendJson(consume json)\n", propertyName);
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
 					
@@ -420,15 +429,14 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 	
 	
 	code = sdscatprintf(code, "  new fromString(jsonString:String val)? =>\n");
-	code = sdscatprintf(code, "    let doc1 = JsonDoc\n");
-	code = sdscatprintf(code, "    doc1.parse(jsonString)?\n");
-	code = sdscatprintf(code, "    let obj = doc1.data as JsonObject\n");
+	code = sdscatprintf(code, "    let doc: JsonDoc val = recover val JsonDoc.>parse(jsonString)? end\n");
+	code = sdscatprintf(code, "    let obj = doc.data as JsonObject val\n");
 	code = sdscatprintf(code, "    _read(obj)?\n");
 	
-	code = sdscatprintf(code, "  new fromJson(obj:JsonObject)? =>\n");
+	code = sdscatprintf(code, "  new fromJson(obj:JsonObject val)? =>\n");
 	code = sdscatprintf(code, "    _read(obj)?\n");	
 	
-	code = sdscatprintf(code, "  fun ref _read(obj:JsonObject)? =>\n");
+	code = sdscatprintf(code, "  fun ref _read(obj:JsonObject val)? =>\n");
 	
 	// this looks odd, but i want future versions of this to throw an error if a required field
 	// is not there. But the compiler won't let us make it partial if there is no error clause 
@@ -456,6 +464,11 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
 					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else false end\n", propertyName, originalPropertyName);
+				}
+				if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
+					char * objectType = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);
+					code = sdscatprintf(code, "    let %sJsonObject = obj.data(\"%s\")? as JsonObject val\n", propertyName, originalPropertyName);
+					code = sdscatprintf(code, "    %s = %s.fromJson(%sJsonObject)?\n", propertyName, objectType, propertyName);
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
 					
@@ -496,13 +509,15 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 						isObject = true;
 					}
 					
-					code = sdscatprintf(code, "    let %sArr = try obj.data(\"%s\")? as JsonArray else JsonArray end\n", propertyName, originalPropertyName);
-					code = sdscatprintf(code, "    for item in %sArr.data.values() do\n", propertyName);
+					code = sdscatprintf(code, "    try\n");
+					code = sdscatprintf(code, "      let %sArr = obj.data(\"%s\")? as JsonArray val\n", propertyName, originalPropertyName);
+					code = sdscatprintf(code, "      for item in %sArr.data.values() do\n", propertyName);
 					if (isObject) {
-						code = sdscatprintf(code, "      try %s.push(%s.fromJson(item as JsonObject)?) end\n", propertyName, arrayType);
+						code = sdscatprintf(code, "        try %s.push(%s.fromJson(item as JsonObject val)?) end\n", propertyName, arrayType);
 					} else {
-						code = sdscatprintf(code, "      try %s.push(item as %s) end\n", propertyName, arrayType);
+						code = sdscatprintf(code, "        try %s.push(item as %s) end\n", propertyName, arrayType);
 					}
+					code = sdscatprintf(code, "      end\n");
 					code = sdscatprintf(code, "    end\n");
 				}
 			}
@@ -595,17 +610,17 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						code = sdscatprintf(code, "    None\n");
 						
 						code = sdscatprintf(code, "  new fromString(jsonString:String val)? =>\n");
-						code = sdscatprintf(code, "    let doc1 = JsonDoc\n");
-						code = sdscatprintf(code, "    doc1.parse(jsonString)?\n");
-						code = sdscatprintf(code, "    _read(doc1.data as JsonArray)?\n");
+						code = sdscatprintf(code, "    let doc: JsonDoc val = recover val JsonDoc.>parse(jsonString)? end\n");
+						code = sdscatprintf(code, "    let obj = doc.data as JsonArray val\n");
+						code = sdscatprintf(code, "    _read(obj)?\n");
 						
-						code = sdscatprintf(code, "  new fromJson(arr:JsonArray)? =>\n");
+						code = sdscatprintf(code, "  new fromJson(arr:JsonArray val)? =>\n");
 						code = sdscatprintf(code, "    _read(arr)?\n");
 						
-						code = sdscatprintf(code, "  fun ref _read(arr:JsonArray)? =>\n");
+						code = sdscatprintf(code, "  fun ref _read(arr:JsonArray val)? =>\n");
 						code = sdscatprintf(code, "    for item in arr.data.values() do\n");
 						if (isObject) {
-							code = sdscatprintf(code, "      array.push(%s.fromJson(item as JsonObject)?)\n", type);
+							code = sdscatprintf(code, "      array.push(%s.fromJson(item as JsonObject val)?)\n", type);
 						} else {
 							code = sdscatprintf(code, "      array.push(item as %s)\n", type);
 						}
@@ -738,9 +753,9 @@ char* translate_json(const char* file_name, const char* source_code)
 	sdsfree(code);
 	
 	
-	//fprintf(stderr, "========================== autogenerated pony code ==========================\n");
-	//fprintf(stderr, "%s", pony_code);
-	//fprintf(stderr, "=============================================================================\n");
+	fprintf(stderr, "========================== autogenerated pony code ==========================\n");
+	fprintf(stderr, "%s", pony_code);
+	fprintf(stderr, "=============================================================================\n");
 	
 	
 	return pony_code;

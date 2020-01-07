@@ -341,7 +341,8 @@ bool symtab_check_all_defined(symtab_t* symtab, errors_t* errors, bool allowUnus
 					token != TK_BE && 
 					token != TK_TYPEPARAM) {
 		        ast_error(errors, sym->def,
-		          "Local variable %s is unused in all code paths (token: %d)", sym->name, token);
+		          //"Local variable %s is unused in all code paths (token: %d)", sym->name, token);
+				"Local variable %s is unused in all code paths", sym->name);
 		        r = false;
 			}
       	}

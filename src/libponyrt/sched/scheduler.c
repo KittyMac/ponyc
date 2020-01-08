@@ -887,15 +887,14 @@ static void run(scheduler_t* sched)
 
   while(true)
   {
-    static int not_all_the_time = 0;
-	not_all_the_time++;
-    if((not_all_the_time % 10 == 0)) {
-      ponyint_update_memory_usage();
-    }
-	
     // if we're scheduler 0
     if(sched->index == 0)
     {
+      static int not_all_the_time = 0;
+	  not_all_the_time++;
+      if((not_all_the_time % 100 == 0)) {
+		  ponyint_update_memory_usage();
+      }
       // if cycle detection is enabled
       if(!ponyint_actor_getnoblock())
       {

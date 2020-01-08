@@ -32,9 +32,6 @@ pony_static_assert((offsetof(pony_actor_t, gc) + sizeof(gc_t)) ==
 
 static bool actor_noblock = false;
 
-// local copy of this allows us to avoid extra function calls for analysis routines
-static bool analysisEnabled = false;
-
 // The flags of a given actor cannot be mutated from more than one actor at
 // once, so these operations need not be atomic RMW.
 
@@ -385,31 +382,28 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 
   pony_msg_t* msg;
   int32_t app = 0;
-  
-  analysisEnabled = ponyint_analysis_getanalysis();
-  
-  if(actor == NULL) {
-  	return false;
-  }
-  
-  if(actor->type != NULL && actor->type->tag_fn != NULL){
-    actor->tag = (int32_t)actor->type->tag_fn(actor);
-  }
-  if(actor->type != NULL && actor->type->priority_fn != NULL){
-    actor->priority = (int32_t)actor->type->priority_fn(actor);
-  }
-  if(actor->type != NULL && actor->type->batch_fn != NULL){
-    actor->batch = (int32_t)actor->type->batch_fn(actor);
-	if (actor->batch <= 0) {
-		actor->batch = 1;
-	}
+  bool local_analysisEnabled = analysisEnabled;
+    
+  if (actor->type != NULL) {
+	  if(actor->type->tag_fn != NULL){
+	    actor->tag = (int32_t)actor->type->tag_fn(actor);
+	  }
+	  if(actor->type->priority_fn != NULL){
+	    actor->priority = (int32_t)actor->type->priority_fn(actor);
+	  }
+	  if(actor->type->batch_fn != NULL){
+	    actor->batch = (int32_t)actor->type->batch_fn(actor);
+		if (actor->batch <= 0) {
+			actor->batch = 1;
+		}
+	  }
   }
   
   // we reset the yield flag here because the scheduler uses it to ignore priority
   actor->yield = false;
 
 #ifdef RUNTIME_ANALYSIS
-  if (analysisEnabled) {
+  if (local_analysisEnabled) {
   	saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_START);
   }
 #endif
@@ -431,7 +425,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // maybe mute actor
       if(maybe_mute(actor)) {
 #ifdef RUNTIME_ANALYSIS
-  if (analysisEnabled) {
+  if (local_analysisEnabled) {
     saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
   }
 #endif
@@ -443,7 +437,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // or if we're polling where we want to stop after one app message
       if(app >= actor->batch || polling){
 #ifdef RUNTIME_ANALYSIS
-  if (analysisEnabled) {
+  if (local_analysisEnabled) {
     saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
   }
 #endif
@@ -471,7 +465,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // maybe mute actor; returns true if mute occurs
       if(maybe_mute(actor)){
 #ifdef RUNTIME_ANALYSIS
-  if (analysisEnabled) {
+  if (local_analysisEnabled) {
     saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
   }
 #endif
@@ -482,7 +476,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // or if we're polling where we want to stop after one app message
       if(actor->yield || app >= actor->batch || polling) {
 #ifdef RUNTIME_ANALYSIS
-  if (analysisEnabled) {
+  if (local_analysisEnabled) {
     saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
   }
 #endif
@@ -519,7 +513,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     // When unscheduling, don't mark the queue as empty, since we don't want
     // to get rescheduled if we receive a message.
 #ifdef RUNTIME_ANALYSIS
-  if (analysisEnabled) {
+  if (local_analysisEnabled) {
     saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
   }
 #endif
@@ -549,20 +543,18 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 #endif
 
   bool empty = ponyint_messageq_markempty(&actor->q);
-  if (empty && actor_noblock && (actor->gc.rc == 0) && (actor->q.num_messages <= 0))
+  if (empty && actor_noblock && (actor->gc.rc == 0) && (has_flag(actor, FLAG_PENDINGDESTROY) == false))
   {
-	  if (has_flag(actor, FLAG_PENDINGDESTROY) == false) {
-	      // when 'actor_noblock` is true, the cycle detector isn't running.
-	      // this means actors won't be garbage collected unless we take special
-	      // action. Here, we know that:
-	      // - the actor has no messages in its queue
-	      // - there's no references to this actor
-	      // therefore if `noblock` is on, we should garbage collect the actor.
-	      ponyint_actor_setpendingdestroy(actor);
-	      ponyint_actor_final(ctx, actor);
-	      ponyint_actor_destroy(actor);
-		  return false;
-	  }
+      // when 'actor_noblock` is true, the cycle detector isn't running.
+      // this means actors won't be garbage collected unless we take special
+      // action. Here, we know that:
+      // - the actor has no messages in its queue
+      // - there's no references to this actor
+      // therefore if `noblock` is on, we should garbage collect the actor.
+      ponyint_actor_setpendingdestroy(actor);
+      ponyint_actor_final(ctx, actor);
+      ponyint_actor_destroy(actor);
+	  return false;
   }
   
   // Return true (i.e. reschedule immediately) if our queue isn't empty.
@@ -682,17 +674,22 @@ void ponyint_actor_yield(pony_actor_t* actor)
 
 PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
 {
-  static uint32_t actorUIDCount = 1;
   pony_assert(type != NULL);
-
+  
   // allocate variable sized actors correctly
   pony_actor_t* actor = (pony_actor_t*)ponyint_pool_alloc_size(type->size);
+  bool local_actor_noblock = actor_noblock;
+  
   memset(actor, 0, type->size);
   actor->type = type;
   actor->priority = PONY_DEFAULT_ACTOR_PRIORITY;
   actor->batch = PONY_SCHED_BATCH;
-  actor->tag = 0;
-  actor->uid = actorUIDCount++;
+  
+  if(analysisEnabled){
+	static int32_t actorUID = 1;
+  	actor->uid = actorUID++;
+  }
+    
   
 #ifdef USE_MEMTRACK
   ctx->mem_used_actors += type->size;
@@ -703,7 +700,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   ponyint_heap_init(&actor->heap);
   ponyint_gc_done(&actor->gc);
 
-  if(actor_noblock)
+  if(local_actor_noblock)
     ponyint_actor_setsystem(actor);
 
   if(ctx->current != NULL)
@@ -717,7 +714,7 @@ PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
   }
 
   // tell the cycle detector we exist if block messages are enabled
-  if(!actor_noblock)
+  if(!local_actor_noblock)
     ponyint_cycle_actor_created(ctx, actor);
 
   return actor;
@@ -809,10 +806,7 @@ PONY_API void pony_sendv_synchronous_constructor(pony_ctx_t* ctx, pony_actor_t* 
 {
   pony_actor_t * saved = ctx->current;
   ctx->current = to;
-  if(ponyint_actor_messageq_push_single(&to->q, msg, msg))
-  {
-    ponyint_actor_run(ctx, to, true);
-  }
+  handle_message(ctx, to, msg);
   ctx->current = saved;
 }
 

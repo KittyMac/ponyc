@@ -30,6 +30,8 @@ enum {
 
 #define RUNTIME_ANALYSIS 1
 
+extern bool analysisEnabled;
+
 extern void ponyint_analysis_setanalysis(bool state);
 extern bool ponyint_analysis_getanalysis();
 

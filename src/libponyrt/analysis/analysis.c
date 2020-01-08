@@ -50,9 +50,9 @@ typedef struct analysis_msg_t
 	
 } analysis_msg_t;
 
+bool analysisEnabled = false;
 
 static uint64_t startMilliseconds = 0;
-static bool analysisEnabled = false;
 static pony_thread_id_t analysisThreadID;
 static bool analysisThreadRunning = false;
 static messageq_t analysisMessageQueue;
@@ -112,9 +112,10 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 		);
 	
 	analysis_msg_t * msg;
+	static messageq_t * local_analysisMessageQueuePtr = &analysisMessageQueue;
 	while (true) {
 		
-		while((msg = (analysis_msg_t*)ponyint_thread_messageq_pop(&analysisMessageQueue
+		while((msg = (analysis_msg_t*)ponyint_thread_messageq_pop(local_analysisMessageQueuePtr
 			#ifdef USE_DYNAMIC_TRACE
 			, SPECIAL_THREADID_ANALYSIS
 			#endif
@@ -138,7 +139,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 		}
 		
 		// continue until we've written all of our analytics events
-		if (analysisThreadRunning == false && analysisMessageQueue.num_messages == 0) {
+		if (analysisThreadRunning == false && local_analysisMessageQueuePtr->num_messages == 0) {
 			break;
 		}
 		

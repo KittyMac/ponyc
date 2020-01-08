@@ -523,7 +523,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   // If we have processed any application level messages, defer blocking.
   if(app > 0) {
 #ifdef RUNTIME_ANALYSIS
-  if (analysisEnabled) {
+  if (local_analysisEnabled) {
     saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
   }
 #endif
@@ -537,7 +537,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   }
 
 #ifdef RUNTIME_ANALYSIS
-  if (analysisEnabled) {
+  if (local_analysisEnabled) {
     saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
   }
 #endif

@@ -282,6 +282,7 @@ typedef struct pass_opt_t
   bool docs_private;
   
   bool allow_unused_vars;
+  bool sync_actor_constructors;
 
   verbosity_level verbosity;
 

@@ -63,6 +63,7 @@ enum
   OPT_LLVM_ARGS,
   
   OPT_ALLOW_UNUSED_VARIABLES,
+  OPT_SYNC_ACTOR_CONSTRUCTORS,
 
   OPT_BNF,
   OPT_ANTLR,
@@ -115,6 +116,7 @@ static opt_arg_t std_args[] =
 #endif
   
   {"allow-unused-vars", '\0', OPT_ARG_NONE, OPT_ALLOW_UNUSED_VARIABLES},
+  {"sync-actor-constructors", '\0', OPT_ARG_NONE, OPT_SYNC_ACTOR_CONSTRUCTORS},
 
   {"bnf", '\0', OPT_ARG_NONE, OPT_BNF},
   {"antlr", '\0', OPT_ARG_NONE, OPT_ANTLR},
@@ -134,73 +136,74 @@ static void usage(void)
     "The package directory defaults to the current directory.\n"
     ,
     "Options:\n"
-    "  --version, -v       Print the version of the compiler and exit.\n"
-    "  --help, -h          Print this help text and exit.\n"
-    "  --debug, -d         Don't optimise the output.\n"
-    "  --define, -D        Define the specified build flag.\n"
+    "  --version, -v             Print the version of the compiler and exit.\n"
+    "  --help, -h                Print this help text and exit.\n"
+    "  --debug, -d               Don't optimise the output.\n"
+    "  --define, -D              Define the specified build flag.\n"
     "    =name\n"          
-    "  --strip, -s         Strip debug info.\n"
-    "  --path, -p          Add an additional search path.\n"
-    "    =path             Used to find packages and libraries.\n"
-    "  --output, -o        Write output to this directory.\n"
-    "    =path             Defaults to the current directory.\n"
-    "  --bin-name, -b      Name of executable binary.\n"
-    "    =name             Defaults to name of the directory.\n"
-    "  --library, -l       Generate a C-API compatible static library.\n"
-    "  --runtimebc         Compile with the LLVM bitcode file for the runtime.\n"
-    "  --static            Compile a static binary (experimental, Linux-only).\n"
-    "  --pic               Compile using position independent code.\n"
-    "  --nopic             Don't compile using position independent code.\n"
-    "  --docs, -g          Generate code documentation.\n"
-    "  --docs-public       Generate code documentation for public types only.\n"
-	"  --allow-unused-vars Generate errors for unused local variables.\n"
+    "  --strip, -s               Strip debug info.\n"
+    "  --path, -p                Add an additional search path.\n"
+    "    =path                   Used to find packages and libraries.\n"
+    "  --output, -o              Write output to this directory.\n"
+    "    =path                   Defaults to the current directory.\n"
+    "  --bin-name, -b            Name of executable binary.\n"
+    "    =name                   Defaults to name of the directory.\n"
+    "  --library, -l             Generate a C-API compatible static library.\n"
+    "  --runtimebc               Compile with the LLVM bitcode file for the runtime.\n"
+    "  --static                  Compile a static binary (experimental, Linux-only).\n"
+    "  --pic                     Compile using position independent code.\n"
+    "  --nopic                   Don't compile using position independent code.\n"
+    "  --docs, -g                Generate code documentation.\n"
+    "  --docs-public             Generate code documentation for public types only.\n"
+	"  --allow-unused-vars       Generate errors for unused local variables.\n"
+	"  --sync-actor-constructors Allow actor constructors will be called synchronously.\n"
     ,
     "Rarely needed options:\n"
-    "  --safe              Allow only the listed packages to use C FFI.\n"
-    "    =package          With no packages listed, only builtin is allowed.\n"
-    "  --cpu               Set the target CPU.\n"
-    "    =name             Default is the host CPU.\n"
-    "  --features          CPU features to enable or disable.\n"
-    "    =+this,-that      Use + to enable, - to disable.\n"
-    "                      Defaults to detecting all CPU features from the host.\n"
-    "  --triple            Set the target triple.\n"
-    "    =name             Defaults to the host triple.\n"
-    "  --stats             Print some compiler stats.\n"
-    "  --link-arch         Set the linking architecture.\n"
-    "    =name             Default is the host architecture.\n"
-    "  --linker            Set the linker command to use.\n"
-    "    =name             Default is the compiler used to compile ponyc.\n"
-    "  --link-ldcmd        Set the ld command to use.\n"
-    "    =name             Default is `gold` on linux and system default otherwise.\n"
-    "  --plugin            Use the specified plugin(s).\n"
+    "  --safe                    Allow only the listed packages to use C FFI.\n"
+    "    =package                With no packages listed, only builtin is allowed.\n"
+    "  --cpu                     Set the target CPU.\n"
+    "    =name                   Default is the host CPU.\n"
+    "  --features                CPU features to enable or disable.\n"
+    "    =+this,-that            Use + to enable, - to disable.\n"
+    "                            Defaults to detecting all CPU features from the host.\n"
+    "  --triple                  Set the target triple.\n"
+    "    =name                   Defaults to the host triple.\n"
+    "  --stats                   Print some compiler stats.\n"
+    "  --link-arch               Set the linking architecture.\n"
+    "    =name                   Default is the host architecture.\n"
+    "  --linker                  Set the linker command to use.\n"
+    "    =name                   Default is the compiler used to compile ponyc.\n"
+    "  --link-ldcmd              Set the ld command to use.\n"
+    "    =name                   Default is `gold` on linux and system default otherwise.\n"
+    "  --plugin                  Use the specified plugin(s).\n"
     "    =name\n"
-    "  --define, -D        Set a compile time definition.\n"
+    "  --define, -D              Set a compile time definition.\n"
 #ifndef NDEBUG
-    "  --llvm-args         Pass LLVM-specific arguments.\n"
+    "  --llvm-args               Pass LLVM-specific arguments.\n"
 #endif
     ,
     "Debugging options:\n"
-    "  --verbose, -V       Verbosity level.\n"
-    "    =0                Only print errors.\n"
-    "    =1                Print info on compiler stages.\n"
-    "    =2                More detailed compilation information.\n"
-    "    =3                External tool command lines.\n"
-    "    =4                Very low-level detail.\n"
+    "  --verbose, -V             Verbosity level.\n"
+    "    =0                      Only print errors.\n"
+    "    =1                      Print info on compiler stages.\n"
+    "    =2                      More detailed compilation information.\n"
+    "    =3                      External tool command lines.\n"
+    "    =4                      Very low-level detail.\n"
     PASS_HELP
-    "  --ast, -a           Output an abstract syntax tree for the whole program.\n"
-    "  --astpackage        Output an abstract syntax tree for the main package.\n"
-    "  --trace, -t         Enable parse trace.\n"
-    "  --width, -w         Width to target when printing the AST.\n"
-    "    =columns          Defaults to the terminal width.\n"
-    "  --immerr            Report errors immediately rather than deferring.\n"
-    "  --checktree         Verify AST well-formedness.\n"
-    "  --verify            Verify LLVM IR.\n"
-    "  --extfun            Set function default linkage to external.\n"
-    "  --simplebuiltin     Use a minimal builtin package.\n"
-    "  --files             Print source file names as each is processed.\n"
-    "  --bnf               Print out the Pony grammar as human readable BNF.\n"
-    "  --antlr             Print out the Pony grammar as an ANTLR file.\n"
-    "  --lint-llvm         Run the LLVM linting pass on generated IR.\n"
+    "  --ast, -a                 Output an abstract syntax tree for the whole program.\n"
+    "  --astpackage              Output an abstract syntax tree for the main package.\n"
+    "  --trace, -t               Enable parse trace.\n"
+    "  --width, -w               Width to target when printing the AST.\n"
+    "    =columns                Defaults to the terminal width.\n"
+    "  --immerr                  Report errors immediately rather than deferring.\n"
+    "  --checktree               Verify AST well-formedness.\n"
+    "  --verify                  Verify LLVM IR.\n"
+    "  --extfun                  Set function default linkage to external.\n"
+    "  --simplebuiltin           Use a minimal builtin package.\n"
+    "  --files                   Print source file names as each is processed.\n"
+    "  --bnf                     Print out the Pony grammar as human readable BNF.\n"
+    "  --antlr                   Print out the Pony grammar as an ANTLR file.\n"
+    "  --lint-llvm               Run the LLVM linting pass on generated IR.\n"
     ,
     PONYRT_HELP
     );
@@ -362,6 +365,7 @@ ponyc_opt_process_t ponyc_opt_process(opt_state_t* s, pass_opt_t* opt,
 #endif
 	  
 	  case OPT_ALLOW_UNUSED_VARIABLES: opt->allow_unused_vars = true; break;
+	  case OPT_SYNC_ACTOR_CONSTRUCTORS: opt->sync_actor_constructors = true; break;
 
       case OPT_BNF: print_grammar(false, true); return EXIT_0;
       case OPT_ANTLR: print_grammar(true, true); return EXIT_0;

@@ -112,7 +112,8 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 		);
 	
 	analysis_msg_t * msg;
-	while (analysisThreadRunning) {
+	while (true) {
+		
 		while((msg = (analysis_msg_t*)ponyint_thread_messageq_pop(&analysisMessageQueue
 			#ifdef USE_DYNAMIC_TRACE
 			, SPECIAL_THREADID_ANALYSIS
@@ -134,6 +135,11 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 					msg->toNumMessages,
 					msg->totalMemory
 				);
+		}
+		
+		// continue until we've written all of our analytics events
+		if (analysisThreadRunning == false && analysisMessageQueue.num_messages == 0) {
+			break;
 		}
 		
 #ifdef PLATFORM_IS_WINDOWS
@@ -171,9 +177,9 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 		
 		// if we're overloading the save-to-file thread, slow down a little
 		if (analysisMessageQueue.num_messages > 100000) {
-			usleep(5000);
+			usleep(50);
 		}
-			
+		
 		ponyint_thread_messageq_push(&analysisMessageQueue, (pony_msg_t*)msg, (pony_msg_t*)msg
 		#ifdef USE_DYNAMIC_TRACE
 					, SPECIAL_THREADID_ANALYSIS, SPECIAL_THREADID_ANALYSIS
@@ -205,9 +211,9 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 		
 		// if we're overloading the save-to-file thread, slow down a little
 		if (analysisMessageQueue.num_messages > 100000) {
-			usleep(5000);
+			usleep(50);
 		}
-			
+		
 		ponyint_thread_messageq_push(&analysisMessageQueue, (pony_msg_t*)msg, (pony_msg_t*)msg
 		#ifdef USE_DYNAMIC_TRACE
 					, SPECIAL_THREADID_ANALYSIS, SPECIAL_THREADID_ANALYSIS

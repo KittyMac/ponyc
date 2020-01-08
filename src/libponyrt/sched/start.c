@@ -330,6 +330,10 @@ PONY_API bool pony_start(bool library, int* exit_code,
 
 PONY_API int pony_stop()
 {
+#ifdef RUNTIME_ANALYSIS
+  endRuntimeAnalyticForActor();
+#endif
+  
   pony_assert(atomic_load_explicit(&initialised, memory_order_relaxed));
 
   running_kind_t loc_running = atomic_load_explicit(&running,
@@ -353,10 +357,6 @@ PONY_API int pony_stop()
   atomic_thread_fence(memory_order_acq_rel);
   atomic_store_explicit(&initialised, false, memory_order_relaxed);
   atomic_store_explicit(&running, NOT_RUNNING, memory_order_relaxed);
-  
-#ifdef RUNTIME_ANALYSIS
-  endRuntimeAnalyticForActor();
-#endif
   
   return ec;
 }

@@ -542,25 +542,28 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     set_flag(actor, FLAG_BLOCKED);
   }
 
-  bool empty = ponyint_messageq_markempty(&actor->q);
-  if (empty && actor_noblock && (actor->gc.rc == 0))
-  {
-    // when 'actor_noblock` is true, the cycle detector isn't running.
-    // this means actors won't be garbage collected unless we take special
-    // action. Here, we know that:
-    // - the actor has no messages in its queue
-    // - there's no references to this actor
-    // therefore if `noblock` is on, we should garbage collect the actor.
-    ponyint_actor_setpendingdestroy(actor);
-    ponyint_actor_final(ctx, actor);
-    ponyint_actor_destroy(actor);
-  }
-
 #ifdef RUNTIME_ANALYSIS
   if (analysisEnabled) {
     saveRuntimeAnalyticForActor(actor, ANALYTIC_RUN_END);
   }
 #endif
+
+  bool empty = ponyint_messageq_markempty(&actor->q);
+  if (empty && actor_noblock && (actor->gc.rc == 0) && (actor->q.num_messages <= 0))
+  {
+	  if (has_flag(actor, FLAG_PENDINGDESTROY) == false) {
+	      // when 'actor_noblock` is true, the cycle detector isn't running.
+	      // this means actors won't be garbage collected unless we take special
+	      // action. Here, we know that:
+	      // - the actor has no messages in its queue
+	      // - there's no references to this actor
+	      // therefore if `noblock` is on, we should garbage collect the actor.
+	      ponyint_actor_setpendingdestroy(actor);
+	      ponyint_actor_final(ctx, actor);
+	      ponyint_actor_destroy(actor);
+		  return false;
+	  }
+  }
   
   // Return true (i.e. reschedule immediately) if our queue isn't empty.
   return !empty;
@@ -804,19 +807,13 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
 
 PONY_API void pony_sendv_synchronous_constructor(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* msg)
 {
-  // The function takes a prebuilt chain instead of varargs because the latter
-  // is expensive and very hard to optimise.
   pony_actor_t * saved = ctx->current;
   ctx->current = to;
-  handle_message(ctx, ctx->current, msg);
-  ctx->current = saved;
-  
-  // schedule the actor, since we handled its first message synchronously
-  // and its not gauranteed that the constructor will result in more messages
-  // we still need to hit the logic in ponyint_actor_run()
-  if(!has_flag(to, FLAG_UNSCHEDULED) && !ponyint_is_muted(to)) {
-    ponyint_sched_add(ctx, to);
+  if(ponyint_actor_messageq_push_single(&to->q, msg, msg))
+  {
+    ponyint_actor_run(ctx, to, true);
   }
+  ctx->current = saved;
 }
 
 PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,

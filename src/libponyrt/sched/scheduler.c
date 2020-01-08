@@ -1073,7 +1073,7 @@ static void ponyint_sched_shutdown()
 }
 
 pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
-  bool pinasio, uint32_t min_threads, uint32_t thread_suspend_threshold)
+  bool pinasio, uint32_t min_threads, uint32_t thread_suspend_threshold, uint32_t thread_analysis_enabled)
 {
   pony_register_thread();
 
@@ -1146,6 +1146,7 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
 #endif
 
     scheduler[i].ctx.scheduler = &scheduler[i];
+	scheduler[i].ctx.analysis_enabled = thread_analysis_enabled;
     scheduler[i].last_victim = &scheduler[i];
     scheduler[i].index = i;
     scheduler[i].asio_noisy = false;
@@ -1155,8 +1156,15 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
 
   ponyint_mpmcq_init(&inject);
   ponyint_asio_init(asio_cpu);
-
-  return pony_ctx();
+  
+  pony_ctx_t * main_ctx = pony_ctx();
+  main_ctx->analysis_enabled = thread_analysis_enabled;
+  
+#ifdef RUNTIME_ANALYSIS
+  startRuntimeAnalyticForActor(main_ctx);
+#endif
+  
+  return main_ctx;
 }
 
 bool ponyint_sched_start(bool library)

@@ -62,6 +62,8 @@ typedef struct pony_ctx_t
   int64_t mem_allocated_messages;
   int64_t num_messages;
 #endif
+  
+  bool analysis_enabled;
 
   void* serialise_buffer;
   size_t serialise_size;
@@ -97,8 +99,8 @@ struct scheduler_t
   messageq_t mq;
 };
 
-pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool nopin,
-  bool pinasio, uint32_t min_threads, uint32_t thread_suspend_threshold);
+pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
+  bool pinasio, uint32_t min_threads, uint32_t thread_suspend_threshold, uint32_t thread_analysis_enabled);
 
 bool ponyint_sched_start(bool library);
 

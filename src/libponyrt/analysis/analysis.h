@@ -30,14 +30,9 @@ enum {
 
 #define RUNTIME_ANALYSIS 1
 
-extern bool analysisEnabled;
-
-extern void ponyint_analysis_setanalysis(bool state);
-extern bool ponyint_analysis_getanalysis();
-
-extern void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event);
-extern void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event);
-extern void startRuntimeAnalyticForActor();
+extern void saveRuntimeAnalyticForActor(pony_ctx_t * ctx, pony_actor_t * actor, int event);
+extern void saveRuntimeAnalyticForActorMessage(pony_ctx_t * ctx, pony_actor_t * from, pony_actor_t * to, int event);
+extern void startRuntimeAnalyticForActor(pony_ctx_t * ctx);
 extern void endRuntimeAnalyticForActor();
 
 PONY_EXTERN_C_END

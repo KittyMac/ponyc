@@ -245,12 +245,11 @@ PONY_API int pony_init(int argc, char** argv)
   ponyint_heap_setinitialgc(opt.gc_initial);
   ponyint_heap_setnextgcfactor(opt.gc_factor);
   ponyint_actor_setnoblock(opt.noblock);
-  ponyint_analysis_setanalysis(opt.analysis);
 
   pony_exitcode(0);
 
   pony_ctx_t* ctx = ponyint_sched_init(opt.threads, opt.noyield, opt.pin,
-    opt.pinasio, opt.min_threads, opt.thread_suspend_threshold);
+    opt.pinasio, opt.min_threads, opt.thread_suspend_threshold, opt.analysis);
 
   ponyint_cycle_create(ctx, opt.cd_detect_interval);
 
@@ -261,10 +260,6 @@ PONY_API bool pony_start(bool library, int* exit_code,
   const pony_language_features_init_t* language_features)
 {
   pony_assert(atomic_load_explicit(&initialised, memory_order_relaxed));
-  
-#ifdef RUNTIME_ANALYSIS
-  startRuntimeAnalyticForActor();
-#endif
 
   // Set to RUNNING_DEFAULT even if library is true so that pony_stop() isn't
   // callable until the runtime has actually started.

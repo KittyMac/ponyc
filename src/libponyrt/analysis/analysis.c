@@ -50,20 +50,10 @@ typedef struct analysis_msg_t
 	
 } analysis_msg_t;
 
-bool analysisEnabled = false;
-
 static uint64_t startMilliseconds = 0;
 static pony_thread_id_t analysisThreadID;
 static bool analysisThreadRunning = false;
 static messageq_t analysisMessageQueue;
-
-void ponyint_analysis_setanalysis(bool state) {
-	analysisEnabled = state;
-}
-
-bool ponyint_analysis_getanalysis() {
-	return analysisEnabled;
-}
 
 
 uint64_t ponyint_analysis_timeInMilliseconds() {
@@ -91,7 +81,6 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 #endif
 	
 	if (analyticsFile == NULL) {
-		analysisEnabled = false;
 		analysisThreadRunning = false;
 		return NULL;
 	}
@@ -155,8 +144,8 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	return NULL;
 }
 
-void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, int event) {
-	if (analysisEnabled == false) {
+void saveRuntimeAnalyticForActorMessage(pony_ctx_t * ctx, pony_actor_t * from, pony_actor_t * to, int event) {
+	if (ctx->analysis_enabled == false) {
 		return;
 	}
 		
@@ -189,8 +178,8 @@ void saveRuntimeAnalyticForActorMessage(pony_actor_t * from, pony_actor_t * to, 
 	}
 }
 
-void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
-	if (analysisEnabled == false) {
+void saveRuntimeAnalyticForActor(pony_ctx_t * ctx, pony_actor_t * actor, int event) {
+	if (ctx->analysis_enabled == false) {
 		return;
 	}
 		
@@ -225,9 +214,9 @@ void saveRuntimeAnalyticForActor(pony_actor_t * actor, int event) {
 }
 
 
-void startRuntimeAnalyticForActor() {
+void startRuntimeAnalyticForActor(pony_ctx_t * ctx) {
     
-    if (analysisEnabled == false) {
+    if (ctx->analysis_enabled == false) {
         return;
     }
     
@@ -240,7 +229,7 @@ void startRuntimeAnalyticForActor() {
         ponyint_messageq_init(&analysisMessageQueue);
         if(!ponyint_thread_create(&analysisThreadID, analysisEventStorageThread, -1, NULL)) {
             analysisThreadRunning = false;
-            analysisEnabled = false;
+            ctx->analysis_enabled = false;
         }
     }
 }

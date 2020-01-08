@@ -378,11 +378,6 @@ static bool batch_limit_reached(pony_actor_t* actor, bool polling)
 bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 {
   pony_assert(!ponyint_is_muted(actor));
-  
-  if(has_flag(actor, FLAG_PENDINGDESTROY)){
-	  return false;
-  }
-  
   ctx->current = actor;
 
   pony_msg_t* msg;
@@ -768,10 +763,6 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
   // is expensive and very hard to optimise.
 
   pony_assert(well_formed_msg_chain(first, last));
-  
-  if(has_flag(to, FLAG_PENDINGDESTROY)){
-	  return;
-  }
 
   if(DTRACE_ENABLED(ACTOR_MSG_SEND))
   {
@@ -811,22 +802,12 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
   }
 }
 
-PONY_API void pony_sendv_synchronous_constructor(pony_ctx_t* ctx, pony_actor_t* actor, pony_msg_t* msg)
+PONY_API void pony_sendv_synchronous_constructor(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* msg)
 {
   pony_actor_t * saved = ctx->current;
-  ctx->current = actor;
-  handle_message(ctx, actor, msg);
+  ctx->current = to;
+  handle_message(ctx, to, msg);
   ctx->current = saved;
-  
-  // If actor_noblock is enabled, then we need to deallocate the actor here or it never will be. Same logic as 
-  // is in actor_run.
-  bool empty = ponyint_messageq_markempty(&actor->q);
-  if (empty && actor_noblock && (actor->gc.rc == 0) && (has_flag(actor, FLAG_PENDINGDESTROY) == false))
-  {
-      ponyint_actor_setpendingdestroy(actor);
-      ponyint_actor_final(ctx, actor);
-      ponyint_actor_destroy(actor);
-  }
 }
 
 PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
@@ -836,10 +817,6 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
   // is expensive and very hard to optimise.
 
   pony_assert(well_formed_msg_chain(first, last));
-  
-  if(has_flag(to, FLAG_PENDINGDESTROY)){
-	  return;
-  }
 
   if(DTRACE_ENABLED(ACTOR_MSG_SEND))
   {

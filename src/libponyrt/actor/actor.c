@@ -551,9 +551,16 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // - the actor has no messages in its queue
       // - there's no references to this actor
       // therefore if `noblock` is on, we should garbage collect the actor.
-      ponyint_actor_setpendingdestroy(actor);
-      ponyint_actor_final(ctx, actor);
-      ponyint_actor_destroy(actor);
+	  
+	  // Rocco: I have observed that this is a race condition, leading to double frees on the same actor.
+	  // i haven't been able to isolate the cause, so these are just bandaids to make it less frequent
+	  ponyint_actor_setpendingdestroy(actor);
+	  if(has_flag(actor, FLAG_PENDINGDESTROY) == false){
+	    ponyint_actor_final(ctx, actor);
+	  }
+	  if(has_flag(actor, FLAG_PENDINGDESTROY) == false){
+	    ponyint_actor_destroy(actor);
+	  }
 	  return false;
   }
   

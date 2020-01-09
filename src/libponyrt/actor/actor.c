@@ -299,8 +299,7 @@ static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
 {
   size_t used_before = actor->heap.used;
   
-  // replace false with actor->heap_is_dirty if you want to prioritize gc over speed
-  if(!ponyint_heap_startgc(&actor->heap, false))
+  if(!ponyint_heap_startgc(&actor->heap, actor->heap_is_dirty))
     return;
   
   DTRACE1(GC_START, (uintptr_t)ctx->scheduler);

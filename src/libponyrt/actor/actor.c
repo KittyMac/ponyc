@@ -380,7 +380,14 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 {
   pony_assert(!ponyint_is_muted(actor));
   ctx->current = actor;
-
+  
+  if(actor->running) {
+	// we're actively running, but someone else is trying to run us at the same time! No worries,
+	// we will just flag ourself to be rescheduled.
+	return true;
+  }
+  actor->running = true;
+  
   pony_msg_t* msg;
   int32_t app = 0;
     
@@ -430,6 +437,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   }
 #endif
   		try_gc(ctx, actor);
+		actor->running = false;
   		return false;
       }
 
@@ -442,6 +450,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   }
 #endif
   		try_gc(ctx, actor);
+		actor->running = false;
         return batch_limit_reached(actor, polling);
       }
     }
@@ -470,6 +479,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   }
 #endif
   		try_gc(ctx, actor);
+		actor->running = false;
         return false;
 	  }
       // if we've reached our batch limit
@@ -481,6 +491,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   }
 #endif
   		try_gc(ctx, actor);
+		actor->running = false;
         return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
 	  }
     }
@@ -490,7 +501,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     if(msg == head)
       break;
   }
-
+  
   // We didn't hit our app message batch limit. We now believe our queue to be
   // empty, but we may have received further messages.
   pony_assert(app < actor->batch);
@@ -517,6 +528,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
   }
 #endif
+    actor->running = false;
     return false;
   }
 
@@ -527,6 +539,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
   }
 #endif
+    actor->running = false;
     return true;
   }
 
@@ -543,7 +556,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 #endif
 
   bool empty = ponyint_messageq_markempty(&actor->q);
-  if (empty && actor_noblock && (actor->gc.rc == 0) && (has_flag(actor, FLAG_PENDINGDESTROY) == false))
+  if (empty && actor_noblock && (actor->gc.rc == 0))
   {
       // when 'actor_noblock` is true, the cycle detector isn't running.
       // this means actors won't be garbage collected unless we take special
@@ -554,10 +567,13 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       ponyint_actor_setpendingdestroy(actor);
       ponyint_actor_final(ctx, actor);
       ponyint_actor_destroy(actor);
+	  
+	  actor->running = false;
 	  return false;
   }
   
   // Return true (i.e. reschedule immediately) if our queue isn't empty.
+  actor->running = false;
   return !empty;
 }
 
@@ -590,6 +606,16 @@ void ponyint_actor_destroy(pony_actor_t* actor)
   ctx->mem_allocated_actors -= ponyint_pool_used_size(actor->type->size);
 #endif
 
+  
+  // Note: While the memset to 0 is not strictly necessary, there were quite
+  // a few "access the actor after it was deleted" bugs going by
+  // undetected because the contents of the memory just hadn't been
+  // changed yet.  Leaving this code in as a reminder to help hunt
+  // down such crash bugs in the future.
+  //int32_t typeSize = actor->type->size;
+  //memset(actor, 0, typeSize);
+  //ponyint_pool_free_size(typeSize, actor);
+  
   // Free variable sized actors correctly.
   ponyint_pool_free_size(actor->type->size, actor);
 }

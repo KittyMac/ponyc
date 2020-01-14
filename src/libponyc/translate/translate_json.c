@@ -410,10 +410,43 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 	return code;
 }
 
-sds translate_json_add_empty_constructor(sds code)
+sds translate_json_add_empty_constructor(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
 {
+	bool didAddPonyDefault = false;
+	
 	code = sdscatprintf(code, "  new empty() =>\n");
-	code = sdscatprintf(code, "    None\n");
+	
+	while(idx < count) {
+		
+		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
+		if (t[idx+1].type == JSMN_OBJECT)
+		{
+			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
+			size_t ponyDefaultIdx = translate_json_get_named_child_index(js, t, idx+1, count, "pony-default");
+			
+			char * ponyDefaultValue = NULL;
+			if (ponyDefaultIdx != 0) {
+				ponyDefaultValue = strndup(js + t[ponyDefaultIdx+1].start, t[ponyDefaultIdx+1].end - t[ponyDefaultIdx+1].start);
+			}
+			
+			if (ponyDefaultValue != NULL){
+				didAddPonyDefault = true;
+				
+				if (typeIdx == 0) {
+					return translate_json_abort(code, "type for property not found");
+				} else {
+					code = sdscatprintf(code, "    %s = %s\n", propertyName, ponyDefaultValue);
+				}
+			}
+		}
+		
+		idx = translate_json_get_next_sibling(t, idx, count);
+	}
+	
+	if (didAddPonyDefault == false) {
+		code = sdscatprintf(code, "    None\n");
+	}
 	
 	return code;
 }
@@ -791,7 +824,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 							idx = translate_json_get_next_sibling(t, idx, count);
 						}
 						
-						code = translate_json_add_empty_constructor(code);
+						code = translate_json_add_empty_constructor(code, js, t, objectIdx, count);
 						code = translate_json_add_read_constructor(code, js, t, objectIdx, count);
 						code = translate_json_add_append_json(code, js, t, objectIdx, count);
 						

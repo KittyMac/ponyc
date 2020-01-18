@@ -597,10 +597,16 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 		{
 			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
 			size_t ponyDefaultIdx = translate_json_get_named_child_index(js, t, idx+1, count, "pony-default");
+			size_t defaultIdx = translate_json_get_named_child_index(js, t, idx+1, count, "default");
 			
 			char * ponyDefaultValue = NULL;
 			if (ponyDefaultIdx != 0) {
 				ponyDefaultValue = strndup(js + t[ponyDefaultIdx+1].start, t[ponyDefaultIdx+1].end - t[ponyDefaultIdx+1].start);
+			}
+			
+			char * defaultValue = NULL;
+			if (defaultIdx != 0) {
+				defaultValue = strndup(js + t[defaultIdx+1].start, t[defaultIdx+1].end - t[defaultIdx+1].start);
 			}
 			
 			if (typeIdx == 0) {
@@ -608,16 +614,22 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 			} else {
 								
 				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as String else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : "\"\""));
+					if (ponyDefaultValue != NULL) {
+						code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as String else %s end\n", propertyName, originalPropertyName, ponyDefaultValue);
+					} else if (defaultValue != NULL) {
+						code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as String else \"%s\" end\n", propertyName, originalPropertyName, defaultValue);
+					} else {
+						code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as String else \"\" end\n", propertyName, originalPropertyName);
+					}
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I64 else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : "0"));
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I64 else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0") ));
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as F64 else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : "0.0"));
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as F64 else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0.0") ));
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : "false"));
+					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "false") ));
 				}
 				if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
 					char * objectType = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);

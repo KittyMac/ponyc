@@ -14,6 +14,8 @@
 
 // converts a JSON Schema file to Pony classes. Used in source.c.
 
+static bool didExportInterface = false;
+
 static int jsonprefix(const char *json, jsmntok_t *tok, const char *s) {
 	int n = (int)strlen(s);
 	if (tok->type == JSMN_STRING && n <= tok->end - tok->start &&
@@ -153,25 +155,17 @@ size_t translate_json_get_named_child_index(const char *js, jsmntok_t *t, size_t
 	return 0;
 }
 
-sds translate_json_add_use(sds code)
+sds translate_json_add_global_interface(sds code)
 {
-	code = sdscatprintf(code, "use \"json\"\n\n");
-	
-	return code;
-}
-
-sds translate_json_add_primitive(sds code, char * class_name)
-{
-	((void) class_name);
-	// we use a primitive to expose API to read and write the serialized objects
-	/*
-	code = sdscatprintf(code, "primitive %s\n", class_name);
-	code = sdscatprintf(code, "  fun read() =>\n");
-	code = sdscatprintf(code, "    None\n");
-	code = sdscatprintf(code, "  fun write() =>\n");
-	code = sdscatprintf(code, "    None\n");
-	code = sdscatprintf(code, "\n");
-	*/
+	if (didExportInterface == false) {
+		didExportInterface = true;
+		
+		code = sdscatprintf(code, "interface PonyJson\n");
+		code = sdscatprintf(code, "  new empty()\n");
+		code = sdscatprintf(code, "  new fromJson(obj:JsonObject val)?\n");
+		code = sdscatprintf(code, "  new fromString(s:String val)?\n");
+		code = sdscatprintf(code, "  fun appendJson(json':String iso):String iso^\n\n");
+	}
 	return code;
 }
 
@@ -633,8 +627,11 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 				}
 				if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
 					char * objectType = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);
-					code = sdscatprintf(code, "    let %sJsonObject = obj.data(\"%s\")? as JsonObject val\n", propertyName, originalPropertyName);
-					code = sdscatprintf(code, "    %s = %s.fromJson(%sJsonObject)?\n", propertyName, objectType, propertyName);
+					code = sdscatprintf(code, "    try\n");
+					code = sdscatprintf(code, "      %s = %s.fromJson(obj.data(\"%s\")? as JsonObject val)?\n", propertyName, objectType, originalPropertyName);
+					code = sdscatprintf(code, "    else\n");
+					code = sdscatprintf(code, "      %s = %s.fromString(obj.data(\"%s\")? as String val)?\n", propertyName, objectType, originalPropertyName);
+					code = sdscatprintf(code, "    end\n");
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
 					
@@ -692,6 +689,36 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 		idx = translate_json_get_next_sibling(t, idx, count);
 	}
 		
+	return code;
+}
+
+sds translate_json_add_use(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
+{
+	code = sdscatprintf(code, "use \"json\"\n");
+	
+	if (count == 0)
+	{
+		return code;
+	}
+	
+	if (t[idx].type == JSMN_OBJECT)
+	{		
+		while(idx < count)
+		{
+			if (jsoneq(js, &t[idx], "pony-use") == 0) {
+				idx += 1;
+				char * pony_use = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+				
+				// each pony-use decelaration is its own
+				// "pony-use": "math"
+				code = sdscatprintf(code, "use \"%s\"\n", pony_use);
+			}			
+			idx += 1;
+		}
+	}
+	
+	code = sdscatprintf(code, "\n");
+	
 	return code;
 }
 
@@ -886,17 +913,12 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 
 char* translate_json(const char* file_name, const char* source_code)
 {
+	((void)file_name);
 	// it is our responsibility to free the old "source code" which was provided
 	unsigned long in_source_code_length = strlen(source_code)+1;
 		
 	// use the sds library to concat our pony code together, then copy it to a pony allocated buffer
 	sds code = sdsnew("");
-	
-	char * class_name = translate_class_name(file_name);
-	
-	code = translate_json_add_use(code);
-	
-	code = translate_json_add_primitive(code, class_name);
 		
 	// each json schema file is a class with the name of the class matching the file name
     jsmn_parser parser;
@@ -904,7 +926,10 @@ char* translate_json(const char* file_name, const char* source_code)
 	size_t delayedObjects[MAX_DELAYED_OBJECTS] = {0}; 
 
     jsmn_init(&parser);
-    int num = jsmn_parse(&parser, source_code, strlen(source_code), tokens, sizeof(tokens) / sizeof(tokens[0]));	
+    int num = jsmn_parse(&parser, source_code, strlen(source_code), tokens, sizeof(tokens) / sizeof(tokens[0]));
+	
+	code = translate_json_add_use(code, source_code, tokens, 0, parser.toknext);
+	code = translate_json_add_global_interface(code);
 	
     /* Assume the top-level element is an object */
     if (num >= 1) {

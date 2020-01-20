@@ -909,7 +909,7 @@ static RegisterPass<MergeRealloc>
 static void addMergeReallocPass(const PassManagerBuilder& pmb,
   PassManagerBase& pm)
 {
-  if(pmb.OptLevel >= 2)
+  if(pmb.OptLevel >= 3)
     pm.add(new MergeRealloc());
 }
 
@@ -1342,7 +1342,7 @@ static void optimise(compile_t* c, bool pony_specific)
     if(c->opt->verbosity >= VERBOSITY_MINIMAL)
       fprintf(stderr, "Optimising\n");
 
-    pmb.OptLevel = 3;
+    pmb.OptLevel = 2;
     pmb.Inliner = createFunctionInliningPass(275);
     pmb.MergeFunctions = true;
   } else {

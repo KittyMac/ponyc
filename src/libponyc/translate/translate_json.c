@@ -395,22 +395,24 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 						isObject = true;
 					}
 					
-					code = sdscatprintf(code, "    json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
-					code = sdscatprintf(code, "    json.push(':')\n");
-					code = sdscatprintf(code, "    json.push('[')\n");
-					code = sdscatprintf(code, "    for item in %s.values() do\n", propertyName);
+					code = sdscatprintf(code, "    if %s.size() > 0 then\n", propertyName);
+					code = sdscatprintf(code, "      json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
+					code = sdscatprintf(code, "      json.push(':')\n");
+					code = sdscatprintf(code, "      json.push('[')\n");
+					code = sdscatprintf(code, "      for item in %s.values() do\n", propertyName);
 					if (!isObject) {
-						code = sdscatprintf(code, "      json.push('\"')\n");
-						code = sdscatprintf(code, "      json.append(item.string())\n");
-						code = sdscatprintf(code, "      json.push('\"')\n");
-					} else {
-						code = sdscatprintf(code, "      json = item.appendJson(consume json)\n");
+						code = sdscatprintf(code, "        json.push('\"')\n");
+						code = sdscatprintf(code, "        json.append(item.string())\n");
+						code = sdscatprintf(code, "        json.push('\"')\n");
+					} else {                               
+						code = sdscatprintf(code, "        json = item.appendJson(consume json)\n");
 					}
+					code = sdscatprintf(code, "        json.push(',')\n");
+					code = sdscatprintf(code, "      end\n");
+					code = sdscatprintf(code, "      if %s.size() > 0 then try json.pop()? end end\n", propertyName);
+					code = sdscatprintf(code, "      json.push(']')\n");
 					code = sdscatprintf(code, "      json.push(',')\n");
 					code = sdscatprintf(code, "    end\n");
-					code = sdscatprintf(code, "    if %s.size() > 0 then try json.pop()? end end\n", propertyName);
-					code = sdscatprintf(code, "    json.push(']')\n");
-					code = sdscatprintf(code, "    json.push(',')\n");
 				}
 			}
 		}

@@ -258,6 +258,12 @@ actor Main
     """
     _size
 
+  fun is_empty(): Bool =>
+    """
+    Returns true if the length of the string is 0
+    """
+    (_size == 0)
+
   fun codepoints(from: ISize = 0, to: ISize = ISize.max_value()): USize =>
     """
     Returns the number of unicode code points in the string between the two

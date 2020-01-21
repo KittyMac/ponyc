@@ -159,6 +159,12 @@ class Array[A] is Seq[A]
     """
     _size
 
+  fun is_empty(): Bool =>
+    """
+    Returns true if the length of the string is 0
+    """
+    (_size == 0)
+
   fun space(): USize =>
     """
     The available space in the array.
@@ -362,6 +368,22 @@ class Array[A] is Seq[A]
     else
       error
     end
+
+  fun ref deleteOne(item: A) =>
+    """
+    Find and delete the first item matching item
+    """
+	try
+		delete(find(item)?)?
+	end
+
+  fun ref deleteAll(item: A) =>
+    """
+    Find and delete the first item matching item
+    """
+	try
+		while true do delete(find(item)?)? end
+	end
 
   fun ref truncate(len: USize) =>
     """

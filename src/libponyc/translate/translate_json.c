@@ -7,8 +7,8 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MAX_TOKENS 128
-#define MAX_DELAYED_OBJECTS 128
+#define MAX_TOKENS 8192
+#define MAX_DELAYED_OBJECTS 8192
 
 #define OBJREFLEN 8
 
@@ -914,6 +914,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 char* translate_json(const char* file_name, const char* source_code)
 {
 	((void)file_name);
+	
 	// it is our responsibility to free the old "source code" which was provided
 	unsigned long in_source_code_length = strlen(source_code)+1;
 		
@@ -940,9 +941,9 @@ char* translate_json(const char* file_name, const char* source_code)
 				code = translate_json_add_object(code, source_code, tokens, delayedObjects[i], parser.toknext, delayedObjects);
 			}
 		}
+	} else {
+		code = translate_json_abort(code, "unable to parse json schema (it may be too large, see MAX_TOKENS)");
 	}
-	
-	
 	
 	// free our incoming source code
 	ponyint_pool_free_size(in_source_code_length, (void *)source_code);

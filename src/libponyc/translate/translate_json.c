@@ -895,6 +895,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						code = translate_json_add_append_json(code, js, t, objectIdx, count);
 						
 						code = sdscatprintf(code, "  fun ref self():%s => this\n", title);
+						code = sdscatprintf(code, "  fun clone():%s iso^ ? => recover iso %s.fromString(string())? end\n", title, title);
 						code = sdscatprintf(code, "\n");
 						
 					} else {

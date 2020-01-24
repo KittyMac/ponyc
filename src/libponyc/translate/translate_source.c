@@ -95,6 +95,7 @@ char* translate_class_name(char* file_name)
 		}
 		class_name[idx++] = *start;
 	}
+	class_name[idx] = 0;
 	
 	return class_name;
 }

@@ -1,4 +1,5 @@
-#include "translate_json.h"
+#include "translate_json_schema.h"
+#include "translate_text_resource.h"
 #include "../../libponyrt/gc/serialise.h"
 #include "../../libponyrt/mem/pool.h"
 #include <stdlib.h>
@@ -8,6 +9,11 @@
 
 #define PONY_EXTENSION ".pony"
 #define JSON_SCHEMA_EXTENSION ".schema.json"
+
+// text files which get converted into code
+#define MARKDOWN_EXTENSION ".md"
+#define JSON_EXTENSION ".json"
+#define TEXT_EXTENSION ".txt"
 
 // converts a JSON Schema file to Pony classes. Used in source.c.
 
@@ -25,7 +31,13 @@ int string_ends_with(const char *str, const char *suffix)
 bool translate_valid_source_file(const char* file_name)
 {
 	if(	string_ends_with(file_name, PONY_EXTENSION) ||
-		string_ends_with(file_name, JSON_SCHEMA_EXTENSION) )
+		
+		string_ends_with(file_name, MARKDOWN_EXTENSION) ||
+		string_ends_with(file_name, JSON_EXTENSION) ||
+		string_ends_with(file_name, TEXT_EXTENSION) ||
+			
+		string_ends_with(file_name, JSON_SCHEMA_EXTENSION)
+		)
 	{
 		return true;
 	}
@@ -37,6 +49,18 @@ char* translate_source(const char* file_name, const char* source_code)
 	if(string_ends_with(file_name, JSON_SCHEMA_EXTENSION))
 	{
 		return translate_json(file_name, source_code);
+	}
+	else if(string_ends_with(file_name, MARKDOWN_EXTENSION))
+	{
+		return translate_text_resource(file_name, "Markdown", source_code);
+	}
+	else if(string_ends_with(file_name, JSON_EXTENSION))
+	{
+		return translate_text_resource(file_name, "Json", source_code);
+	}
+	else if(string_ends_with(file_name, TEXT_EXTENSION))
+	{
+		return translate_text_resource(file_name, "Text", source_code);
 	}
 	return (char *)source_code;
 }

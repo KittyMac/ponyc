@@ -12,7 +12,7 @@ bool translate_valid_source_file(const char* file_name);
 
 /** Given a file name and source code, generate pony code off of that representation (ie schema definition to pony classes)
  */
-char* translate_source(const char* file_name, const char* source_code);
+char* translate_source(const char* file_name, const char* source_code, bool print_generated_code);
 
 /** Convert file name into a pony compatibile class name
  */

@@ -8,7 +8,7 @@ PONY_EXTERN_C_BEGIN
 
 /** Given a text file, return Pony code which contains the contents of it
  */
-char* translate_text_resource(const char* file_name, const char * file_type, const char* source_code);
+char* translate_text_resource(bool print_generated_code, const char* file_name, const char * file_type, const char* source_code);
 
 PONY_EXTERN_C_END
 

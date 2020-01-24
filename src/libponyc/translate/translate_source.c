@@ -44,23 +44,23 @@ bool translate_valid_source_file(const char* file_name)
 	return false;
 }
 
-char* translate_source(const char* file_name, const char* source_code)
+char* translate_source(const char* file_name, const char* source_code, bool print_generated_code)
 {
 	if(string_ends_with(file_name, JSON_SCHEMA_EXTENSION))
 	{
-		return translate_json(file_name, source_code);
+		return translate_json_schema(print_generated_code, file_name, source_code);
 	}
 	else if(string_ends_with(file_name, MARKDOWN_EXTENSION))
 	{
-		return translate_text_resource(file_name, "Markdown", source_code);
+		return translate_text_resource(print_generated_code, file_name, "Markdown", source_code);
 	}
 	else if(string_ends_with(file_name, JSON_EXTENSION))
 	{
-		return translate_text_resource(file_name, "Json", source_code);
+		return translate_text_resource(print_generated_code, file_name, "Json", source_code);
 	}
 	else if(string_ends_with(file_name, TEXT_EXTENSION))
 	{
-		return translate_text_resource(file_name, "Text", source_code);
+		return translate_text_resource(print_generated_code, file_name, "Text", source_code);
 	}
 	return (char *)source_code;
 }

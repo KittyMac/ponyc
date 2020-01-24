@@ -19,7 +19,7 @@ typedef struct source_t
  * Returns the opened source which must be closed later,
  * NULL on failure.
  */
-source_t* source_open(const char* file, const char** error_msgp);
+source_t* source_open(const char* file, const char** error_msgp, bool print_generated_code);
 
 /** Create a source based on the given string of code.
  * Intended for testing purposes only.

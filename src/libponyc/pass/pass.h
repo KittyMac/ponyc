@@ -283,6 +283,7 @@ typedef struct pass_opt_t
   
   bool allow_unused_vars;
   bool sync_actor_constructors;
+  bool print_generated_code;
 
   verbosity_level verbosity;
 

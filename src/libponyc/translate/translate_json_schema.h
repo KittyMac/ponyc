@@ -8,7 +8,7 @@ PONY_EXTERN_C_BEGIN
 
 /** Given a JSON schema string, return Pony code which represents it
  */
-char* translate_json(const char* file_name, const char* source_code);
+char* translate_json_schema(bool print_generated_code, const char* file_name, const char* source_code);
 
 PONY_EXTERN_C_END
 

@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
-source_t* source_open(const char* file, const char** error_msgp)
+source_t* source_open(const char* file, const char** error_msgp, bool print_generated_code)
 {
   FILE* fp = fopen(file, "rb");
 
@@ -38,7 +38,7 @@ source_t* source_open(const char* file, const char** error_msgp)
   ssize_t read = fread(source->m, sizeof(char), size, fp);
   source->m[size] = '\0';
   
-  source->m = translate_source(file, source->m);
+  source->m = translate_source(file, source->m, print_generated_code);
   source->len = strlen(source->m) + 1;
   
   if(read < size)

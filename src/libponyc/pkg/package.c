@@ -154,7 +154,7 @@ static bool parse_source_file(ast_t* package, const char* file_path,
     printf("Opening %s\n", file_path);
 
   const char* error_msg = NULL;
-  source_t* source = source_open(file_path, &error_msg);
+  source_t* source = source_open(file_path, &error_msg, opt->print_generated_code);
 
   if(source == NULL)
   {

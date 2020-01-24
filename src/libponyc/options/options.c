@@ -64,6 +64,7 @@ enum
   
   OPT_ALLOW_UNUSED_VARIABLES,
   OPT_SYNC_ACTOR_CONSTRUCTORS,
+  OPT_PRINT_GENERATED_CODE,
 
   OPT_BNF,
   OPT_ANTLR,
@@ -117,6 +118,7 @@ static opt_arg_t std_args[] =
   
   {"allow-unused-vars", '\0', OPT_ARG_NONE, OPT_ALLOW_UNUSED_VARIABLES},
   {"sync-actor-constructors", '\0', OPT_ARG_NONE, OPT_SYNC_ACTOR_CONSTRUCTORS},
+  {"print-code", '\0', OPT_ARG_NONE, OPT_PRINT_GENERATED_CODE},
 
   {"bnf", '\0', OPT_ARG_NONE, OPT_BNF},
   {"antlr", '\0', OPT_ARG_NONE, OPT_ANTLR},
@@ -157,6 +159,7 @@ static void usage(void)
     "  --docs-public             Generate code documentation for public types only.\n"
 	"  --allow-unused-vars       Generate errors for unused local variables.\n"
 	"  --sync-actor-constructors Allow actor constructors will be called synchronously.\n"
+	"  --print-code              Print automatically generated code when it is transpiled.\n"
     ,
     "Rarely needed options:\n"
     "  --safe                    Allow only the listed packages to use C FFI.\n"
@@ -366,6 +369,7 @@ ponyc_opt_process_t ponyc_opt_process(opt_state_t* s, pass_opt_t* opt,
 	  
 	  case OPT_ALLOW_UNUSED_VARIABLES: opt->allow_unused_vars = true; break;
 	  case OPT_SYNC_ACTOR_CONSTRUCTORS: opt->sync_actor_constructors = true; break;
+	  case OPT_PRINT_GENERATED_CODE: opt->print_generated_code = true; break;
 
       case OPT_BNF: print_grammar(false, true); return EXIT_0;
       case OPT_ANTLR: print_grammar(true, true); return EXIT_0;

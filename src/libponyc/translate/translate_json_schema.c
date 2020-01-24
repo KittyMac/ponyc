@@ -622,7 +622,8 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
 					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I64 else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0") ));
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as F64 else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0.0") ));
+					// Note: we want to accept both I64 and F64 (and convert to F64)
+					code = sdscatprintf(code, "    %s = try (obj.data(\"%s\")? as F64) else try (obj.data(\"%s\")? as I64).f64() else %s end end\n", propertyName, originalPropertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0.0") ));
 				}
 				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
 					code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "false") ));

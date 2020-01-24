@@ -1469,7 +1469,9 @@ actor Main
 
   fun _to_int[A: ((Signed | Unsigned) & Integer[A] val)](base: U8): A ? =>
     """
-    Convert the *whole* string to the specified type.
+    Convert the string to the specified type.
+	Leading whitespace (spaces and tabs) are ignored (argument: it is much more performant to
+	just ignore those characters here than it is the calling code to strip them there)
     If there are any other characters in the string, or the integer found is
     out of range for the target type then an error is thrown.
     """
@@ -1512,11 +1514,21 @@ actor Main
 
     (let base', let base_chars) = _read_int_base[A](base, index)
     index = index + base_chars
+	
+	// Skip leading whitespace
+	while index < _size do
+		let char: A = A(0).from[U8](_ptr._apply(index))
+	    if (char == ' ') or (char == '\t')  then
+	      index = index + 1
+	      continue
+	    end
+		break
+	end
 
     // Process characters
     while index < _size do
       let char: A = A(0).from[U8](_ptr._apply(index))
-      if char == '_' then
+      if (char == '_')  then
         index = index + 1
         continue
       end

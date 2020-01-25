@@ -292,6 +292,54 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
 	return code;
 }
 
+sds translate_json_add_function_propery(sds code, char * className, const char *js, jsmntok_t *t, size_t idx, size_t count)
+{
+	
+	code = sdscatprintf(code, "  fun ref add(that:%s):%s =>\n", className, className);
+	code = sdscatprintf(code, "    let combined:%s ref = %s.empty()\n", className, className);
+	
+	while(idx < count) {
+		
+		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
+		if (t[idx+1].type == JSMN_OBJECT)
+		{			
+			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
+			if (typeIdx == 0) {
+				return translate_json_abort(code, "type for property not found");
+			} else {
+				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
+					code = sdscatprintf(code, "    combined.%s = %s + that.%s\n", propertyName, propertyName, propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0 || 
+					jsoneq(js, &t[typeIdx + 1], "number") == 0) {
+					code = sdscatprintf(code, "    combined.%s = %s + that.%s\n", propertyName, propertyName, propertyName);
+				}
+				if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
+					// Should we require external objects to have an add() function?
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+					code = sdscatprintf(code, "    combined.%s = %s or that.%s\n", propertyName, propertyName, propertyName);
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "array") == 0) {
+					code = sdscatprintf(code, "    for item in %s.values() do\n", propertyName);
+					code = sdscatprintf(code, "      combined.%s.push(item)\n", propertyName);
+					code = sdscatprintf(code, "    end\n");
+					code = sdscatprintf(code, "    for item in that.%s.values() do\n", propertyName);
+					code = sdscatprintf(code, "      combined.%s.push(item)\n", propertyName);
+					code = sdscatprintf(code, "    end\n");
+				}
+			}
+		}
+		
+		idx = translate_json_get_next_sibling(t, idx, count);
+	}
+	
+	code = sdscatprintf(code, "    combined\n");
+	
+	return code;
+}
+
 sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
 {
 	// property are like:
@@ -894,6 +942,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						code = translate_json_add_empty_constructor(code, js, t, objectIdx, count);
 						code = translate_json_add_read_constructor(code, js, t, objectIdx, count);
 						code = translate_json_add_append_json(code, js, t, objectIdx, count);
+						code = translate_json_add_function_propery(code, title, js, t, objectIdx, count);
 						
 						code = sdscatprintf(code, "  fun ref self():%s => this\n", title);
 						code = sdscatprintf(code, "  fun clone():%s iso^ ? => recover iso %s.fromString(string())? end\n", title, title);

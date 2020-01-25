@@ -5,6 +5,30 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
+
+
+static sds packageCode = NULL;
+static int numberOfResourcesInPackage = 0;
+
+void translate_text_resource_package_begin(const char * qualified_name)
+{
+	packageCode = sdsnew("");
+	numberOfResourcesInPackage = 0;
+	
+	packageCode = sdscatprintf(packageCode, "primitive %c%sTextResources\n", toupper(qualified_name[0]), qualified_name+1);
+	packageCode = sdscatprintf(packageCode, "  fun get(string:String):String? =>\n");
+	packageCode = sdscatprintf(packageCode, "    match string\n");
+}
+
+sds translate_text_resource_package_end(sds code)
+{
+	if(numberOfResourcesInPackage > 0) {
+		packageCode = sdscatprintf(packageCode, "    else error end\n");
+		code = sdscatprintf(code, "%s", packageCode);
+	}
+	return code;
+}
 
 char* translate_text_resource(bool print_generated_code, const char* file_name, const char * file_type, const char* source_code)
 {
@@ -24,6 +48,9 @@ char* translate_text_resource(bool print_generated_code, const char* file_name, 
 	//"""
 	//
 	// And can then be accessed by ClassName() at any time
+	
+	packageCode = sdscatprintf(packageCode, "    | \"%s\" => %s%s()\n", className, className, file_type);
+	numberOfResourcesInPackage++;
 	
 	code = sdscatprintf(code, "primitive %s%s\n", className, file_type);
 	code = sdscatprintf(code, "  fun apply():String =>\n");

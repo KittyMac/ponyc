@@ -18,6 +18,14 @@ char* translate_source(const char* file_name, const char* source_code, bool prin
  */
 char* translate_class_name(const char* file_name);
 
+/** Know that a new source package is being compile
+ */
+void translate_source_package_begin(const char * qualified_name);
+
+/** Know that a new source package is ending, add any other code you want to add
+ */
+char* translate_source_package_end(bool print_generated_code);
+
 PONY_EXTERN_C_END
 
 #endif

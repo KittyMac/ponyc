@@ -15,6 +15,9 @@ typedef struct source_t
   size_t len;
 } source_t;
 
+/* allows the transpilation code a change to add more code at then end */
+source_t* source_translate_package_end(bool print_generated_code);
+
 /** Open the file with the given path.
  * Returns the opened source which must be closed later,
  * NULL on failure.

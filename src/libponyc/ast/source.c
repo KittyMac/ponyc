@@ -8,6 +8,21 @@
 #include <string.h>
 #include <stdio.h>
 
+source_t* source_translate_package_end(bool print_generated_code)
+{
+  source_t* source = POOL_ALLOC(source_t);
+  source->file = stringtab("translate_source_final.pony");
+  source->m = translate_source_package_end(print_generated_code);
+  source->len = strlen(source->m) + 1;
+  
+  if(source->m == NULL) {
+    POOL_FREE(source_t, source);
+    return NULL;
+  }
+
+  return source;
+}
+
 source_t* source_open(const char* file, const char** error_msgp, bool print_generated_code)
 {
   FILE* fp = fopen(file, "rb");

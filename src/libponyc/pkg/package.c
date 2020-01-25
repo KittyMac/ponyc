@@ -226,7 +226,7 @@ static int string_compare(const void* a, const void* b)
 // Attempt to parse the source files in the specified directory and add them to
 // the given package AST
 // @return true on success, false on error
-static bool parse_files_in_dir(ast_t* package, const char* dir_path,
+static bool parse_files_in_dir(ast_t* package, const char * qualified_name, const char* dir_path,
   pass_opt_t* opt, bool silent)
 {
   PONY_ERRNO err = 0;
@@ -269,7 +269,7 @@ static bool parse_files_in_dir(ast_t* package, const char* dir_path,
       char additionalDirectory[FILENAME_MAX];
       path_cat(dir_path, name, additionalDirectory);
 	  //fprintf(stderr, "recursive add to package: %s\n", additionalDirectory);
-      parse_files_in_dir(package, additionalDirectory, opt, true);
+      parse_files_in_dir(package, qualified_name, additionalDirectory, opt, true);
 	  continue;
 	}
 	
@@ -294,14 +294,14 @@ static bool parse_files_in_dir(ast_t* package, const char* dir_path,
   // must be deterministic too.
   qsort(entries, count, sizeof(const char*), string_compare);
   bool r = true;
-
+  
   for(size_t i = 0; i < count; i++)
   {
     char fullpath[FILENAME_MAX];
     path_cat(dir_path, entries[i], fullpath);
     r &= parse_source_file(package, fullpath, opt);
   }
-
+  
   ponyint_pool_free_size(buf_size, entries);
   return r;
 }
@@ -997,6 +997,8 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
 
   if(opt->verbosity >= VERBOSITY_INFO)
     fprintf(stderr, "Building %s -> %s\n", path, full_path);
+  
+  translate_source_package_begin(qualified_name);
 
   if(magic != NULL)
   {
@@ -1005,7 +1007,7 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
       if(!parse_source_code(package, magic->src, opt))
         return NULL;
     } else if(magic->mapped_path != NULL) {
-      if(!parse_files_in_dir(package, magic->mapped_path, opt, false))
+      if(!parse_files_in_dir(package, qualified_name, magic->mapped_path, opt, false))
         return NULL;
     } else {
       return NULL;
@@ -1013,7 +1015,7 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
   }
   else
   {
-    if(!parse_files_in_dir(package, full_path, opt, false))
+    if(!parse_files_in_dir(package, qualified_name, full_path, opt, false))
       return NULL;
   }
 
@@ -1023,6 +1025,17 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
       "no source files in package '%s'", path);
     return NULL;
   }
+  
+  
+  // once all actual files are complete, we then give the translation code a chance
+  // to add additional code at the end (for example, it can generate code which takes
+  // information from all other translated source files)
+  
+  source_t* source = source_translate_package_end(opt->print_generated_code);
+  if(source != NULL) {
+  	module_passes(package, opt, source);
+  }
+  
 
   if(!ast_passes_subtree(&package, opt, opt->program_pass))
   {

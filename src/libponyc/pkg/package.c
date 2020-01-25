@@ -261,6 +261,18 @@ static bool parse_files_in_dir(ast_t* package, const char* dir_path,
 
     if(name[0] == '.')
       continue;
+	
+	// to help code separation, we treat all directories which start with a '+' as
+	// directories which contain extra code for this package
+    if(name[0] == '+')
+    {
+      char additionalDirectory[FILENAME_MAX];
+      path_cat(dir_path, name, additionalDirectory);
+	  //fprintf(stderr, "recursive add to package: %s\n", additionalDirectory);
+      parse_files_in_dir(package, additionalDirectory, opt, true);
+	  continue;
+	}
+	
 
     if(translate_valid_source_file(name))
     {
@@ -1003,33 +1015,6 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
   {
     if(!parse_files_in_dir(package, full_path, opt, false))
       return NULL;
-		
-	// to help code separate, adopting a standard that a directory which
-	// starts with a "+" will contain more code for this package, and not to be
-	// considered a package in its own right
-    char dirpath[FILENAME_MAX];
-    path_cat(full_path, "/", dirpath);
-	
-    PONY_ERRNO err = 0;
-    PONY_DIR* dir = pony_opendir(full_path, &err);
-	
-    if(dir != NULL)
-    {
-	    PONY_DIRINFO* d;
-
-	    while((d = pony_dir_entry_next(dir)) != NULL)
-	    {
-	      const char* name = stringtab(pony_dir_info_name(d));
-	      if(name[0] == '+') {
-		      char additionalDirectory[FILENAME_MAX];
-		      path_cat(full_path, name, additionalDirectory);
-		      parse_files_in_dir(package, additionalDirectory, opt, true);
-	      }
-	    }
-
-	    pony_closedir(dir);
-	}
-	
   }
 
   if(ast_child(package) == NULL)

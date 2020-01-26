@@ -377,7 +377,16 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
 					code = sdscatprintf(code, "      json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
 					code = sdscatprintf(code, "      json.push(':')\n");
 					code = sdscatprintf(code, "      json.push('\"')\n");
-					code = sdscatprintf(code, "      json.append(%s.string())\n", propertyName);
+					
+					// json strings need tabs converted to \t and newline converted to \n
+					//code = sdscatprintf(code, "      json.append(%s.string())\n", propertyName);
+					code = sdscatprintf(code, "      for v in %s.values() do\n", propertyName);
+					code = sdscatprintf(code, "        match v\n");
+					code = sdscatprintf(code, "        | '\n' => json.push(92); json.push(110)\n");
+					code = sdscatprintf(code, "        | '\t' => json.push(92); json.push(116)\n");
+					code = sdscatprintf(code, "        else json.push(v) end\n");
+					code = sdscatprintf(code, "      end\n");
+					
 					code = sdscatprintf(code, "      json.push('\"')\n");
 					code = sdscatprintf(code, "    json.push(',')\n");
 					if(defaultValue != NULL) { 

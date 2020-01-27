@@ -919,7 +919,13 @@ class Array[A] is Seq[A]
     """
     Return an iterator over the values in the array.
     """
-    ArrayValues[A, this->Array[A]](this)
+    ArrayValues[A, this->Array[A]](this, 0)
+
+  fun valuesAfter(offset:USize): ArrayValues[A, this->Array[A]]^ =>
+    """
+    Return an iterator over the values in the array.
+    """
+    ArrayValues[A, this->Array[A]](this, offset)
 
   fun pairs(): ArrayPairs[A, this->Array[A]]^ =>
     """
@@ -949,10 +955,10 @@ class ArrayValues[A, B: Array[A] #read] is Iterator[B->A]
   let _array: B
   var _i: USize
 
-  new create(array: B) =>
+  new create(array: B, offset:USize) =>
     _array = array
-    _i = 0
-
+    _i = offset
+  
   fun has_next(): Bool =>
     _i < _array.size()
 

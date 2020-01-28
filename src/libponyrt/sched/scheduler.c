@@ -932,6 +932,14 @@ static void run(scheduler_t* sched)
     if(read_msg(sched) && actor == NULL)
     {
       actor = pop_global(sched);
+	  
+	  // Note: stealing is an expensive operation, so before we charge into
+	  // that let's simply take a breath and see if anything shows up
+	  // in our inbox.
+	  if(actor == NULL) {
+	  	ponyint_cpu_relax();
+		actor = pop_global(sched);
+	  }
     }
 
     if(actor == NULL)

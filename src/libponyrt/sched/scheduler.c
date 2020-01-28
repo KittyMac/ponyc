@@ -714,7 +714,7 @@ static pony_actor_t* perhaps_suspend_scheduler(
  * Use mpmcqs to allow stealing directly from a victim, without waiting for a
  * response.
  */
-static pony_actor_t* steal(scheduler_t* sched)
+static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblock)
 {
   bool block_sent = false;
   uint32_t steal_attempts = 0;
@@ -844,7 +844,7 @@ static pony_actor_t* steal(scheduler_t* sched)
     }
 
     // if we're scheduler 0 and cycle detection is enabled
-    if(!ponyint_actor_getnoblock() && (sched->index == 0))
+    if(!local_ponyint_actor_getnoblock && (sched->index == 0))
     {
       // trigger cycle detector by sending it a message if it is time
       uint64_t current_tsc = ponyint_cpu_tick();
@@ -877,6 +877,8 @@ static pony_actor_t* steal(scheduler_t* sched)
  */
 static void run(scheduler_t* sched)
 {
+  bool local_ponyint_actor_getnoblock = ponyint_actor_getnoblock();
+  
   if(sched->index == 0)
     last_cd_tsc = 0;
 
@@ -893,10 +895,11 @@ static void run(scheduler_t* sched)
       static int not_all_the_time = 0;
 	  not_all_the_time++;
       if((not_all_the_time % 100 == 0)) {
+		  local_ponyint_actor_getnoblock = ponyint_actor_getnoblock();
 		  ponyint_update_memory_usage();
       }
       // if cycle detection is enabled
-      if(!ponyint_actor_getnoblock())
+      if(!local_ponyint_actor_getnoblock)
       {
         // trigger cycle detector by sending it a message if it is time
         uint64_t current_tsc = ponyint_cpu_tick();
@@ -934,7 +937,7 @@ static void run(scheduler_t* sched)
     if(actor == NULL)
     {
       // We had an empty queue and no rescheduled actor.
-      actor = steal(sched);
+      actor = steal(sched, local_ponyint_actor_getnoblock);
 
       if(actor == NULL)
       {

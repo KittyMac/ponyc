@@ -1,6 +1,6 @@
 use @pony_os_errno[I32]()
 
-primitive _OSSocket
+primitive OSSocket
   """
   Socket type-independent wrapper functions for `getsockopt(2)` and
   `setsockopt(2)` system calls for internal `net` package use.

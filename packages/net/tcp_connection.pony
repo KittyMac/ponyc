@@ -1110,7 +1110,7 @@ actor TCPConnection
 
   // Check this when a connection gets its first writeable event.
   fun _is_sock_connected(fd: U32): Bool =>
-    (let errno: U32, let value: U32) = _OSSocket.get_so_error(fd)
+    (let errno: U32, let value: U32) = OSSocket.get_so_error(fd)
     (errno == 0) and (value == 0)
 
   fun ref _apply_backpressure() =>
@@ -1174,7 +1174,7 @@ actor TCPConnection
       end
     ```
     """
-    _OSSocket.getsockopt(_fd, level, option_name, option_max_size)
+    OSSocket.getsockopt(_fd, level, option_name, option_max_size)
 
   fun ref getsockopt_u32(level: I32, option_name: I32): (U32, U32) =>
     """
@@ -1190,7 +1190,7 @@ actor TCPConnection
     1. The value of `errno`.
     2. An undefined value that must be ignored.
     """
-    _OSSocket.getsockopt_u32(_fd, level, option_name)
+    OSSocket.getsockopt_u32(_fd, level, option_name)
 
   fun ref setsockopt(level: I32, option_name: I32, option: Array[U8]): U32 =>
     """
@@ -1223,7 +1223,7 @@ actor TCPConnection
       end
     ```
     """
-    _OSSocket.setsockopt(_fd, level, option_name, option)
+    OSSocket.setsockopt(_fd, level, option_name, option)
 
   fun ref setsockopt_u32(level: I32, option_name: I32, option: U32): U32 =>
     """
@@ -1234,50 +1234,50 @@ actor TCPConnection
     This function returns `0` on success, else the value of `errno` on
     failure.
     """
-    _OSSocket.setsockopt_u32(_fd, level, option_name, option)
+    OSSocket.setsockopt_u32(_fd, level, option_name, option)
 
 
   fun ref get_so_error(): (U32, U32) =>
     """
     Wrapper for the FFI call `getsockopt(fd, SOL_SOCKET, SO_ERROR, ...)`
     """
-    _OSSocket.get_so_error(_fd)
+    OSSocket.get_so_error(_fd)
 
   fun ref get_so_rcvbuf(): (U32, U32) =>
     """
     Wrapper for the FFI call `getsockopt(fd, SOL_SOCKET, SO_RCVBUF, ...)`
     """
-    _OSSocket.get_so_rcvbuf(_fd)
+    OSSocket.get_so_rcvbuf(_fd)
 
   fun ref get_so_sndbuf(): (U32, U32) =>
     """
     Wrapper for the FFI call `getsockopt(fd, SOL_SOCKET, SO_SNDBUF, ...)`
     """
-    _OSSocket.get_so_sndbuf(_fd)
+    OSSocket.get_so_sndbuf(_fd)
 
   fun ref get_tcp_nodelay(): (U32, U32) =>
     """
     Wrapper for the FFI call `getsockopt(fd, SOL_SOCKET, TCP_NODELAY, ...)`
     """
-    _OSSocket.getsockopt_u32(_fd, OSSockOpt.sol_socket(), OSSockOpt.tcp_nodelay())
+    OSSocket.getsockopt_u32(_fd, OSSockOpt.sol_socket(), OSSockOpt.tcp_nodelay())
 
 
   fun ref set_so_rcvbuf(bufsize: U32): U32 =>
     """
     Wrapper for the FFI call `setsockopt(fd, SOL_SOCKET, SO_RCVBUF, ...)`
     """
-    _OSSocket.set_so_rcvbuf(_fd, bufsize)
+    OSSocket.set_so_rcvbuf(_fd, bufsize)
 
   fun ref set_so_sndbuf(bufsize: U32): U32 =>
     """
     Wrapper for the FFI call `setsockopt(fd, SOL_SOCKET, SO_SNDBUF, ...)`
     """
-    _OSSocket.set_so_sndbuf(_fd, bufsize)
+    OSSocket.set_so_sndbuf(_fd, bufsize)
 
   fun ref set_tcp_nodelay(state: Bool): U32 =>
     """
     Wrapper for the FFI call `setsockopt(fd, SOL_SOCKET, TCP_NODELAY, ...)`
     """
     var word: Array[U8] ref =
-      _OSSocket.u32_to_bytes4(if state then 1 else 0 end)
-    _OSSocket.setsockopt(_fd, OSSockOpt.sol_socket(), OSSockOpt.tcp_nodelay(), word)
+      OSSocket.u32_to_bytes4(if state then 1 else 0 end)
+    OSSocket.setsockopt(_fd, OSSockOpt.sol_socket(), OSSockOpt.tcp_nodelay(), word)

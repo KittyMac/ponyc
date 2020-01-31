@@ -555,8 +555,8 @@ sds translate_json_add_getters_and_setters(sds code, const char *js, jsmntok_t *
 				}
 				
 				if(propertyType != NULL) {
-					code = sdscatprintf(code, "    fun ref get_%s():%s => %s\n", originalPropertyName, propertyType, propertyName);
-					code = sdscatprintf(code, "    fun ref set_%s(v:%s) => %s = v\n", originalPropertyName, propertyType, propertyName);
+					code = sdscatprintf(code, "  fun ref get_%s():%s => %s\n", originalPropertyName, propertyType, propertyName);
+					code = sdscatprintf(code, "  fun ref set_%s(v:%s) => %s = v\n", originalPropertyName, propertyType, propertyName);
 				}
 				
 				
@@ -601,8 +601,8 @@ sds translate_json_add_getters_and_setters(sds code, const char *js, jsmntok_t *
 					}
 										
 					if(arrayType != NULL) {
-						code = sdscatprintf(code, "    fun ref get_%s():Array[%s] => %s\n", originalPropertyName, arrayType, propertyName);
-						code = sdscatprintf(code, "    fun ref set_%s(v:Array[%s]) => %s = v\n", originalPropertyName, arrayType, propertyName);
+						code = sdscatprintf(code, "  fun ref get_%s():Array[%s] => %s\n", originalPropertyName, arrayType, propertyName);
+						code = sdscatprintf(code, "  fun ref set_%s(v:Array[%s]) => %s = v\n", originalPropertyName, arrayType, propertyName);
 					}
 				}
 				
@@ -888,6 +888,8 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 						code = sdscatprintf(code, "    array(i)?\n\n");
 						code = sdscatprintf(code, "  fun values():ArrayValues[%s, this->Array[%s]]^ =>\n", type, type);
 						code = sdscatprintf(code, "    array.values()\n\n");
+						code = sdscatprintf(code, "  fun size():USize =>\n");
+						code = sdscatprintf(code, "    array.size()\n\n");
 						code = sdscatprintf(code, "  fun ref push(value:%s) =>\n", type);
 						code = sdscatprintf(code, "    array.push(value)\n\n");
 						code = sdscatprintf(code, "  fun ref pop():%s^ ? =>\n", type);

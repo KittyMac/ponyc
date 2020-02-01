@@ -16,7 +16,9 @@ void translate_text_resource_package_begin(const char * qualified_name)
 	packageCode = sdsnew("");
 	numberOfResourcesInPackage = 0;
 	
-	packageCode = sdscatprintf(packageCode, "primitive %c%sTextResources\n", toupper(qualified_name[0]), qualified_name+1);
+	char * className = translate_class_name(qualified_name);
+	
+	packageCode = sdscatprintf(packageCode, "primitive %sTextResources\n", className);
 	packageCode = sdscatprintf(packageCode, "  fun get(string:String):String? =>\n");
 	packageCode = sdscatprintf(packageCode, "    match string\n");
 }

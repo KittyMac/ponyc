@@ -123,8 +123,7 @@ char* translate_class_name(char* file_name)
 			class_name[idx++] = (char)toupper(*start);
 			continue;
 		}
-		if (isspace(*start) == true) {
-			class_name[idx++] = '_';
+		if (isspace(*start) == true || *start == '_') {
 			continue;
 		}
 		class_name[idx++] = *start;

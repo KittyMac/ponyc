@@ -1,11 +1,11 @@
 # Divergence from Pony
 
-This purpose of this file is to catalogue, at a high level, the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS uses should have no problem as that's my development platform.
+This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
 
 ## Runtime option --ponyanalysis
 
-In my opinion, the biggest hurdle to writing performant pony code is not having an understanding of how the runtime works. To help profile my own pony projects from a runtime conceptual level, I added logging code with will save event information related to actors, their various states and their message passing. I consider the implementation to be fairly optimized (the io is on its own thread, events are passed to it over a pony messageq, etc).  In practical tests having it on usually results in < 1% change in efficiency, but YYMV.
+In my opinion, the biggest hurdle to writing performant pony code is not having an understanding of how the runtime works. To help profile my pony projects for runtime issues I added  code which will export information about actors, their various states and their message passing. I consider the implementation to be fairly optimized (the I/O is on its own thread, events are passed to it using pony messageq, etc).  In practical tests having it on usually results in < 1% change in efficiency, but YYMV.
 
 The output is saved to /tmp/pony.ponyrt\_analytics in a simple csv format. Each event saves the following:
 
@@ -22,9 +22,7 @@ The output is saved to /tmp/pony.ponyrt\_analytics in a simple csv format. Each 
 * **ACTOR\_B\_NUMBER\_OF\_MESSAGES** : if message send event, this is the number of messages in the target actor queue
 * **TOTAL\_MEMORY** : total memory of the program as reported by the OS (see performance section)
 
-I wrote a quick and dirty Mac OpenGL app that reads in the file and generates a visual of the information contained in the pony.ponyrt\_analytics file.  It is particularly useful in identifying choke points in your actor network, allow you to make architectural changes to remove said choke points. Actor muting is the ponyrt's achilles heel, best to write your pony code to ensure it doesn't happen.
-
-Future work could include command-line-tools which analyze the exported events and provide analytic information in a more portable manner.
+I wrote a quick and dirty Mac OpenGL app wihich generates a visualization of the information contained in the pony.ponyrt\_analytics file.  It is particularly useful for identifying choke points in your actor network, allowing you to make architectural changes to eliminate said choke points. Actor muting is the ponyrt's achilles heel and its best to write your pony code to ensure it doesn't happen.
 
 Only actors which are hinted to be part of the ponyanalysis are included in the ponyanalysis.  You hint your actor by providing the following method to your actor:
 
@@ -33,26 +31,28 @@ Only actors which are hinted to be part of the ponyanalysis are included in the 
 fun _tag():USize => 9
 ```
 
+Future work could include command line tools which analyze the exported events and provide analytic information in a more portable manner.
+
 ## Actor Network Performance Hints
 
-Using the ponyanalysis option above you can easily identify bottlenecks in your actor networks. Sometimes those bottlenecks cannot be removed by re-architecting your program. For example, if you have a pool of workers doing stuff and their output must be captured, then there is likely a collection actor whom all of this pool workers need to message.  This actor will be your bottleneck, and every time his message queue exceeds the compiled in default of 100 messages your pool of workers will stop working. In this scenario, it makes sense to provide a couple of hints to the ponyrt to facilitate less muting of your work pool.
+Using the ponyanalysis option you can easily identify bottlenecks in your actor networks. Sometimes those bottlenecks cannot be removed by re-architecting your program. For example, if you have a pool of workers doing work and their output must be captured, then there is likely a collection actor to whom all of the workers need to message.  This actor will be your bottleneck and every time his message queue exceeds the compiled in default of 100 messages your pool of workers will stop working. In this scenario, it makes sense to provide a couple of hints to the ponyrt to facilitate less muting of your work pool.
 
-* **Hinting actor batch sizes** : The first change that comes to mind is to give the collecting actor a larger batch size. This allows you, the pony developer, the option to trade memory consumption in favor of performance.  You can do this by adding the following hint override to your actor:
+* **Hinting actor batch sizes** : This change allows you to give the collecting actor a larger batch size. You, the pony developer, now has the option to trade memory consumption in favor of performance.  You can do this by adding the following hint to your actor:
 
 ```
 // This hints the runtime that you would like this actor's batch size to be x5 the default (default is 100)
 fun _batch():USize => 500
 ```
 
-* **Hinting actor priority** : The second change that comes to mind is that our collection actor might benefit from being allowed to run more often that the workers in the worker pool (or, in reverse, if you want work to get done faster and delay collection in exchange for keeping all those messages in memory).  To do this, you can hint an actor to have a different priority than other actors.  The default actor priority is "0", and you can set negative or positive priority levels.  
-The implementation of priority in the runtime is very simple. When an actor finishes a run (a run is an actor processing a certain number of application messages) that actor is normally moved to the end of the scheduler's waiting actor queue.  Now, if said actor has a higher priority than the next actor to be run, the high priority actor is immediately rescheduled and the lower priority actor is sent to the global actor queue (where it will get picked up another scheduler).
+* **Hinting actor priority** : The second change that allows our collection actor to benefit from being allowed to run more often that the workers in the worker pool (or, in reverse, if you want work to get done faster and delay collection in exchange for keeping all those messages in memory).  To do this, you can hint the collection actor to have a different priority than the worker actors.  The default actor priority is "0", and you can set negative or positive priority levels.  
+The implementation of priority in the runtime is very simple. When an actor finishes a run (a run is an actor processing a certain number of application messages) that actor is then moved to the end of the scheduler's waiting actor queue.  Now, if said actor has a higher priority than the next actor to be run, the high priority actor is immediately rescheduled and the lower priority actor is sent to the global actor queue (where it can get picked up by another scheduler).
 
 ```
 // This hints the runtime that you would like this actorto have a certain priority level
 fun _priority():ISize => 2
 ```
 
-* **Explicit yields** : The third change which can help is allowing an actor to yield execution.  This is also implemented very simply.  When an actor is in its run loop and your behaviour calls is executing, you can flag the actor as needing to yield. When you behaviour finishes, the actor will not exectue any further messages (regardless of its batch size) and end its current run.  The actor will be rescheduled by the ponyrt as normal.
+* **Explicit yields** : The third change which can help is by allowing an actor to explicitly yield execution.  This is also implemented very simply.  When an actor is in its run loop and your behaviour call is executing, you can flag the actor as needing to yield. When your behaviour finishes the actor will not exectue any further messages (regardless of its batch size) and end its current run.  The actor will then be rescheduled by the ponyrt as normal.
 
 ```
 // Flag this actor such that it should yield after processing of the current behaviour has concluded.
@@ -65,20 +65,20 @@ fun _priority():ISize => 2
 
 [Zulip RFC Conversation](https://ponylang.zulipchat.com/#narrow/stream/189959-RFCs/topic/synchronous.20actor.20constructors/near/185278655)
 
-There are performance gains to be made by allowing actor constructors to be call synchronously. And if we are calling actor constructors synchronously, then there are convenience benefits to be gains by support partial calls to actor constructors (ie allowing actor constructors to throw pony errors, and being able to deal with said errors immediately and not through a callback or other mechanism).
+There are performance gains to be made by allowing actor constructors to be call synchronously. And if we are calling actor constructors synchronously, then there are convenience benefits to be gained by supporting partial calls to actor constructors (ie allowing actor constructors to throw pony errors and being able to deal with said errors immediately in the calling code).
 
-By default on my fork, normal pony constructors act just like pony constructors in stock pony.  If you make an partial actor constructor, then that constructor will be called synchronously.
+On my fork the default behaviour matches stock pony behaviour (actor constructors are asynchronous).  If you make an partial actor constructor, then that constructor will be called synchronously.
 
-This behaviour can be changed with the runtime option ```--sync-actor-constructors```, which will for call pony actor constructors to execute synchronously.  Useful if you to want check quickly to see if synchronous actor constructors will be provide a performance benefit for your pony code, or if you simply prefer your constructors to all run synchronously.
+This behaviour can be changed with the runtime option ```--sync-actor-constructors```, which will make all actor constructors execute synchronously.  Useful if you to want check quickly to see if synchronous actor constructors would actually be provide a performance benefit for your pony code, or if you simply prefer your constructors to all run synchronously.
 
 ## Critical bug fix for a single actor processing its behaviours in parallel on two different schedulers
 
-While performance testing the synchronous actor stuff above, I encountered crash in stock pony when ponynoblock was turned on.  The crash was happening because the same pony actor was being executed in ponyint_actor_run() on two different scheduler threads at the same time. My understanding is that this should never be possible (as then actor behaviours cannot be gauranteed to execute synchronously).  I debugged it enough to know that the issue is somewhere in the work stealing code, likely a race condition most people might not hit. To protect agaist this, I implemented a boolean check to help catch when this situation occurs and not allow the same actor to be run on two different schedulers at the same time.
+While performance testing the synchronous actor stuff above, I encountered a crash in stock pony when ponynoblock was turned on.  The crash was happening because the same pony actor was being executed in ponyint_actor_run() on two different scheduler threads at the same time. My understanding is that this should never be possible (as then actor behaviours cannot be gauranteed to execute synchronously).  I debugged it enough to know that the issue is somewhere in the work stealing code, likely a race condition most people might not hit. To protect agaist this, I implemented a boolean check to help catch when this situation occurs and not allow the same actor to be run on two different schedulers at the same time.
 
 
 ## Compile errors for unused local variables
 
-I've been spending a lot of time bouncing between the ponyrt c code and my pony code. I have developed a like for the fact that the ponyrt c code will error out for unusued variables.  I added this same error to ponyc, and then fixed all of the unusued variables in the various library packages.
+I have been spending a lot of time bouncing between the ponyrt C code and my pony code. The ponyrt C code will error out for unusued variables, but the pony code does not.  I believe not having unusued variables lying around enforces cleaner code, so I added it to ponyc. I then fixed all of the unusued variables in the various library packages.
 
 By default this error is enabled. You can disable it using the --allow-unused-vars compiler option.
 
@@ -92,7 +92,7 @@ Error:
 
 ## @ponyint\_actor\_num\_messages()
 
-Part of the ponyanalysis change above now means that actors store a number representing the number of messages they have queued up to process. 
+Part of the ponyanalysis change above now means that actors store the number of messages they have queued up to process. 
 ```@ponyint_actor_num_messages(myActor)``` will return that number to you in your pony code. This information can be useful for many scenarios, but perhaps the most obvious one is for load balancing.  If you have manager actor who wants to distribute work to a pool of actors, the most often recommended method is either round-robin or random selection. Now your load balancer can find the actor with the least work queued and provide the work to that actor.
 
 
@@ -103,9 +103,9 @@ Part of the ponyanalysis change, the ponyrt is now aware of the total amount of 
 
 ## Allow package source code in subdirectories which start with a "+"
 
-I can't stand not being able to organize my code in subdirectories.  And I don't want them to be in a different package.
+I can't stand not being able to organize my code in subdirectories, and I don't want them compiled into a different package.
 
-ponyc will now add code contained in sub directories which start with a "+" to be included in the current package compilation.
+ponyc will now add code contained in sub directories which start with a "+" to be included in the current package being compiled.
 
 Example: the following are all compiled into the "http" package, just as if they were all contained in the same directory.
 
@@ -113,9 +113,9 @@ Example: the following are all compiled into the "http" package, just as if they
 
 ## Compile Json Schema
 
-You can include [json schema](https://json-schema.org) files in your packages.  ponyc will transpile them to pony classes suitable for serializing and deserializing to json.
+You can include [json schema](https://json-schema.org) files in your packages.  ponyc will transpile them to pony classes suitable for serializing and deserializing json.
 
-Handling Json in the manner has a number of benefits. The most critical benefit, in my opinion, is that you will get compile errors whenever breaking changes happen to your API calls (as opposed to hunting down runtime errors because that one json property you relied on is no longer in the message you thought it should be in).  So if tomorrow your Person object no longer has a middle name, your pony code which relies on it having a middle name will now throw an error (because it will no longer exist in the generated class).
+Handling Json in the manner has a number of benefits. The most critical benefit is that you will get compile errors whenever breaking changes happen to your API calls (as opposed to hunting down runtime errors because that one json property you relied on is no longer in the message you thought it should be in).  So if tomorrow your Person object no longer has a middle name, your pony code which relies on it having a middle name will now throw an error (because it will no longer exist in the generated class).
 
 To see what pony code is generated from your json schema files, add the ```--print-code``` flag to ponyc.
 

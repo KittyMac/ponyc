@@ -1,4 +1,4 @@
-type DNSLookupAuth is (AmbientAuth | NetAuth | DNSAuth)
+type DNSLookupAuth is (AmbientAuth | NetAuth | DNSAuth | None)
 
 primitive DNS
   """

@@ -109,7 +109,7 @@ ponyc will now add code contained in sub directories which start with a "+" to b
 
 Example: the following are all compiled into the "http" package, just as if they were all contained in the same directory.
 
-[ insert directory image here ]
+![](https://github.com/KittyMac/ponyc/blob/roc_master/meta/directory.png?raw=true)
 
 ## Compile Json Schema
 

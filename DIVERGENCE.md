@@ -3,6 +3,13 @@
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
 
+
+## testsFinished()
+
+Added a testsFinished() callback to ponytest.  This allows for things like running all tests on program first start, and if they all succeed then allowing the program to run as normal.  If tests fail, then the application take take the apprioriate measures (for example, on a critical server application you might want it to not run at all if its build in tests fail on start up).
+
+
+
 ## Runtime option --ponyanalysis
 
 In my opinion, the biggest hurdle to writing performant pony code is not having an understanding of how the runtime works. To help profile my pony projects for runtime issues I added  code which will export information about actors, their various states and their message passing. I consider the implementation to be fairly optimized (the I/O is on its own thread, events are passed to it using pony messageq, etc).  In practical tests having it on usually results in < 1% change in efficiency, but YYMV.

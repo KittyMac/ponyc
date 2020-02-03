@@ -261,7 +261,8 @@ actor PonyTest
   var _finished: USize = 0
   var _any_found: Bool = false
   var _all_started: Bool = false
-
+  var _list:TestList tag
+  
   // Filtering options
   var _exclude: String = ""
   var _label: String = ""
@@ -273,6 +274,7 @@ actor PonyTest
     TestList
     """
     _env = env
+	_list = list
     _process_opts()
     _groups.push(("", _SimultaneousGroup))
     @ponyint_assert_disable_popups[None]()
@@ -486,6 +488,7 @@ actor PonyTest
 
     if fail_count == 0 then
       // Success, nothing failed.
+	  _list.testsFinished(this, true)
       return
     end
 
@@ -497,6 +500,8 @@ actor PonyTest
     for rec in _records.values() do
       rec._list_failed()
     end
+	
+	_list.testsFinished(this, false)
 
     _env.exitcode(-1)
 

@@ -160,6 +160,13 @@ typedef size_t (*pony_actor_priority)(void* p);
  */
 typedef size_t (*pony_actor_batch)(void* p);
 
+/** use_main_thread.
+ *
+ * An actor can supply a use_main_thread() function, which if it returns true
+ * will have that actor execute on their own dedicated thread. This is not reversible.
+ */
+typedef size_t (*pony_actor_use_main_thread)(void* p);
+
 /// Describes a type to the runtime.
 typedef const struct _pony_type_t
 {
@@ -180,6 +187,7 @@ typedef const struct _pony_type_t
   pony_actor_freed freed_fn;
   pony_actor_priority priority_fn;
   pony_actor_batch batch_fn;
+  pony_actor_use_main_thread use_main_thread_fn;
   uint32_t event_notify;
   uintptr_t** traits;
   void* fields;
@@ -594,7 +602,7 @@ PONY_API void pony_poll(pony_ctx_t* ctx);
  *
  * A thread must pony_become an actor before it can pony_poll.
  */
-PONY_API void pony_poll_many(pony_ctx_t* ctx);
+PONY_API bool pony_poll_many(pony_ctx_t* ctx);
 
 /**
  * The pony_try function can be used to handle Pony errors from C code.

@@ -168,6 +168,7 @@ static void init_runtime(compile_t* c)
   c->str__final = stringtab("_final");
   c->str__tag = stringtab("_tag");
   c->str__freed = stringtab("_freed");
+  c->str__use_main_thread = stringtab("_use_main_thread");
   c->str__priority = stringtab("_priority");
   c->str__batch = stringtab("_batch");
   c->str__event_notify = stringtab("_event_notify");
@@ -261,6 +262,10 @@ static void init_runtime(compile_t* c)
   params[0] = c->object_ptr;
   c->batch_fn = LLVMPointerType(
   LLVMFunctionType(c->i64, params, 1, false), 0);
+  
+  params[0] = c->object_ptr;
+  c->use_main_thread_fn = LLVMPointerType(
+  LLVMFunctionType(c->i8, params, 1, false), 0);
   
   params[0] = c->object_ptr;
   params[1] = c->i8;

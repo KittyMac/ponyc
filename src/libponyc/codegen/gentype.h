@@ -36,6 +36,7 @@ typedef struct compile_type_t
   LLVMValueRef freed_fn;
   LLVMValueRef priority_fn;
   LLVMValueRef batch_fn;
+  LLVMValueRef use_main_thread_fn;
   LLVMValueRef dispatch_fn;
   LLVMValueRef dispatch_switch;
 

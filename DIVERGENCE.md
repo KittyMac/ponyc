@@ -3,6 +3,28 @@
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
 
+## Add support for linking to frameworks on Mac OS
+
+On Mac OS some libraries you link to as frameworks (with the -framework argument to ld). This adds support for framework as a tag in the use statements in pony
+
+```use "framework:GLUT"```
+
+## Hint actor should run on its own thread
+
+This feature is necessary when working with external APIs which require that their callers only execute from the main thread (such as OpenGL). Previously the only mechanism to do this was to create a C shell and compile your pony code as a library, and have the C code instantiate an FFI actor. Now all you need to do is include the following hint in your actor class, and instances of that class will only execute on the main thread.
+
+``` 
+actor MyOpenGLInterface
+	fun _use_main_thread():Bool => true	
+```
+
+Implementation is as follows:
+
+1. The last scheduler is designed the "main thread" scheduler
+2. Actors flag themselves as "use_main_thread" on their first call into ponyint_actor_run()
+2. There is a new inject_main mpmcq, who purpose is to funnel use_main_thread actors to the main thread
+3. The "main thread" scheduler check the inject_main mpmcq first before checking the normal global pop
+4. Actors pushed to a scheduler are check for "use_main_thread" and diverted to inject_main if needed
 
 ## testsFinished()
 

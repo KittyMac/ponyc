@@ -23,6 +23,10 @@ uint32_t program_assign_pkg_id(ast_t* ast);
 bool use_library(ast_t* use, const char* locator, ast_t* name,
   pass_opt_t* options);
 
+/// Process a "framework:" scheme use command.
+bool use_framework(ast_t* use, const char* locator, ast_t* name,
+  pass_opt_t* options);
+
 /// Process a "path:" scheme use command.
 bool use_path(ast_t* use, const char* locator, ast_t* name,
   pass_opt_t* options);

@@ -83,6 +83,7 @@ struct scheduler_t
   bool terminate;
   bool asio_stoppable;
   bool asio_noisy;
+  bool main_thread;
   pony_signal_event_t sleep_object;
 
   // These are changed primarily by the owning scheduler thread.

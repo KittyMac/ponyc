@@ -85,6 +85,7 @@ static pony_type_t hash_elem_pony =
   NULL,
   NULL,
   NULL,
+  NULL,
   0,
   NULL,
   NULL,

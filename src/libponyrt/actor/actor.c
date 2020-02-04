@@ -391,6 +391,18 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   int32_t app = 0;
     
   if (actor->type != NULL) {
+	  if(actor->type->use_main_thread_fn != NULL){
+		  if(actor->use_main_thread == false) {
+		  	actor->use_main_thread = actor->type->use_main_thread_fn(actor);
+		  }
+		  if(actor->use_main_thread == true && ctx->scheduler != NULL && ctx->scheduler->main_thread == false) {
+			  // we are a main thread only actor and we are not on the main thread scheduler.
+			  // this shouldn't happen, but if it does then we yield and ask ourselves to be rescheduled
+			  actor->yield = true;
+			  actor->running = false;
+			  return true;
+		  }
+	  }
 	  if(actor->type->tag_fn != NULL && actor->tag == 0){
 	    actor->tag = (int32_t)actor->type->tag_fn(actor);
 	  }
@@ -563,11 +575,12 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // - the actor has no messages in its queue
       // - there's no references to this actor
       // therefore if `noblock` is on, we should garbage collect the actor.
+	  actor->running = false;
+	  
       ponyint_actor_setpendingdestroy(actor);
       ponyint_actor_final(ctx, actor);
       ponyint_actor_destroy(actor);
 	  
-	  actor->running = false;
 	  return false;
   }
   
@@ -1063,12 +1076,12 @@ PONY_API void pony_poll(pony_ctx_t* ctx)
   ponyint_actor_run(ctx, ctx->current, true);
 }
 
-PONY_API void pony_poll_many(pony_ctx_t* ctx)
+PONY_API bool pony_poll_many(pony_ctx_t* ctx)
 {
   // For some use cases, we actually want the actor being polled to handle as many
   // messages as they normally would.
   pony_assert(ctx->current != NULL);
-  ponyint_actor_run(ctx, ctx->current, false);
+  return ponyint_actor_run(ctx, ctx->current, false);
 }
 
 void ponyint_actor_setoverloaded(pony_actor_t* actor)

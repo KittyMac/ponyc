@@ -16,6 +16,7 @@ typedef struct program_t
   uint32_t next_package_id;
   strlist_t* libpaths;
   strlist_t* libs;
+  strlist_t* frameworks;
   size_t lib_args_size;
   size_t lib_args_alloced;
   char* lib_args;
@@ -54,6 +55,7 @@ program_t* program_create()
   p->next_package_id = 0;
   p->libpaths = NULL;
   p->libs = NULL;
+  p->frameworks = NULL;
   p->lib_args_size = -1;
   p->lib_args = NULL;
 
@@ -72,6 +74,7 @@ void program_free(program_t* program)
 
   strlist_free(program->libpaths);
   strlist_free(program->libs);
+  strlist_free(program->frameworks);
 
   if(program->lib_args != NULL)
     ponyint_pool_free_size(program->lib_args_alloced, program->lib_args);
@@ -142,6 +145,27 @@ bool use_library(ast_t* use, const char* locator, ast_t* name,
   return true;
 }
 
+/// Process a "framework:" scheme use command.
+bool use_framework(ast_t* use, const char* locator, ast_t* name,
+  pass_opt_t* options)
+{
+  (void)name;
+
+  const char* frameworkname = quoted_locator(options, use, locator);
+
+  if(frameworkname == NULL)
+    return false;
+
+  ast_t* p = ast_nearest(use, TK_PROGRAM);
+  program_t* prog = (program_t*)ast_data(p);
+  pony_assert(prog->lib_args == NULL); // Not yet built args
+
+  if(strlist_find(prog->frameworks, frameworkname) != NULL) // Ignore duplicate
+    return true;
+
+  prog->frameworks = strlist_append(prog->frameworks, frameworkname);
+  return true;
+}
 
 /// Process a "path:" scheme use command.
 bool use_path(ast_t* use, const char* locator, ast_t* name,
@@ -248,6 +272,20 @@ void program_lib_build_args(ast_t* program, pass_opt_t* opt,
     if(amble)
       append_to_args(data, lib_postamble);
 
+    append_to_args(data, " ");
+  }
+
+  append_to_args(data, global_postamble);
+  
+  
+  // Framework names.
+  append_to_args(data, global_preamble);
+
+  for(strlist_t* p = data->frameworks; p != NULL; p = strlist_next(p))
+  {
+    const char* lib = strlist_data(p);
+    append_to_args(data, "-framework ");
+    append_to_args(data, lib);
     append_to_args(data, " ");
   }
 
@@ -429,6 +467,7 @@ static pony_type_t program_pony =
   program_serialise_trace,
   program_serialise,
   program_deserialise,
+  NULL,
   NULL,
   NULL,
   NULL,

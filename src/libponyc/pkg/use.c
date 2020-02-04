@@ -33,6 +33,7 @@ static __pony_thread_local use_scheme_t handlers[] =
 {
   {"package:", 8, true, false, use_package},
   {"lib:", 4, false, true, use_library},
+  {"framework:", 10, false, true, use_framework},
   {"path:", 5, false, true, use_path},
 
   {"test:", 5, false, false, NULL},  // For testing

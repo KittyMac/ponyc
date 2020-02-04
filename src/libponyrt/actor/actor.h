@@ -41,13 +41,15 @@ typedef struct pony_actor_t
   PONY_ATOMIC(uint8_t) is_muted;
   PONY_ATOMIC(size_t) muted;
 
-  bool running;			// bad things happen when two schedules run an actor at the same time!
-  bool yield;           // set to true to replace current message at head and end run
-  bool heap_is_dirty;   // set when an ACQUIRE or RELEASE message is processed
-  int32_t tag;          // developer assigned identifier
-  int32_t uid;          // runtime unique identifier
-  int32_t priority;     // whether an actor trumps another when rescheduling
-  int32_t batch;        // number of messages an actor can process in one run
+  bool running;					// bad things happen when two schedules run an actor at the same time!
+  bool yield;           		// set to true to replace current message at head and end run
+  bool heap_is_dirty;   		// set when an ACQUIRE or RELEASE message is processed
+  bool use_main_thread;   	// set to denote the actor should run on its own thread
+  pony_thread_id_t dedicated_thread_id;
+  int32_t tag;          		// developer assigned identifier
+  int32_t uid;          		// runtime unique identifier
+  int32_t priority;     		// whether an actor trumps another when rescheduling
+  int32_t batch;        		// number of messages an actor can process in one run
   
 
   // keep things accessed by other actors on a separate cache line

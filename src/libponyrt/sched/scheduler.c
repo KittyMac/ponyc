@@ -1246,6 +1246,7 @@ bool ponyint_sched_start(bool library)
     // This last scheduler we want to run on the main thread, so that pony devs who link with
     // APIs which require execution on the main thread an achieve it. We use the last
     // scheduler core for this (not the first, because some "main thread" APIs may hard loop).
+	this_scheduler = &scheduler[main_thread_idx];
     scheduler[main_thread_idx].main_thread = true;
     run(&scheduler[main_thread_idx]);
   

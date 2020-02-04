@@ -44,8 +44,8 @@ typedef struct pony_actor_t
   bool running;					// bad things happen when two schedules run an actor at the same time!
   bool yield;           		// set to true to replace current message at head and end run
   bool heap_is_dirty;   		// set when an ACQUIRE or RELEASE message is processed
-  bool use_main_thread;   	// set to denote the actor should run on its own thread
-  pony_thread_id_t dedicated_thread_id;
+  bool use_main_thread;   	    // set to denote the actor should run on its own thread
+  bool is_polling_self;			// prevent recursive polls on yourself
   int32_t tag;          		// developer assigned identifier
   int32_t uid;          		// runtime unique identifier
   int32_t priority;     		// whether an actor trumps another when rescheduling

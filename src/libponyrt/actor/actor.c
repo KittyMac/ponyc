@@ -1068,6 +1068,31 @@ PONY_API void pony_become(pony_ctx_t* ctx, pony_actor_t* actor)
   ctx->current = actor;
 }
 
+PONY_API void ponyint_poll_self()
+{
+  // can be used by an actor to process more of its messages without giving
+  // up control to the scheduler.  Only allow this method if it is called
+  // while the actor is already running.  And protect against it being called
+  // recurively
+  pony_ctx_t* ctx = pony_ctx();
+  pony_msg_t* msg;
+  pony_actor_t* actor = ctx->current;
+  if(actor->running == true && actor->is_polling_self == false) {
+	  actor->is_polling_self = true;
+	  
+	  pony_msg_t* head = atomic_load_explicit(&actor->q.head, memory_order_relaxed);
+	  while((msg = ponyint_actor_messageq_pop(&actor->q)) != NULL)
+	  {
+	    if(handle_message(ctx, actor, msg)) { }
+	    if(msg == head)
+	      break;
+	  }
+	  
+	  try_gc(ctx, actor);
+	  actor->is_polling_self = false;
+  }
+}
+
 PONY_API void pony_poll(pony_ctx_t* ctx)
 {
   // TODO: this seems like it could allow muted actors to get `ponyint_actor_run`

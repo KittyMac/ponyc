@@ -54,6 +54,7 @@ static pony_thread_id_t analysisThreadID;
 static bool analysisThreadRunning = false;
 static messageq_t analysisMessageQueue;
 
+static uint64_t findTopActorsInValues(uint64_t * values, uint64_t num_values, uint64_t * results, uint64_t num_results, uint64_t * total_count);
 
 uint64_t ponyint_analysis_timeInMilliseconds() {
 	return (ponyint_cpu_tick() / 1000 / 1000);
@@ -112,6 +113,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	const uint32_t kMaxActors = 16384;
 	const uint64_t kMaxCount = 0xFFFFFFFFFFFFFFFF;
 	uint64_t * overload_counts = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
+	uint64_t * gc_counts = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * actor_tags = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * memory_max = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	
@@ -124,8 +126,10 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	bool has_overloaded = false;
 	bool has_muted = false;
 	bool has_pressure = false;
+	bool has_gc = false;
 	
 	memset(overload_counts, 0, kMaxActors * sizeof(uint64_t));
+	memset(gc_counts, 0, kMaxActors * sizeof(uint64_t));
 	memset(actor_tags, 0, kMaxActors * sizeof(uint64_t));
 	memset(memory_max, 0, kMaxActors * sizeof(uint64_t));
 	
@@ -172,6 +176,10 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 				if (msg->eventID == ANALYTIC_OVERLOADED && overload_counts[msg->fromUID] < kMaxCount) { 
 					overload_counts[msg->fromUID] += 1;
 					has_overloaded = true;
+				}
+				if (msg->eventID == ANALYTIC_GC_RAN && gc_counts[msg->fromUID] < kMaxCount) { 
+					gc_counts[msg->fromUID] += 1;
+					has_gc = true;
 				}
 				if (msg->eventID == ANALYTIC_MUTE) { 
 					muted_start[msg->fromUID] = ponyint_cpu_tick() / 1000000;
@@ -250,7 +258,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	
 	// print out our analysis to the console
 	// 1. overloaded actors
-	if (has_overloaded || has_muted || has_pressure) {
+	if (has_overloaded || has_muted || has_pressure || has_gc) {
 		const int kMaxActorsPerReport = 10;
 		
 		// determine if we have any untagged actors
@@ -264,25 +272,23 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 				
 		fprintf(stderr, "\n\n%s**** Pony Runtime Analysis: ISSUES FOUND%s\n\n", redColor, resetColor);
 		if (has_overloaded) {
-			int max_reported = 0;
-			for(unsigned int i = 0; i < kMaxActors; i++) {
-				if (overload_counts[i] > 0) {
-					if (max_reported <= kMaxActorsPerReport) {
-						if (actor_tags[i] == 0) {
-							fprintf(stderr, "%sactor [untagged] was overloaded %llu times%s\n", orangeColor, overload_counts[i], resetColor);
-						} else {
-							if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
-								fprintf(stderr, "%sactor %s was overloaded %llu times%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], overload_counts[i], resetColor);
-							} else {
-								fprintf(stderr, "%sactor tag %llu was overloaded %llu times%s\n", orangeColor, actor_tags[i], overload_counts[i], resetColor);
-							}
-						}
+			uint64_t max_actors[kMaxActorsPerReport] = {0};
+			uint64_t total_reported = 0;
+			uint64_t max_reported = findTopActorsInValues(overload_counts, kMaxActors, max_actors, kMaxActorsPerReport, &total_reported);
+			for(uint64_t v = 0; v < max_reported; v++) {
+				uint64_t i = max_actors[v];
+				if (actor_tags[i] == 0) {
+					fprintf(stderr, "%sactor [untagged] was overloaded %llu times%s\n", orangeColor, overload_counts[i], resetColor);
+				} else {
+					if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+						fprintf(stderr, "%sactor %s was overloaded %llu times%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], overload_counts[i], resetColor);
+					} else {
+						fprintf(stderr, "%sactor tag %llu was overloaded %llu times%s\n", orangeColor, actor_tags[i], overload_counts[i], resetColor);
 					}
-					max_reported++;
 				}
 			}
-			if (max_reported > kMaxActorsPerReport) {
-				fprintf(stderr, "%s... %d other actors were also overloaded%s\n", darkGreyColor, max_reported-kMaxActorsPerReport, resetColor);
+			if (total_reported > max_reported) {
+				fprintf(stderr, "%s... %llu other actors were also overloaded%s\n", darkGreyColor, total_reported-max_reported, resetColor);
 			}
 			fprintf(stderr, "\n");
 			
@@ -295,25 +301,23 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 		}
 	
 		if (has_muted) {
-			int max_reported = 0;
-			for(unsigned int i = 0; i < kMaxActors; i++) {
-				if (muted_total[i] > 0) {
-					if (max_reported <= kMaxActorsPerReport) {
-						if (actor_tags[i] == 0) {
-							fprintf(stderr, "%sactor [untagged] was muted for %llu ms%s\n", orangeColor, muted_total[i], resetColor);
-						} else {
-							if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
-								fprintf(stderr, "%sactor %s was muted for %llu ms%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], muted_total[i], resetColor);
-							} else {
-								fprintf(stderr, "%sactor tag %llu was muted for %llu ms%s\n", orangeColor, actor_tags[i], muted_total[i], resetColor);
-							}
-						}
+			uint64_t max_actors[kMaxActorsPerReport] = {0};
+			uint64_t total_reported = 0;
+			uint64_t max_reported = findTopActorsInValues(muted_total, kMaxActors, max_actors, kMaxActorsPerReport, &total_reported);
+			for(uint64_t v = 0; v < max_reported; v++) {
+				uint64_t i = max_actors[v];
+				if (actor_tags[i] == 0) {
+					fprintf(stderr, "%sactor [untagged] was muted for %llu ms%s\n", orangeColor, muted_total[i], resetColor);
+				} else {
+					if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+						fprintf(stderr, "%sactor %s was muted for %llu ms%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], muted_total[i], resetColor);
+					} else {
+						fprintf(stderr, "%sactor tag %llu was muted for %llu ms%s\n", orangeColor, actor_tags[i], muted_total[i], resetColor);
 					}
-					max_reported++;
 				}
 			}
-			if (max_reported > kMaxActorsPerReport) {
-				fprintf(stderr, "%s... %d other actors were also muted%s\n", lightGreyColor, max_reported-kMaxActorsPerReport, resetColor);
+			if (total_reported > max_reported) {
+				fprintf(stderr, "%s... %llu other actors were also muted%s\n", lightGreyColor, total_reported-max_reported, resetColor);
 			}
 			fprintf(stderr, "\n");
 			
@@ -324,31 +328,60 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 		}
 		
 		if (has_pressure) {
-			int max_reported = 0;
-			for(unsigned int i = 0; i < kMaxActors; i++) {
-				if (pressure_total[i] > 0) {
-					if (max_reported <= kMaxActorsPerReport) {
-						if (actor_tags[i] == 0) {
-							fprintf(stderr, "%sactor [untagged] was under pressure for %llu ms%s\n", orangeColor, pressure_total[i], resetColor);
-						} else {
-							if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
-								fprintf(stderr, "%sactor %s was under pressure for %llu ms%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], pressure_total[i], resetColor);
-							} else {
-								fprintf(stderr, "%sactor tag %llu was under pressure for %llu ms%s\n", orangeColor, actor_tags[i], pressure_total[i], resetColor);
-							}
-						}
+			uint64_t max_actors[kMaxActorsPerReport] = {0};
+			uint64_t total_reported = 0;
+			uint64_t max_reported = findTopActorsInValues(pressure_total, kMaxActors, max_actors, kMaxActorsPerReport, &total_reported);
+			for(uint64_t v = 0; v < max_reported; v++) {
+				uint64_t i = max_actors[v];
+				if (actor_tags[i] == 0) {
+					fprintf(stderr, "%sactor [untagged] was under pressure for %llu ms%s\n", orangeColor, pressure_total[i], resetColor);
+				} else {
+					if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+						fprintf(stderr, "%sactor %s was under pressure for %llu ms%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], pressure_total[i], resetColor);
+					} else {
+						fprintf(stderr, "%sactor tag %llu was under pressure for %llu ms%s\n", orangeColor, actor_tags[i], pressure_total[i], resetColor);
 					}
-					max_reported++;
 				}
 			}
-			if (max_reported > kMaxActorsPerReport) {
-				fprintf(stderr, "%s... %d other actors were also under pressure%s\n", lightGreyColor, max_reported-kMaxActorsPerReport, resetColor);
+			if (total_reported > max_reported) {
+				fprintf(stderr, "%s... %llu other actors were also under pressure%s\n", lightGreyColor, total_reported-max_reported, resetColor);
 			}
 			fprintf(stderr, "\n");
 			
 			fprintf(stderr, "%sActors who are under pressure are making use of the built-in backpressure system.\n", darkGreyColor);
 			fprintf(stderr, "As this is a opt-in system, this is just to inform you that backpressure is being\n");
 			fprintf(stderr, "applied and the amount of time your actors are stopped due to it.%s\n\n", resetColor);
+		}
+		
+		if (has_gc) {
+			uint64_t max_actors[kMaxActorsPerReport] = {0};
+			uint64_t total_reported = 0;
+			uint64_t max_reported = findTopActorsInValues(memory_max, kMaxActors, max_actors, kMaxActorsPerReport, &total_reported);
+			float to_mb = (1024 * 1024);
+			for(uint64_t v = 0; v < max_reported; v++) {
+				uint64_t i = max_actors[v];
+				if (actor_tags[i] == 0) {
+					fprintf(stderr, "%sactor [untagged] garbage collected %llu times and had a max heap size was %0.2f MB%s\n", orangeColor, gc_counts[i], memory_max[i] / to_mb, resetColor);
+				} else {
+					if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+						fprintf(stderr, "%sactor %s garbage collected %llu times and had a max heap size was %0.2f MB%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], gc_counts[i], memory_max[i] / to_mb, resetColor);
+					} else {
+						fprintf(stderr, "%sactor tag %llu garbage collected %llu times and had a max heap size was %0.2f MB%s\n", orangeColor, actor_tags[i], gc_counts[i], memory_max[i] / to_mb, resetColor);
+					}
+				}
+			}
+			if (total_reported > max_reported) {
+				fprintf(stderr, "%s... %llu other actors also garbage collected%s\n", darkGreyColor, total_reported-max_reported, resetColor);
+			}
+			fprintf(stderr, "\n");
+			
+			fprintf(stderr, "%sLarge amounts of garbage collection in Pony can mean two things\n", darkGreyColor);
+			fprintf(stderr, "1. Time is spent garbage collecting when it could be spent elsewhere\n");
+			fprintf(stderr, "2. Garbage collection of data shared between actors requires messaging between actors to resolve\n");
+			fprintf(stderr, "Reducing the amount of transitory memory allocations in critical paths can result\n");
+			fprintf(stderr, "in performance gains%s\n\n", resetColor);
+			
+			fprintf(stderr, "\n");
 		}
 		
 		if (hasUntaggedActors) {
@@ -362,6 +395,52 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	}
 	
 	return NULL;
+}
+
+uint64_t findTopActorsInValues(uint64_t * values, uint64_t num_values, uint64_t * results, uint64_t num_results, uint64_t * total_count) {
+	// find the top n indices and store them in results
+	uint64_t num_found = 0;
+	for (uint64_t i = 0; i < num_results; i++) {
+		uint64_t new_max = 0;
+		uint64_t new_max_idx = 0;
+		bool new_value_found = false;
+		
+		// for each value in values
+		for (uint64_t v = 0; v < num_values; v++) {
+			if (values[v] > 0 && values[v] > new_max) {
+				// ensure this one hasn't been identified yet
+				bool duplicate = false;
+				for(uint64_t j = 0; j < i; j++) {
+					if (results[j] == v) {
+						duplicate = true;
+						break;
+					}
+				}
+				if (!duplicate) {
+					new_max = values[v];
+					new_max_idx = v;
+					new_value_found = true;
+				}
+			}
+		}
+		
+		if (new_value_found) {
+			results[i] = new_max_idx;
+			num_found++;
+		} else {
+			break;
+		}
+	}
+	
+	uint64_t local_count = 0;
+	for (uint64_t v = 0; v < num_values; v++) {
+		if (values[v] > 0) {
+			local_count++;
+		}
+	}
+	*total_count = local_count;
+		
+	return num_found;
 }
 
 void saveRuntimeAnalyticForActorMessage(pony_ctx_t * ctx, pony_actor_t * from, pony_actor_t * to, int event) {
@@ -409,13 +488,13 @@ void saveRuntimeAnalyticForActor(pony_ctx_t * ctx, pony_actor_t * actor, int eve
 	
 	// level 1 analysis only cares about these events
 	if ( ctx->analysis_enabled == 1 && 
-		(event != ANALYTIC_OVERLOADED && event != ANALYTIC_MUTE && event != ANALYTIC_NOT_MUTE && event != ANALYTIC_UNDERPRESSURE && event != ANALYTIC_NOT_UNDERPRESSURE)) {
+		(event != ANALYTIC_OVERLOADED && event != ANALYTIC_MUTE && event != ANALYTIC_NOT_MUTE && event != ANALYTIC_UNDERPRESSURE && event != ANALYTIC_NOT_UNDERPRESSURE && event != ANALYTIC_GC_RAN)) {
 		return;
 	}
 	
 	// level 2 analysis only cares about events with a tag
 	if ( ctx->analysis_enabled == 2 && 
-		 (event != ANALYTIC_OVERLOADED || event != ANALYTIC_MUTE || event != ANALYTIC_NOT_MUTE || event != ANALYTIC_UNDERPRESSURE || event != ANALYTIC_NOT_UNDERPRESSURE) &&
+		 (event != ANALYTIC_OVERLOADED || event != ANALYTIC_MUTE || event != ANALYTIC_NOT_MUTE || event != ANALYTIC_UNDERPRESSURE || event != ANALYTIC_NOT_UNDERPRESSURE || event != ANALYTIC_GC_RAN) &&
 		 actor->tag == 0) {
 		return;
 	}

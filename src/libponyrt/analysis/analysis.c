@@ -288,8 +288,8 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			
 			fprintf(stderr, "%sOverloaded actors are bottlenecks in your actor network. Bottlenecks will\n", darkGreyColor);
 			fprintf(stderr, "cause other actors to mute (stop processing until the bottleneck is clear).\n");
-			fprintf(stderr, "You should indentify and remove bottlenecks from your actor network.\n\n");
-			fprintf(stderr, "For the best performance possible actors should never become overloaded.%s\n\n", resetColor);
+			fprintf(stderr, "You should indentify and remove bottlenecks from your actor network. For the\n");
+			fprintf(stderr, "best performance possible actors should never become overloaded.%s\n\n", resetColor);
 			
 			fprintf(stderr, "\n");
 		}

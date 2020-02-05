@@ -296,6 +296,8 @@ actor TCPConnection
   var _expect: USize = 0
 
   var _muted: Bool = false
+  
+  fun _tag():USize => 9005
 
   new create(
     auth: TCPConnectionAuth,

@@ -68,6 +68,8 @@ actor Stdin
   var _chunk_size: USize = 32
   var _event: AsioEventID = AsioEvent.none()
   let _use_event: Bool
+  
+  fun _tag():USize => 9009
 
   new _create(use_event: Bool) =>
     """

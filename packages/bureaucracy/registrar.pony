@@ -8,6 +8,8 @@ actor Registrar
   looked up name.
   """
   embed _registry: Map[String, Any tag] = _registry.create()
+  
+  fun _tag():USize => 9007
 
   be update(key: String, value: Any tag) =>
     """

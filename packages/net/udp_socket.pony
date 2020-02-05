@@ -85,6 +85,8 @@ actor UDPSocket
   var _read_buf: Array[U8] iso
   var _read_from: NetAddress iso = NetAddress
   embed _ip: NetAddress = NetAddress
+  
+  fun _tag():USize => 9003
 
   new create(
     auth: UDPSocketAuth,

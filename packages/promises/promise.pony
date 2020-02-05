@@ -100,6 +100,8 @@ actor Promise[A: Any #share]
   """
   var _value: (_Pending | _Reject | A) = _Pending
   embed _list: Array[_IThen[A]] = _list.create()
+  
+  fun _tag():USize => 9001
 
   be apply(value: A) =>
     """

@@ -134,6 +134,8 @@ actor ProcessMonitor
 
   var _closed: Bool = false
   var _timers: (Timers tag | None) = None  // For windows only
+  
+  fun _tag():USize => 9002
 
   new create(
     auth: ProcessMonitorAuth,

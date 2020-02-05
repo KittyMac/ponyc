@@ -67,6 +67,8 @@ actor Custodian
   ```
   """
   embed _workers: SetIs[DisposableActor] = _workers.create()
+  
+  fun _tag():USize => 9008
 
   be apply(worker: DisposableActor) =>
     """

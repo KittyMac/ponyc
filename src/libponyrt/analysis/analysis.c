@@ -232,6 +232,22 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	char * darkGreyColor =  "\x1B[90m";
 	char * orangeColor =  "\x1B[31m";
 	
+	const int kActorNameStart = 9000;
+	const int kActorNameEnd = 9010;
+	char * builtinActorNames[] = {
+		"Timers",
+		"Promise",
+		"ProcessMonitor",
+		"UDPSocket",
+		"TCPListener",
+		"TCPConnection",
+		"FileStream",
+		"Registrar",
+		"Custodian",
+		"Stdin",
+		"StdStream"
+		};
+	
 	// print out our analysis to the console
 	// 1. overloaded actors
 	if (has_overloaded || has_muted || has_pressure) {
@@ -246,7 +262,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			}
 		}
 				
-		fprintf(stderr, "\n\n%s**** Pony Runtime Analysis: FAILED%s\n\n", redColor, resetColor);
+		fprintf(stderr, "\n\n%s**** Pony Runtime Analysis: ISSUES FOUND%s\n\n", redColor, resetColor);
 		if (has_overloaded) {
 			int max_reported = 0;
 			for(unsigned int i = 0; i < kMaxActors; i++) {
@@ -255,7 +271,11 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 						if (actor_tags[i] == 0) {
 							fprintf(stderr, "%sactor [untagged] was overloaded %llu times%s\n", orangeColor, overload_counts[i], resetColor);
 						} else {
-							fprintf(stderr, "%sactor tag %llu was overloaded %llu times%s\n", orangeColor, actor_tags[i], overload_counts[i], resetColor);
+							if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+								fprintf(stderr, "%sactor %s was overloaded %llu times%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], overload_counts[i], resetColor);
+							} else {
+								fprintf(stderr, "%sactor tag %llu was overloaded %llu times%s\n", orangeColor, actor_tags[i], overload_counts[i], resetColor);
+							}
 						}
 					}
 					max_reported++;
@@ -282,7 +302,11 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 						if (actor_tags[i] == 0) {
 							fprintf(stderr, "%sactor [untagged] was muted for %llu ms%s\n", orangeColor, muted_total[i], resetColor);
 						} else {
-							fprintf(stderr, "%sactor tag %llu was muted %llu ms%s\n", orangeColor, actor_tags[i], muted_total[i], resetColor);
+							if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+								fprintf(stderr, "%sactor %s was muted for %llu ms%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], muted_total[i], resetColor);
+							} else {
+								fprintf(stderr, "%sactor tag %llu was muted for %llu ms%s\n", orangeColor, actor_tags[i], muted_total[i], resetColor);
+							}
 						}
 					}
 					max_reported++;
@@ -307,7 +331,11 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 						if (actor_tags[i] == 0) {
 							fprintf(stderr, "%sactor [untagged] was under pressure for %llu ms%s\n", orangeColor, pressure_total[i], resetColor);
 						} else {
-							fprintf(stderr, "%sactor tag %llu was under pressure %llu ms%s\n", orangeColor, actor_tags[i], pressure_total[i], resetColor);
+							if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+								fprintf(stderr, "%sactor %s was under pressure for %llu ms%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], pressure_total[i], resetColor);
+							} else {
+								fprintf(stderr, "%sactor tag %llu was under pressure for %llu ms%s\n", orangeColor, actor_tags[i], pressure_total[i], resetColor);
+							}
 						}
 					}
 					max_reported++;

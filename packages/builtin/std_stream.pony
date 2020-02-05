@@ -41,6 +41,8 @@ actor StdStream
   ensure that access is provided only via an environment.
   """
   var _stream: Pointer[None]
+  
+  fun _tag():USize => 9010
 
   new _out() =>
     """

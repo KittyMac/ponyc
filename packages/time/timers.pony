@@ -20,6 +20,8 @@ actor Timers
   embed _wheel: Array[_TimingWheel] = Array[_TimingWheel](_wheels())
   embed _pending: List[Timer] = List[Timer]
   var _event: AsioEventID = AsioEvent.none()
+  
+  fun _tag():USize => 9000
 
   new create(slop: USize = 20) =>
     """

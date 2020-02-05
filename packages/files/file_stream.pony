@@ -4,6 +4,8 @@ actor FileStream is OutStream
   printv and writev. The File will be disposed through File._final.
   """
   let _file: File
+  
+  fun _tag():USize => 9006
 
   new create(file: File iso) =>
     _file = consume file

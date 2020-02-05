@@ -48,7 +48,9 @@ actor TCPListener
   let _read_buffer_size: USize
   let _yield_after_reading: USize
   let _yield_after_writing: USize
-
+  
+  fun _tag():USize => 9004
+  
   new create(
     auth: TCPListenerAuth,
     notify: TCPListenNotify iso,

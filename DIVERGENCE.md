@@ -49,7 +49,7 @@ The runtime will monitor a limited number of statistics to provide you with help
 
 ### --ponyanalysis 2
 
-The biggest hurdle to writing performant pony code is not having an understanding of how the runtime works. To help profile my pony projects for runtime issues I added code which will export information about actors, their various states and their message passing. I consider the implementation to be fairly optimized (the I/O is on its own thread, events are passed to it using pony messageq, etc).  In practical tests having it on usually results in < 1% change in efficiency, but YYMV.
+The biggest hurdle to writing performant pony code is not having an understanding of how the runtime works. To help profile my pony projects for runtime issues I added code which will export information about actors, their various states and their message passing. I consider the implementation to be fairly optimized (the I/O is on its own thread, events are passed to it using pony messageq, etc).  In practical tests having it on usually results in < 1% change in efficiency, but YMMV.
 
 The output is saved to /tmp/pony.ponyrt\_analytics in a simple csv format. Each event saves the following:
 

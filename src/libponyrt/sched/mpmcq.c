@@ -72,6 +72,8 @@ void ponyint_mpmcq_init(mpmcq_t* q)
 #ifndef PONY_NDEBUG
   mpmcq_size_debug(q);
 #endif
+  
+  atomic_store_explicit(&q->num_messages, 0, memory_order_relaxed);
 }
 
 void ponyint_mpmcq_destroy(mpmcq_t* q)
@@ -85,6 +87,8 @@ void ponyint_mpmcq_destroy(mpmcq_t* q)
   node_free(tail);
   atomic_store_explicit(&q->tail, NULL, memory_order_relaxed);
 #endif
+  
+  atomic_store_explicit(&q->num_messages, 0, memory_order_relaxed);
 }
 
 void ponyint_mpmcq_push(mpmcq_t* q, void* data)
@@ -108,6 +112,8 @@ void ponyint_mpmcq_push(mpmcq_t* q, void* data)
   atomic_thread_fence(memory_order_release);
 #endif
   atomic_store_explicit(&prev->next, node, memory_order_relaxed);
+  
+  atomic_fetch_add_explicit(&q->num_messages, 1, memory_order_relaxed);
 }
 
 void ponyint_mpmcq_push_single(mpmcq_t* q, void* data)
@@ -124,6 +130,8 @@ void ponyint_mpmcq_push_single(mpmcq_t* q, void* data)
   ANNOTATE_HAPPENS_BEFORE(&prev->next);
 #endif
   atomic_store_explicit(&prev->next, node, memory_order_release);
+  
+  atomic_fetch_add_explicit(&q->num_messages, 1, memory_order_relaxed);
 }
 
 void* ponyint_mpmcq_pop(mpmcq_t* q)
@@ -207,6 +215,8 @@ void* ponyint_mpmcq_pop(mpmcq_t* q)
 #endif
 
   node_free(tail);
+  
+  atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
 
   return data;
 }

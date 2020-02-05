@@ -137,14 +137,11 @@ static void push(scheduler_t* sched, pony_actor_t* actor)
 static pony_actor_t* pop_global(scheduler_t* sched)
 {
   pony_actor_t* actor = (pony_actor_t*)ponyint_mpmcq_pop(&inject);
-
   if(actor != NULL)
     return actor;
-
-  if (sched == NULL)
-    return NULL;
-  else
+  if (sched != NULL)
     return pop(sched);
+  return NULL;
 }
 
 /**
@@ -458,17 +455,38 @@ static bool quiescent(scheduler_t* sched, uint64_t tsc, uint64_t tsc2)
 
 static scheduler_t* choose_victim(scheduler_t* sched)
 {
+	// we have work to do, why are we bothering to steal?
+  if(sched->q.num_messages > 0) {
+    return sched;
+  }
+  // If the inject queue has work, we can end very quickly
+  if(inject.num_messages > 0) {
+    return sched->last_victim;
+  }
+  
+  // Start with a quick scan of all schedulers to check their num_messages and see if any
+  // have waiting work.  If they do we can end quickly with a better guess as a victim.
+  uint32_t current_active_scheduler_count = get_active_scheduler_count();
+  scheduler_t* scan_victim = scheduler;
+  uint32_t i = 0;
+  while (i++ < current_active_scheduler_count) {
+    // does the victim have any work to do?
+    if(scan_victim->q.num_messages > 0 && scan_victim != sched) {
+      sched->last_victim = scan_victim;
+      return scan_victim;
+    }
+    scan_victim += 1;
+  }
+  
   scheduler_t* victim = sched->last_victim;
-
+  
   while(true)
   {
     // Schedulers are laid out sequentially in memory
 
     // Back up one.
     victim--;
-
-    uint32_t current_active_scheduler_count = get_active_scheduler_count();
-
+  
     if(victim < scheduler)
       // victim is before the first scheduler location
       // wrap around to the end.
@@ -483,9 +501,10 @@ static scheduler_t* choose_victim(scheduler_t* sched)
     }
 
     // Don't try to steal from ourself.
-    if(victim == sched)
+    if(victim == sched) {
       continue;
-
+    }
+  
     // Record that this is our victim and return it.
     sched->last_victim = victim;
     return victim;
@@ -743,12 +762,12 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
   while(true)
   {
     victim = choose_victim(sched);
-	
-	if(sched->main_thread) {
-		actor = pop_global_main(victim);
-	    if(actor != NULL)
-	      break;
-	}
+  
+    if(sched->main_thread) {
+      actor = pop_global_main(victim);
+        if(actor != NULL)
+          break;
+    }
 
     actor = pop_global(victim);
     if(actor != NULL)
@@ -917,10 +936,10 @@ static void run(scheduler_t* sched)
     if(sched->index == 0)
     {
       static int not_all_the_time = 0;
-	  not_all_the_time++;
+    not_all_the_time++;
       if((not_all_the_time % 100 == 0)) {
-		  local_ponyint_actor_getnoblock = ponyint_actor_getnoblock();
-		  ponyint_update_memory_usage();
+      local_ponyint_actor_getnoblock = ponyint_actor_getnoblock();
+      ponyint_update_memory_usage();
       }
       // if cycle detection is enabled
       if(!local_ponyint_actor_getnoblock)
@@ -949,7 +968,7 @@ static void run(scheduler_t* sched)
         signal_suspended_threads(current_active_scheduler_count, sched->index);
       }
     }
-	
+  
     if(sched->main_thread && actor == NULL) {
       actor = pop_global_main(sched);
     }
@@ -960,14 +979,6 @@ static void run(scheduler_t* sched)
     if(read_msg(sched) && actor == NULL)
     {
       actor = pop_global(sched);
-	  
-	  // Note: stealing is an expensive operation, so before we charge into
-	  // that let's simply take a breath and see if anything shows up
-	  // in our inbox.
-	  if(actor == NULL) {
-	  	ponyint_cpu_relax();
-		actor = pop_global(sched);
-	  }
     }
 
     if(actor == NULL)
@@ -983,13 +994,13 @@ static void run(scheduler_t* sched)
       }
       DTRACE2(ACTOR_SCHEDULED, (uintptr_t)sched, (uintptr_t)actor);
     }
-	
-	// main thread only actors can only run on scheduler 0
-	if (actor->use_main_thread && sched->main_thread == false) {
-		ponyint_mpmcq_push(&inject_main, actor);
-		actor = NULL;
-		continue;
-	}
+  
+  // main thread only actors can only run on scheduler 0
+  if (actor->use_main_thread && sched->main_thread == false) {
+    ponyint_mpmcq_push(&inject_main, actor);
+    actor = NULL;
+    continue;
+  }
 
     // We have at least one muted actor...
     // Try and wake up a sleeping scheduler thread to help with the load.
@@ -1006,32 +1017,32 @@ static void run(scheduler_t* sched)
     // Run the current actor and get the next actor.
     bool reschedule = ponyint_actor_run(&sched->ctx, actor, false);
     pony_actor_t* next = pop_global(sched);
-	
+  
     if(reschedule)
     {
-	    if(next != NULL)
-	    {
-  		  if (actor->yield == false && actor->priority > next->priority) {
-  			  // pushing it onto the global queue means someone else might pick it up before
-  			  // my higher priority actor will be free to process it.
-  			  ponyint_mpmcq_push(&inject, next);
-  		  } else {
-  	          // If we have a next actor, we go on the back of the queue. Otherwise,
-  	          // we continue to run this actor.
-  	          push(sched, actor);
-  	          DTRACE2(ACTOR_DESCHEDULED, (uintptr_t)sched, (uintptr_t)actor);
-  	          actor = next;
-  	          DTRACE2(ACTOR_SCHEDULED, (uintptr_t)sched, (uintptr_t)actor);
-  		  }
+      if(next != NULL)
+      {
+        if (actor->yield == false && actor->priority > next->priority) {
+          // pushing it onto the global queue means someone else might pick it up before
+          // my higher priority actor will be free to process it.
+          ponyint_mpmcq_push(&inject, next);
+        } else {
+              // If we have a next actor, we go on the back of the queue. Otherwise,
+              // we continue to run this actor.
+              push(sched, actor);
+              DTRACE2(ACTOR_DESCHEDULED, (uintptr_t)sched, (uintptr_t)actor);
+              actor = next;
+              DTRACE2(ACTOR_SCHEDULED, (uintptr_t)sched, (uintptr_t)actor);
+        }
           
-	        // We have at least two actors worth of work; the one we just finished
-	        // running a batch for that needs to be rescheduled and the next one we
-	        // just `pop_global`d. This indicates that there is enough work in
-	        // theory to have another scheduler thread be woken up to do work in
-	        // parallel.
-	        // Try and wake up a sleeping scheduler thread to help with the load.
-	        // If there isn't enough work, they'll go back to sleep.
-	        ponyint_sched_maybe_wakeup(sched->index);
+          // We have at least two actors worth of work; the one we just finished
+          // running a batch for that needs to be rescheduled and the next one we
+          // just `pop_global`d. This indicates that there is enough work in
+          // theory to have another scheduler thread be woken up to do work in
+          // parallel.
+          // Try and wake up a sleeping scheduler thread to help with the load.
+          // If there isn't enough work, they'll go back to sleep.
+          ponyint_sched_maybe_wakeup(sched->index);
         }
       
     } else {
@@ -1197,7 +1208,7 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
 #endif
 
     scheduler[i].ctx.scheduler = &scheduler[i];
-	scheduler[i].ctx.analysis_enabled = thread_analysis_enabled;
+  scheduler[i].ctx.analysis_enabled = thread_analysis_enabled;
     scheduler[i].last_victim = &scheduler[i];
     scheduler[i].index = i;
     scheduler[i].asio_noisy = false;
@@ -1250,7 +1261,7 @@ bool ponyint_sched_start(bool library)
     // This last scheduler we want to run on the main thread, so that pony devs who link with
     // APIs which require execution on the main thread an achieve it. We use the last
     // scheduler core for this (not the first, because some "main thread" APIs may hard loop).
-	this_scheduler = &scheduler[main_thread_idx];
+  this_scheduler = &scheduler[main_thread_idx];
     scheduler[main_thread_idx].main_thread = true;
     run(&scheduler[main_thread_idx]);
   
@@ -1270,19 +1281,19 @@ void ponyint_sched_add(pony_ctx_t* ctx, pony_actor_t* actor)
 {
   if(ctx->scheduler != NULL)
   {
-	if(actor->use_main_thread && ctx->scheduler->main_thread == false) {
-		ponyint_mpmcq_push(&inject_main, actor);
-	}else{
-	    // Add to the current scheduler thread.
-	    push(ctx->scheduler, actor);
-	}
+  if(actor->use_main_thread && ctx->scheduler->main_thread == false) {
+    ponyint_mpmcq_push(&inject_main, actor);
+  }else{
+      // Add to the current scheduler thread.
+      push(ctx->scheduler, actor);
+  }
   } else {
     // Put on the shared mpmcq.
-	if(actor->use_main_thread) {
-		ponyint_mpmcq_push(&inject_main, actor);
-	}else{
-		ponyint_mpmcq_push(&inject, actor);
-	}
+  if(actor->use_main_thread) {
+    ponyint_mpmcq_push(&inject_main, actor);
+  }else{
+    ponyint_mpmcq_push(&inject, actor);
+  }
   }
 }
 

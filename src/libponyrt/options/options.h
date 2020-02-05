@@ -13,6 +13,8 @@
  */
 #define PONYRT_HELP \
   "Runtime options for Pony programs (not for use with ponyc):\n" \
+  "  --ponyanalysis   Gather and report performance analysis of your pony\n" \
+  "                   program. Valid values are 0 (off), 1 (normal), 2 (save to file).\n" \
   "  --ponymaxthreads Use N scheduler threads. Defaults to the number of\n" \
   "                   cores (not hyperthreads) available.\n" \
   "                   This can't be larger than the number of cores available.\n" \

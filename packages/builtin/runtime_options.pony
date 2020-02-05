@@ -92,7 +92,7 @@ struct RuntimeOptions
     Do not send block messages to the cycle detector.
     """
 
-  var ponyanalysis: Bool = false
+  var ponyanalysis: U32 = 0
     """
     Generate runtime analysis events
     """

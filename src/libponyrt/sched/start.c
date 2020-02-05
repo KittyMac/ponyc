@@ -31,7 +31,7 @@ typedef struct options_t
   double gc_factor;
   bool noyield;
   bool noblock;
-  bool analysis;
+  uint32_t analysis;
   bool pin;
   bool pinasio;
   bool version;
@@ -81,7 +81,7 @@ static opt_arg_t args[] =
   {"ponygcfactor", 0, OPT_ARG_REQUIRED, OPT_GCFACTOR},
   {"ponynoyield", 0, OPT_ARG_NONE, OPT_NOYIELD},
   {"ponynoblock", 0, OPT_ARG_NONE, OPT_NOBLOCK},
-  {"ponyanalysis", 0, OPT_ARG_NONE, OPT_ANALYSIS},
+  {"ponyanalysis", 0, OPT_ARG_OPTIONAL, OPT_ANALYSIS},
   {"ponypin", 0, OPT_ARG_NONE, OPT_PIN},
   {"ponypinasio", 0, OPT_ARG_NONE, OPT_PINASIO},
   {"ponyversion", 0, OPT_ARG_NONE, OPT_VERSION},
@@ -154,7 +154,7 @@ static int parse_opts(int argc, char** argv, options_t* opt)
       case OPT_GCFACTOR: if(parse_udouble(&opt->gc_factor, 1.0, s.arg_val)) err_out(id, "can't be less than 1.0"); break;
       case OPT_NOYIELD: opt->noyield = true; break;
       case OPT_NOBLOCK: opt->noblock = true; break;
-	  case OPT_ANALYSIS: opt->analysis = true; break;
+	  case OPT_ANALYSIS: if(parse_uint(&opt->analysis, 0, s.arg_val)) err_out(id, "can't be less than 0"); break; break;
       case OPT_PIN: opt->pin = true; break;
       case OPT_PINASIO: opt->pinasio = true; break;
       case OPT_VERSION: opt->version = true; break;
@@ -325,10 +325,6 @@ PONY_API bool pony_start(bool library, int* exit_code,
 
 PONY_API int pony_stop()
 {
-#ifdef RUNTIME_ANALYSIS
-  endRuntimeAnalyticForActor();
-#endif
-  
   pony_assert(atomic_load_explicit(&initialised, memory_order_relaxed));
 
   running_kind_t loc_running = atomic_load_explicit(&running,

@@ -1117,6 +1117,10 @@ static void ponyint_sched_shutdown()
 
   ponyint_mpmcq_destroy(&inject);
   ponyint_mpmcq_destroy(&inject_main);
+  
+#ifdef RUNTIME_ANALYSIS
+  stopRuntimeAnalysis();
+#endif
 }
 
 pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
@@ -1209,7 +1213,7 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
   main_ctx->analysis_enabled = thread_analysis_enabled;
   
 #ifdef RUNTIME_ANALYSIS
-  startRuntimeAnalyticForActor(main_ctx);
+  startRuntimeAnalysis(main_ctx);
 #endif
   
   return main_ctx;

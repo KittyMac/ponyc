@@ -34,7 +34,22 @@ Added a testsFinished() callback to ponytest.  This allows for things like runni
 
 ## Runtime option --ponyanalysis
 
-In my opinion, the biggest hurdle to writing performant pony code is not having an understanding of how the runtime works. To help profile my pony projects for runtime issues I added  code which will export information about actors, their various states and their message passing. I consider the implementation to be fairly optimized (the I/O is on its own thread, events are passed to it using pony messageq, etc).  In practical tests having it on usually results in < 1% change in efficiency, but YYMV.
+### --ponyanalysis 0
+
+Pony analysis disabled.
+
+### --ponyanalysis 1
+
+The runtime will monitor a limited number of statistics to provide you with helpful information when your pony program completes. This level of analysis impacted runtime the least, but provides a healthy check against the following issues:
+
+1. Identifying actor bottlenecks (actors who overload)
+2. Identifying muted actors and how much real time they spend muted (usually as a result of #1)
+3. Identifying actors who experienced back pressure and how much real time that occured
+
+
+### --ponyanalysis 2
+
+The biggest hurdle to writing performant pony code is not having an understanding of how the runtime works. To help profile my pony projects for runtime issues I added code which will export information about actors, their various states and their message passing. I consider the implementation to be fairly optimized (the I/O is on its own thread, events are passed to it using pony messageq, etc).  In practical tests having it on usually results in < 1% change in efficiency, but YYMV.
 
 The output is saved to /tmp/pony.ponyrt\_analytics in a simple csv format. Each event saves the following:
 

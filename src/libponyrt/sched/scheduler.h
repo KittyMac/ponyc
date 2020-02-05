@@ -63,7 +63,7 @@ typedef struct pony_ctx_t
   int64_t num_messages;
 #endif
   
-  bool analysis_enabled;
+  int32_t analysis_enabled;
 
   void* serialise_buffer;
   size_t serialise_size;

@@ -32,8 +32,8 @@ enum {
 
 extern void saveRuntimeAnalyticForActor(pony_ctx_t * ctx, pony_actor_t * actor, int event);
 extern void saveRuntimeAnalyticForActorMessage(pony_ctx_t * ctx, pony_actor_t * from, pony_actor_t * to, int event);
-extern void startRuntimeAnalyticForActor(pony_ctx_t * ctx);
-extern void endRuntimeAnalyticForActor();
+extern void startRuntimeAnalysis(pony_ctx_t * ctx);
+extern void stopRuntimeAnalysis();
 
 PONY_EXTERN_C_END
 

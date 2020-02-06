@@ -55,8 +55,7 @@ PONY_API int pony_asio_event_fd(asio_event_t* ev);
 PONY_API uint64_t pony_asio_event_nsec(asio_event_t* ev);
 
 /// Send a triggered event.
-PONY_API void pony_asio_event_send(asio_event_t* ev, uint32_t flags,
-  uint32_t arg);
+PONY_API void pony_asio_event_send(pony_ctx_t * ctx, asio_event_t* ev, uint32_t flags, uint32_t arg);
 
 /* Subscribe and unsubscribe are implemented in the corresponding I/O
  * mechanism. Files epoll.c, kqueue.c, ...

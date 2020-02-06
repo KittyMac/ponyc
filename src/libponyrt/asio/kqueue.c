@@ -78,7 +78,7 @@ void ponyint_asio_backend_final(asio_backend_t* b)
   write(b->wakeup[1], &c, 1);
 }
 
-static void handle_queue(asio_backend_t* b)
+static void handle_queue(pony_ctx_t* ctx, asio_backend_t* b)
 {
   asio_msg_t* msg;
 
@@ -89,7 +89,7 @@ static void handle_queue(asio_backend_t* b)
 #endif
     )) != NULL)
   {
-    pony_asio_event_send(msg->event, ASIO_DISPOSABLE, 0);
+    pony_asio_event_send(ctx, msg->event, ASIO_DISPOSABLE, 0);
   }
 }
 
@@ -178,7 +178,8 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
 #endif
 
   struct kevent fired[MAX_EVENTS];
-
+  pony_ctx_t* ctx = pony_ctx();
+  
   while(b->kq != -1)
   {
     int count = kevent(b->kq, NULL, 0, fired, MAX_EVENTS, NULL);
@@ -211,7 +212,7 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
             if(ev->flags & ASIO_READ)
             {
               ev->readable = true;
-              pony_asio_event_send(ev, ASIO_READ, 0);
+              pony_asio_event_send(ctx, ev, ASIO_READ, 0);
             }
             break;
 
@@ -222,13 +223,13 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
               {
                 ev->readable = true;
                 ev->writeable = true;
-                pony_asio_event_send(ev, ASIO_READ | ASIO_WRITE, 0);
+                pony_asio_event_send(ctx, ev, ASIO_READ | ASIO_WRITE, 0);
               }
             } else {
               if(ev->flags & ASIO_WRITE)
               {
                 ev->writeable = true;
-                pony_asio_event_send(ev, ASIO_WRITE, 0);
+                pony_asio_event_send(ctx, ev, ASIO_WRITE, 0);
               }
             }
             break;
@@ -236,14 +237,14 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
           case EVFILT_TIMER:
             if(ev->flags & ASIO_TIMER)
             {
-              pony_asio_event_send(ev, ASIO_TIMER, 0);
+              pony_asio_event_send(ctx, ev, ASIO_TIMER, 0);
             }
             break;
 
           case EVFILT_SIGNAL:
             if(ev->flags & ASIO_SIGNAL)
             {
-              pony_asio_event_send(ev, ASIO_SIGNAL, (uint32_t)ep->data);
+              pony_asio_event_send(ctx, ev, ASIO_SIGNAL, (uint32_t)ep->data);
             }
             break;
 
@@ -252,7 +253,7 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
       }
     }
 
-    handle_queue(b);
+    handle_queue(ctx, b);
   }
 
   ponyint_messageq_destroy(&b->q);

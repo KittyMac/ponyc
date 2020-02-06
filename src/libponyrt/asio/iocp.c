@@ -72,14 +72,14 @@ static void signal_handler(int sig)
   asio_backend_t* b = ponyint_asio_get_backend();
   pony_assert(b != NULL);
   asio_event_t* ev = b->sighandlers[sig];
-  pony_asio_event_send(ev, ASIO_SIGNAL, 1);
+  pony_asio_event_send(pony_ctx(), ev, ASIO_SIGNAL, 1);
 }
 
 
 static void CALLBACK timer_fire(void* arg, DWORD timer_low, DWORD timer_high)
 {
   // A timer has fired, notify the actor
-  pony_asio_event_send((asio_event_t*)arg, ASIO_TIMER, 0);
+  pony_asio_event_send(pony_ctx(), (asio_event_t*)arg, ASIO_TIMER, 0);
 }
 
 
@@ -186,7 +186,7 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
               // Now that we've called cancel no more fire APCs can happen for
               // this timer, so we're safe to send the dispose notify now.
               ev->flags = ASIO_DISPOSABLE;
-              pony_asio_event_send(ev, ASIO_DISPOSABLE, 0);
+              pony_asio_event_send(pony_ctx(), ev, ASIO_DISPOSABLE, 0);
               break;
             }
 
@@ -214,7 +214,7 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
               }
 
               ev->flags = ASIO_DISPOSABLE;
-              pony_asio_event_send(ev, ASIO_DISPOSABLE, 0);
+              pony_asio_event_send(pony_ctx(), ev, ASIO_DISPOSABLE, 0);
               break;
             }
 
@@ -235,7 +235,7 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
 
         // Notify the stdin event listener
         stdin_event->flags = ASIO_READ;
-        pony_asio_event_send(stdin_event, ASIO_READ, 0);
+        pony_asio_event_send(pony_ctx(), stdin_event, ASIO_READ, 0);
         break;
 
       default:
@@ -358,7 +358,7 @@ PONY_API void pony_asio_event_unsubscribe(asio_event_t* ev)
       send_request(ev, ASIO_CANCEL_SIGNAL);
     } else {
       ev->flags = ASIO_DISPOSABLE;
-      pony_asio_event_send(ev, ASIO_DISPOSABLE, 0);
+      pony_asio_event_send(pony_ctx(), ev, ASIO_DISPOSABLE, 0);
     }
   } else if((ev->flags & (ASIO_READ | ASIO_WRITE)) != 0) {
     // Need to unsubscribe from stdin
@@ -366,7 +366,7 @@ PONY_API void pony_asio_event_unsubscribe(asio_event_t* ev)
       send_request(NULL, ASIO_STDIN_NOTIFY);
 
     ev->flags = ASIO_DISPOSABLE;
-    pony_asio_event_send(ev, ASIO_DISPOSABLE, 0);
+    pony_asio_event_send(pony_ctx(), ev, ASIO_DISPOSABLE, 0);
   }
 }
 

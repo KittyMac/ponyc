@@ -112,8 +112,7 @@ PONY_API uint64_t pony_asio_event_nsec(asio_event_t* ev)
   return ev->nsec;
 }
 
-PONY_API void pony_asio_event_send(asio_event_t* ev, uint32_t flags,
-  uint32_t arg)
+PONY_API void pony_asio_event_send(pony_ctx_t * ctx, asio_event_t* ev, uint32_t flags, uint32_t arg)
 {
   asio_msg_t* m = (asio_msg_t*)pony_alloc_msg(POOL_INDEX(sizeof(asio_msg_t)),
     ev->msg_id);
@@ -130,7 +129,7 @@ PONY_API void pony_asio_event_send(asio_event_t* ev, uint32_t flags,
   // ASIO messages technically are application messages, but since they have no
   // sender they aren't covered by backpressure. We pass false for an early
   // bailout in the backpressure code.
-  pony_sendv(pony_ctx(), ev->owner, &m->msg, &m->msg, false);
+  pony_sendv(ctx, ev->owner, &m->msg, &m->msg, false);
 
   // maybe wake up a scheduler thread if they've all fallen asleep
   ponyint_sched_maybe_wakeup_if_all_asleep(-1);

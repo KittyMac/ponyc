@@ -81,6 +81,7 @@ static void empty_signal_handler(int sig)
 static void handle_queue(asio_backend_t* b)
 {
   asio_msg_t* msg;
+  pony_ctx_t* ctx = pony_ctx();
 
   while((msg = (asio_msg_t*)ponyint_thread_messageq_pop(&b->q
 #ifdef USE_DYNAMIC_TRACE
@@ -93,7 +94,7 @@ static void handle_queue(asio_backend_t* b)
     switch(msg->flags)
     {
       case ASIO_DISPOSABLE:
-        pony_asio_event_send(ev, ASIO_DISPOSABLE, 0);
+        pony_asio_event_send(ctx, ev, ASIO_DISPOSABLE, 0);
         break;
 
       default: {}
@@ -218,7 +219,9 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
   sigaddset(&set, PONY_SCHED_SLEEP_WAKE_SIGNAL);
   pthread_sigmask(SIG_BLOCK, &set, NULL);
 #endif
-
+  
+  pony_ctx_t* ctx = pony_ctx();
+  
   while(!atomic_load_explicit(&b->terminate, memory_order_relaxed))
   {
     int event_cnt = epoll_wait(b->epfd, b->events, MAX_EVENTS, -1);
@@ -307,7 +310,7 @@ DECLARE_THREAD_FN(ponyint_asio_backend_dispatch)
             pony_asio_event_resubscribe(ev);
 
         // send the event to the actor
-        pony_asio_event_send(ev, flags, count);
+        pony_asio_event_send(ctx, ev, flags, count);
       }
     }
 

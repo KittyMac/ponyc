@@ -244,6 +244,7 @@ static void iocp_accept_destroy(iocp_accept_t* iocp)
 static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
 {
   iocp_t* iocp = (iocp_t*)ov;
+  pony_ctx_t* ctx = pony_ctx();
 
   switch(iocp->op)
   {
@@ -257,7 +258,7 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
       }
 
       // Dispatch a write event.
-      pony_asio_event_send(iocp->ev, ASIO_WRITE, 0);
+      pony_asio_event_send(ctx, iocp->ev, ASIO_WRITE, 0);
       iocp_destroy(iocp);
       break;
     }
@@ -280,7 +281,7 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
       }
 
       // Dispatch a read event with the new socket as the argument.
-      pony_asio_event_send(iocp->ev, ASIO_READ, (int)acc->ns);
+      pony_asio_event_send(ctx, iocp->ev, ASIO_READ, (int)acc->ns);
       iocp_accept_destroy(acc);
       break;
     }
@@ -290,10 +291,10 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
       if(err == ERROR_SUCCESS)
       {
         // Dispatch a write event with the number of bytes written.
-        pony_asio_event_send(iocp->ev, ASIO_WRITE, bytes);
+        pony_asio_event_send(ctx, iocp->ev, ASIO_WRITE, bytes);
       } else {
         // Dispatch a write event with zero bytes to indicate a close.
-        pony_asio_event_send(iocp->ev, ASIO_WRITE, 0);
+        pony_asio_event_send(ctx, iocp->ev, ASIO_WRITE, 0);
       }
 
       iocp_destroy(iocp);
@@ -305,10 +306,10 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
       if(err == ERROR_SUCCESS)
       {
         // Dispatch a read event with the number of bytes read.
-        pony_asio_event_send(iocp->ev, ASIO_READ, bytes);
+        pony_asio_event_send(ctx, iocp->ev, ASIO_READ, bytes);
       } else {
         // Dispatch a read event with zero bytes to indicate a close.
-        pony_asio_event_send(iocp->ev, ASIO_READ, 0);
+        pony_asio_event_send(ctx, iocp->ev, ASIO_READ, 0);
       }
 
       iocp_destroy(iocp);

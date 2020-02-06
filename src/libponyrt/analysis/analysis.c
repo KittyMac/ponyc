@@ -16,10 +16,6 @@
 #include "../gc/trace.h"
 #include "ponyassert.h"
 
-#ifdef PLATFORM_IS_IOS
-extern const char * ponyapp_tempDirectory();
-#endif
-
 #define UNUSED(x) (void)(x)
 
 typedef struct analysis_msg_t
@@ -64,19 +60,15 @@ void sigintHandler(int x)
 DECLARE_THREAD_FN(analysisEventStorageThread)
 {
 	uint32_t analysis_enabled = *((uint32_t*)arg);
-
+	
+#ifndef PLATFORM_IS_IOS
 	// 1 - just gather statistics while running
 	// 2 - save all events to tmp file for other tools to use
 	FILE * analyticsFile = NULL;
-
+	
 	if (analysis_enabled > 1) {
-#ifdef PLATFORM_IS_IOS
-		char path[1024];
-		snprintf(path, 1024, "%s/pony.ponyrt_analytics", ponyapp_tempDirectory());
-		analyticsFile = fopen(path, "w");
-#else
 		analyticsFile = fopen("/tmp/pony.ponyrt_analytics", "w");
-#endif
+
 		if (analyticsFile == NULL) {
 			analysisThreadRunning = false;
 			return NULL;
@@ -97,6 +89,9 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			"TOTAL_MEMORY"
 			);
 	}
+#else
+	((void)analysis_enabled);
+#endif
 	
 	
 	// runtime analysis:
@@ -147,6 +142,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 		)) != NULL)
 		{
 			
+#ifndef PLATFORM_IS_IOS
 			if (analysis_enabled > 1 && msg->fromTag != 0 && msg->toTag != 0) {
 				fprintf(analyticsFile, "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", 
 						msg-> timeOfEvent,
@@ -163,6 +159,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 						msg->totalMemory
 					);
 			}
+#endif
 			
 			if (msg->fromUID < kMaxActors) {
 				actor_tags[msg->fromUID] = msg->fromTag;
@@ -205,11 +202,11 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
       ponyint_cpu_sleep(5000);
 	}
 	
+#ifndef PLATFORM_IS_IOS
 	if (analysis_enabled > 1) {
 		fclose(analyticsFile);
 	}
-	
-	
+#endif
 	
 	// complete time for any waiting muted or pressure actors
 	for(unsigned int i = 0; i < kMaxActors; i++) {

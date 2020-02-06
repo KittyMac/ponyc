@@ -562,8 +562,10 @@ sds translate_json_add_create_constructor(sds code, const char *js, jsmntok_t *t
 				if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
 					propertyType = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);
 				}
-			
-				code = sdscatprintf(code, "%s':%s,", propertyName, propertyType);
+				
+				if(propertyType != NULL) {
+					code = sdscatprintf(code, "%s':%s,", propertyName, propertyType);
+				}
 			}
 		}
 		
@@ -609,8 +611,10 @@ sds translate_json_add_create_constructor(sds code, const char *js, jsmntok_t *t
 					if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
 						propertyType = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);
 					}
-		
-					code = sdscatprintf(code, "    %s = %s'\n", propertyName, propertyName);
+					
+					if(propertyType != NULL) {
+						code = sdscatprintf(code, "    %s = %s'\n", propertyName, propertyName);
+					}
 				}
 			}
 	

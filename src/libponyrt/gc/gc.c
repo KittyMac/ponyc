@@ -168,7 +168,11 @@ static void recv_local_object(pony_ctx_t* ctx, void* p, pony_type_t* t,
   size_t index = HASHMAP_UNKNOWN;
   gc_t* gc = ponyint_actor_gc(ctx->current);
   object_t* obj = ponyint_objectmap_getobject(&gc->local, p, &index);
-  pony_assert(obj != NULL);
+  
+  if(obj == NULL) {
+    return;
+  }
+  //pony_assert(obj != NULL);
 
   if(obj->mark == gc->mark)
     return;

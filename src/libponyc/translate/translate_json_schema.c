@@ -525,6 +525,103 @@ sds translate_json_add_empty_constructor(sds code, const char *js, jsmntok_t *t,
 	return code;
 }
 
+sds translate_json_add_create_constructor(sds code, const char *js, jsmntok_t *t, size_t _idx, size_t count)
+{
+	bool didAddArgument = false;
+	
+	code = sdscatprintf(code, "  new create( ");
+	
+	size_t idx = _idx;
+	while(idx < count) {
+		
+		char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+		char * propertyName = translate_json_clean_pony_name(originalPropertyName);
+		if (t[idx+1].type == JSMN_OBJECT)
+		{
+			size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
+
+			didAddArgument = true;
+			
+			if (typeIdx == 0) {
+				return translate_json_abort(code, "type for property not found");
+			} else {
+				
+				const char * propertyType = NULL;
+				if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
+					propertyType = "String";
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
+					propertyType = "I64";
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
+					propertyType = "F64";
+				}
+				if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+					propertyType = "Bool";
+				}
+				if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
+					propertyType = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);
+				}
+			
+				code = sdscatprintf(code, "%s':%s,", propertyName, propertyType);
+			}
+		}
+		
+		idx = translate_json_get_next_sibling(t, idx, count);
+	}
+	
+	sdssetlen(code, sdslen(code)-1);
+	
+	code = sdscatprintf(code, " ) =>\n");
+	
+	if (didAddArgument == false) {
+		code = sdscatprintf(code, "    None\n");
+	} else {
+		
+		idx = _idx;
+		while(idx < count) {
+	
+			char * originalPropertyName = strndup(js + t[idx].start, t[idx].end - t[idx].start);
+			char * propertyName = translate_json_clean_pony_name(originalPropertyName);
+			if (t[idx+1].type == JSMN_OBJECT)
+			{
+				size_t typeIdx = translate_json_get_named_child_index(js, t, idx+1, count, "type");
+
+				didAddArgument = true;
+		
+				if (typeIdx == 0) {
+					return translate_json_abort(code, "type for property not found");
+				} else {
+			
+					const char * propertyType = NULL;
+					if (jsoneq(js, &t[typeIdx + 1], "string") == 0) {
+						propertyType = "String";
+					}
+					if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
+						propertyType = "I64";
+					}
+					if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
+						propertyType = "F64";
+					}
+					if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
+						propertyType = "Bool";
+					}
+					if (jsonprefix(js, &t[typeIdx + 1], "#object") == 0) {
+						propertyType = strndup(js + t[typeIdx + 1].start + OBJREFLEN, (t[typeIdx + 1].end - t[typeIdx + 1].start) - OBJREFLEN);
+					}
+		
+					code = sdscatprintf(code, "    %s = %s'\n", propertyName, propertyName);
+				}
+			}
+	
+			idx = translate_json_get_next_sibling(t, idx, count);
+		}
+		
+	}
+	
+	return code;
+}
+
 sds translate_json_add_getters_and_setters(sds code, const char *js, jsmntok_t *t, size_t idx, size_t count)
 {
 	while(idx < count) {
@@ -950,6 +1047,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
 							idx = translate_json_get_next_sibling(t, idx, count);
 						}
 						
+						code = translate_json_add_create_constructor(code, js, t, objectIdx, count);
 						code = translate_json_add_empty_constructor(code, js, t, objectIdx, count);
 						code = translate_json_add_read_constructor(code, js, t, objectIdx, count);
 						code = translate_json_add_append_json(code, js, t, objectIdx, count);

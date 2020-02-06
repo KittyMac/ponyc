@@ -29,6 +29,12 @@ class val Env
   let vars: Array[String] val
     """The program's environment variables."""
 
+  let argc:U32
+    """The raw argc passed in from main(). Useful for directly passing to FFI code"""
+	
+  let argv:Pointer[Pointer[U8]] val
+    """The raw argv passed in from main(). Useful for directly passing to FFI code"""
+
   let exitcode: {(I32)} val
     """
     Sets the environment's exit code. The exit code of the root environment will
@@ -36,8 +42,8 @@ class val Env
     """
 
   new _create(
-    argc: U32,
-    argv: Pointer[Pointer[U8]] val,
+    argc': U32,
+    argv': Pointer[Pointer[U8]] val,
     envp: Pointer[Pointer[U8]] val)
   =>
     """
@@ -51,6 +57,9 @@ class val Env
     input = Stdin._create(@pony_os_stdin_setup[Bool]())
     out = StdStream._out()
     err = StdStream._err()
+	
+	argc = argc'
+	argv = argv'
 
     args = _strings_from_pointers(argv, argc.usize())
     vars = _strings_from_pointers(envp, _count_strings(envp))
@@ -71,6 +80,8 @@ class val Env
     input = input'
     out = out'
     err = err'
+	argc = 0
+	argv = recover val Pointer[Pointer[U8]] end
     args = args'
     vars = vars'
     exitcode = exitcode'

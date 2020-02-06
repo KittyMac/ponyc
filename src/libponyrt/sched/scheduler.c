@@ -761,19 +761,19 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
 
   while(true)
   {
+	uint64_t tsc2 = ponyint_cpu_tick();
+	
     victim = choose_victim(sched);
   
     if(sched->main_thread) {
       actor = pop_global_main(victim);
-        if(actor != NULL)
-          break;
+      if(actor != NULL)
+        break;
     }
 
     actor = pop_global(victim);
     if(actor != NULL)
       break;
-
-    uint64_t tsc2 = ponyint_cpu_tick();
 
     if(read_msg(sched))
     {

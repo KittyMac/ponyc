@@ -395,6 +395,15 @@ void ponyint_cpu_core_pause(uint64_t tsc, uint64_t tsc2, bool yield)
 #endif
 }
 
+void ponyint_cpu_sleep(int ns)
+{
+#ifdef PLATFORM_IS_WINDOWS
+  Sleep(ns);
+#else
+  usleep(ns);
+#endif
+}
+
 void ponyint_cpu_relax()
 {
 #if defined(PLATFORM_IS_X86) && !defined(PLATFORM_IS_VISUAL_STUDIO)

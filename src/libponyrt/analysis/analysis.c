@@ -6,13 +6,6 @@
 #include <stdio.h>
 #include <signal.h>
 #include <sys/time.h>
-
-#ifdef PLATFORM_IS_WINDOWS
-// TODO: what is needed for windows sleep?
-#else
-#include <unistd.h>
-#endif
-
 #include "../pony.h"
 #include "../actor/actor.h"
 #include "../sched/scheduler.h"
@@ -209,11 +202,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			break;
 		}
 		
-#ifdef PLATFORM_IS_WINDOWS
-  	  Sleep(5000);
-#else
-      usleep(5000);
-#endif
+      ponyint_cpu_sleep(5000);
 	}
 	
 	if (analysis_enabled > 1) {
@@ -376,7 +365,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			fprintf(stderr, "\n");
 			
 			fprintf(stderr, "%sLarge amounts of garbage collection in Pony can mean two things\n", darkGreyColor);
-			fprintf(stderr, "1. Time is spent garbage collecting when it could be spent elsewhere\n");
+			fprintf(stderr, "1. Time spent garbage collecting when it could be spent elsewhere\n");
 			fprintf(stderr, "2. Garbage collection of data shared between actors requires messaging between actors to resolve\n");
 			fprintf(stderr, "Reducing the amount of transitory memory allocations in critical paths can result\n");
 			fprintf(stderr, "in performance gains%s\n\n", resetColor);
@@ -466,11 +455,7 @@ void saveRuntimeAnalyticForActorMessage(pony_ctx_t * ctx, pony_actor_t * from, p
 		
 		// if we're overloading the save-to-file thread, slow down a little
 		if (analysisMessageQueue.num_messages > 100000) {
-#ifdef PLATFORM_IS_WINDOWS
-			Sleep(50);
-#else
-			usleep(50);
-#endif
+			ponyint_cpu_sleep(50);
 		}
 		
 		ponyint_thread_messageq_push(&analysisMessageQueue, (pony_msg_t*)msg, (pony_msg_t*)msg
@@ -521,7 +506,7 @@ void saveRuntimeAnalyticForActor(pony_ctx_t * ctx, pony_actor_t * actor, int eve
 		
 		// if we're overloading the events thread, slow down a little
 		if (analysisMessageQueue.num_messages > 100000) {
-			usleep(50);
+			ponyint_cpu_sleep(50);
 		}
 		
 		ponyint_thread_messageq_push(&analysisMessageQueue, (pony_msg_t*)msg, (pony_msg_t*)msg

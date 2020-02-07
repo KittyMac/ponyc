@@ -102,6 +102,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	const uint64_t kMaxCount = 0xFFFFFFFFFFFFFFFF;
 	uint64_t * overload_counts = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * gc_counts = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
+	uint64_t * destroyed_flags = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * actor_tags = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * memory_max = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	
@@ -115,9 +116,11 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	bool has_muted = false;
 	bool has_pressure = false;
 	bool has_gc = false;
+	bool has_destroyed = true;
 	
 	memset(overload_counts, 0, kMaxActors * sizeof(uint64_t));
 	memset(gc_counts, 0, kMaxActors * sizeof(uint64_t));
+	memset(destroyed_flags, 0, kMaxActors * sizeof(uint64_t));
 	memset(actor_tags, 0, kMaxActors * sizeof(uint64_t));
 	memset(memory_max, 0, kMaxActors * sizeof(uint64_t));
 	
@@ -163,6 +166,8 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			
 			if (msg->fromUID < kMaxActors) {
 				actor_tags[msg->fromUID] = msg->fromTag;
+				destroyed_flags[msg->fromUID] = 1;
+				
 				if (msg->eventID == ANALYTIC_OVERLOADED && overload_counts[msg->fromUID] < kMaxCount) { 
 					overload_counts[msg->fromUID] += 1;
 					has_overloaded = true;
@@ -170,6 +175,9 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 				if (msg->eventID == ANALYTIC_GC_RAN && gc_counts[msg->fromUID] < kMaxCount) { 
 					gc_counts[msg->fromUID] += 1;
 					has_gc = true;
+				}
+				if (msg->eventID == ANALYTIC_ACTOR_DESTROYED) { 
+					destroyed_flags[msg->fromUID] = 2;
 				}
 				if (msg->eventID == ANALYTIC_MUTE) { 
 					muted_start[msg->fromUID] = ponyint_cpu_tick() / 1000000;
@@ -244,7 +252,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	
 	// print out our analysis to the console
 	// 1. overloaded actors
-	if (has_overloaded || has_muted || has_pressure || has_gc) {
+	if (has_overloaded || has_muted || has_pressure || has_gc || has_destroyed) {
 		const int kMaxActorsPerReport = 10;
 		
 		// determine if we have any untagged actors
@@ -370,6 +378,32 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			fprintf(stderr, "\n");
 		}
 		
+		if (has_destroyed) {
+			// In the case of us force quitting the app (because its not ending correctly?) it would be nice
+			// to see a list of actors still running (haven't been destroyed)
+			for(uint64_t i = 0; i < kMaxActors; i++) {
+				if (destroyed_flags[i] == 1) { // all actors still alive...
+					if (actor_tags[i] == 0) {
+						fprintf(stderr, "%sactor [untagged] was never destroyed%s\n", orangeColor, resetColor);
+					} else {
+						if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+							fprintf(stderr, "%sactor %s was never destroyed%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], resetColor);
+						} else {
+							fprintf(stderr, "%sactor tag %llu was never destroyed%s\n", orangeColor, actor_tags[i], resetColor);
+						}
+					}
+				}
+			}
+			
+			fprintf(stderr, "\n");
+			
+			fprintf(stderr, "%sPony programs end when all actors have been destroyed and all schedulers have been shut down.\n", darkGreyColor);
+			fprintf(stderr, "If you are reading this message then most likely you had to terminate the program manually.\n");
+			fprintf(stderr, "You can use this list of actors to help narrow down why the actors didn't finish processing.%s\n", resetColor);
+			
+			fprintf(stderr, "\n");
+		}
+		
 		if (hasUntaggedActors) {
 			fprintf(stderr, "\n\n%sNote: You can tag actors to associate results with specific types of actors.\n", darkGreyColor);
 			fprintf(stderr, "actor Foo\n");
@@ -470,13 +504,25 @@ void saveRuntimeAnalyticForActor(pony_ctx_t * ctx, pony_actor_t * actor, int eve
 	
 	// level 1 analysis only cares about these events
 	if ( ctx->analysis_enabled == 1 && 
-		(event != ANALYTIC_OVERLOADED && event != ANALYTIC_MUTE && event != ANALYTIC_NOT_MUTE && event != ANALYTIC_UNDERPRESSURE && event != ANALYTIC_NOT_UNDERPRESSURE && event != ANALYTIC_GC_RAN)) {
+		(	event != ANALYTIC_OVERLOADED && 
+			event != ANALYTIC_MUTE && 
+			event != ANALYTIC_NOT_MUTE && 
+			event != ANALYTIC_UNDERPRESSURE && 
+			event != ANALYTIC_NOT_UNDERPRESSURE && 
+			event != ANALYTIC_GC_RAN &&
+			event != ANALYTIC_ACTOR_DESTROYED)) {
 		return;
 	}
 	
 	// level 2 analysis only cares about events with a tag
 	if ( ctx->analysis_enabled == 2 && 
-		 (event != ANALYTIC_OVERLOADED || event != ANALYTIC_MUTE || event != ANALYTIC_NOT_MUTE || event != ANALYTIC_UNDERPRESSURE || event != ANALYTIC_NOT_UNDERPRESSURE || event != ANALYTIC_GC_RAN) &&
+		(	event != ANALYTIC_OVERLOADED || 
+			event != ANALYTIC_MUTE || 
+			event != ANALYTIC_NOT_MUTE || 
+			event != ANALYTIC_UNDERPRESSURE ||
+			event != ANALYTIC_NOT_UNDERPRESSURE ||
+			event != ANALYTIC_GC_RAN ||
+			event != ANALYTIC_ACTOR_DESTROYED) &&
 		 actor->tag == 0) {
 		return;
 	}

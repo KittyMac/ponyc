@@ -104,6 +104,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	uint64_t * overload_counts = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * gc_counts = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * destroyed_flags = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
+	uint64_t * last_msg_count = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * actor_tags = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	uint64_t * memory_max = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
 	
@@ -122,6 +123,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 	memset(overload_counts, 0, kMaxActors * sizeof(uint64_t));
 	memset(gc_counts, 0, kMaxActors * sizeof(uint64_t));
 	memset(destroyed_flags, 0, kMaxActors * sizeof(uint64_t));
+	memset(last_msg_count, 0, kMaxActors * sizeof(uint64_t));
 	memset(actor_tags, 0, kMaxActors * sizeof(uint64_t));
 	memset(memory_max, 0, kMaxActors * sizeof(uint64_t));
 	
@@ -168,6 +170,8 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			if (msg->fromUID < kMaxActors) {
 				actor_tags[msg->fromUID] = msg->fromTag;
 				destroyed_flags[msg->fromUID] = 1;
+				last_msg_count[msg->fromUID] = msg->fromNumMessages;
+				last_msg_count[msg->toUID] = msg->toNumMessages;
 				
 				if (msg->eventID == ANALYTIC_OVERLOADED && overload_counts[msg->fromUID] < kMaxCount) { 
 					overload_counts[msg->fromUID] += 1;
@@ -387,12 +391,12 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			for(uint64_t i = 0; i < kMaxActors; i++) {
 				if (destroyed_flags[i] == 1) { // all actors still alive...
 					if (actor_tags[i] == 0) {
-						fprintf(stderr, "%sactor [untagged] was never destroyed%s\n", orangeColor, resetColor);
+						fprintf(stderr, "%sactor [untagged] was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, i, last_msg_count[i], resetColor);
 					} else {
 						if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
-							fprintf(stderr, "%sactor %s was never destroyed%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], resetColor);
+							fprintf(stderr, "%sactor %s was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], i, last_msg_count[i], resetColor);
 						} else {
-							fprintf(stderr, "%sactor tag %llu was never destroyed%s\n", orangeColor, actor_tags[i], resetColor);
+							fprintf(stderr, "%sactor tag %llu was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, actor_tags[i], i, last_msg_count[i], resetColor);
 						}
 					}
 				}
@@ -405,6 +409,29 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			fprintf(stderr, "You can use this list of actors to help narrow down why the actors didn't finish processing.%s\n", resetColor);
 			
 			fprintf(stderr, "\n");
+			
+			// Report on the active schedulers...
+			uint32_t active_scheduler_count = get_active_scheduler_count();
+			
+			fprintf(stderr, "There are %d active schedulers\n\n", active_scheduler_count);
+			for(uint32_t i = 0; i < active_scheduler_count; i++) {
+				scheduler_t * sched = ponyint_sched_by_index(i);
+				
+				fprintf(stderr, "  Scheduler #%d: \n", sched->index);
+				if((int32_t)sched->cpu >= 0) {		fprintf(stderr, "     cpu / node: %d / %d \n", sched->cpu, sched->node); }
+				if(sched->terminate) {				fprintf(stderr, "     is terminate\n"); }
+				if(sched->asio_stoppable) {			fprintf(stderr, "     is asio stoppable \n");	}
+				if(sched->asio_noisy) {				fprintf(stderr, "     is asio noisy \n");	}
+				if(sched->main_thread) {			fprintf(stderr, "     is main thread \n");	}
+				if(sched->block_count) {			fprintf(stderr, "     block_count: %d \n", sched->block_count);	}
+				if(sched->ack_token) {				fprintf(stderr, "     ack_token: %d \n", sched->ack_token);	}
+				if(sched->ack_count) {				fprintf(stderr, "     ack_count: %d \n", sched->ack_count);	}
+													fprintf(stderr, "     waiting actors: %lld \n", sched->q.num_messages);
+				if(sched->mq.num_messages) {		fprintf(stderr, "     mq num msgs: %lld\n", sched->mq.num_messages);	}
+			}
+			fprintf(stderr, "\n\n");
+			fprintf(stderr, "There are %lld actors waiting in inject queue\n", ponyint_size_of_inject_queue());
+			fprintf(stderr, "There are %lld actors waiting in inject main queue\n\n", ponyint_size_of_inject_main_queue());
 		}
 		
 		if (hasUntaggedActors) {

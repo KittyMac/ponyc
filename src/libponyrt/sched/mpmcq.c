@@ -216,7 +216,9 @@ void* ponyint_mpmcq_pop(mpmcq_t* q)
 
   node_free(tail);
   
-  atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
-
+  if (data != NULL) {
+  	atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
+  }
+  
   return data;
 }

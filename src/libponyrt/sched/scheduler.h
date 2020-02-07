@@ -12,6 +12,7 @@ typedef struct scheduler_t scheduler_t;
 #include "../gc/gc.h"
 #include "../gc/serialise.h"
 #include "../pony.h"
+#include "../analysis/analysis.h"
 #include <platform.h>
 #include "mutemap.h"
 
@@ -148,6 +149,13 @@ size_t ponyint_sched_total_mem_size(pony_ctx_t* ctx);
 /** Get the total memory allocated by a scheduler thread.
  */
 size_t ponyint_sched_total_alloc_size(pony_ctx_t* ctx);
+#endif
+
+#ifdef RUNTIME_ANALYSIS
+uint32_t get_active_scheduler_count();
+scheduler_t* ponyint_sched_by_index(uint32_t index);
+int64_t ponyint_size_of_inject_queue();
+int64_t ponyint_size_of_inject_main_queue();
 #endif
 
 PONY_EXTERN_C_END

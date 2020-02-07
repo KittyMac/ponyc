@@ -99,10 +99,38 @@ size_t ponyint_sched_total_alloc_size(pony_ctx_t* ctx)
 }
 #endif
 
+#ifdef RUNTIME_ANALYSIS
+
+/** Used by Pony analysis at SIGTERM time to report information regarding the state of the schedulers
+ */
+scheduler_t* ponyint_sched_by_index(uint32_t index)
+{
+	if(index <= get_active_scheduler_count()){
+		return scheduler + index;
+	}
+	return NULL;
+}
+
+/** Used by Pony analysis at SIGTERM time to report information regarding the state of the schedulers
+ */
+int64_t ponyint_size_of_inject_queue()
+{
+	return inject.num_messages;
+}
+
+/** Used by Pony analysis at SIGTERM time to report information regarding the state of the schedulers
+ */
+int64_t ponyint_size_of_inject_main_queue()
+{
+	return inject_main.num_messages;
+}
+
+#endif
+
 /**
  * Gets the current active scheduler count
  */
-static uint32_t get_active_scheduler_count()
+uint32_t get_active_scheduler_count()
 {
    return atomic_load_explicit(&active_scheduler_count, memory_order_relaxed);
 }
@@ -468,14 +496,18 @@ static scheduler_t* choose_victim(scheduler_t* sched)
   // have waiting work.  If they do we can end quickly with a better guess as a victim.
   uint32_t current_active_scheduler_count = get_active_scheduler_count();
   scheduler_t* scan_victim = scheduler;
+  scheduler_t* max_victim = scheduler;
   uint32_t i = 0;
   while (i++ < current_active_scheduler_count) {
-    // does the victim have any work to do?
-    if(scan_victim->q.num_messages > 0 && scan_victim != sched) {
-      sched->last_victim = scan_victim;
-      return scan_victim;
+    // find the victim with the most work in their queue
+    if(scan_victim->q.num_messages > max_victim->q.num_messages) {
+	  max_victim = scan_victim;
     }
     scan_victim += 1;
+  }
+  if(max_victim != sched) {
+    sched->last_victim = max_victim;
+    return max_victim;
   }
   
   scheduler_t* victim = sched->last_victim;
@@ -1208,7 +1240,7 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
 #endif
 
     scheduler[i].ctx.scheduler = &scheduler[i];
-  scheduler[i].ctx.analysis_enabled = thread_analysis_enabled;
+    scheduler[i].ctx.analysis_enabled = thread_analysis_enabled;
     scheduler[i].last_victim = &scheduler[i];
     scheduler[i].index = i;
     scheduler[i].asio_noisy = false;

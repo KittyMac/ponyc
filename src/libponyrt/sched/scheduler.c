@@ -483,9 +483,13 @@ static bool quiescent(scheduler_t* sched, uint64_t tsc, uint64_t tsc2)
 
 static scheduler_t* choose_victim(scheduler_t* sched)
 {
-	// we have work to do, why are we bothering to steal?
+  // we have work to do, why are we bothering to steal?
   if(sched->q.num_messages > 0) {
     return sched;
+  }
+  // did the last one we steal from have more work?
+  if(sched->last_victim->q.num_messages > 0) {
+    return sched->last_victim;
   }
   // If the inject queue has work, we can end very quickly
   if(inject.num_messages > 0) {

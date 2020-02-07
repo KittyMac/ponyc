@@ -592,6 +592,15 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 void ponyint_actor_destroy(pony_actor_t* actor)
 {
   pony_assert(has_flag(actor, FLAG_PENDINGDESTROY));
+  
+#ifdef RUNTIME_ANALYSIS
+  {
+    pony_ctx_t* ctx = pony_ctx();
+    if (ctx->analysis_enabled) {
+      saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_ACTOR_DESTROYED);
+    }
+  }
+#endif
 
   // Make sure the actor being destroyed has finished marking its queue
   // as empty. Otherwise, it may spuriously see that tail and head are not
@@ -659,12 +668,6 @@ void ponyint_actor_setpendingdestroy(pony_actor_t* actor)
 
 void ponyint_actor_final(pony_ctx_t* ctx, pony_actor_t* actor)
 {
-#ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled) {
-    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_ACTOR_DESTROYED);
-  }
-#endif
-	
   // This gets run while the cycle detector is handling a message. Set the
   // current actor before running anything.
   pony_actor_t* prev = ctx->current;

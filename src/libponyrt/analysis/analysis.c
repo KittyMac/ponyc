@@ -41,6 +41,7 @@ typedef struct analysis_msg_t
 static uint64_t startMilliseconds = 0;
 static pony_thread_id_t analysisThreadID;
 static bool analysisThreadRunning = false;
+static bool analysisThreadWasKilledUnexpectedly = false;
 static messageq_t analysisMessageQueue;
 
 static uint64_t findTopActorsInValues(uint64_t * values, uint64_t num_values, uint64_t * results, uint64_t num_results, uint64_t * total_count);
@@ -53,7 +54,7 @@ void sigintHandler(int x)
 {
     // we want to print out runtime stats before exiting, so
 	// call stopRuntimeAnalysis() then exit.
-	stopRuntimeAnalysis();
+	stopRuntimeAnalysis(true);
 	exit(x);
 }
 
@@ -176,7 +177,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 					gc_counts[msg->fromUID] += 1;
 					has_gc = true;
 				}
-				if (msg->eventID == ANALYTIC_ACTOR_DESTROYED) { 
+				if (msg->eventID == ANALYTIC_ACTOR_DESTROYED) {
 					destroyed_flags[msg->fromUID] = 2;
 				}
 				if (msg->eventID == ANALYTIC_MUTE) { 
@@ -207,7 +208,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			break;
 		}
 		
-      ponyint_cpu_sleep(5000);
+        ponyint_cpu_sleep(5000);
 	}
 	
 #ifndef PLATFORM_IS_IOS
@@ -378,7 +379,9 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
 			fprintf(stderr, "\n");
 		}
 		
-		if (has_destroyed) {
+		// Note: it appears the runtime doesn't bother calling actor destroy when the program finished normally
+		// (i don't blame it), so this report should only be useful for someone who SIGINT'd the program
+		if (analysisThreadWasKilledUnexpectedly) {
 			// In the case of us force quitting the app (because its not ending correctly?) it would be nice
 			// to see a list of actors still running (haven't been destroyed)
 			for(uint64_t i = 0; i < kMaxActors; i++) {
@@ -582,9 +585,11 @@ void startRuntimeAnalysis(pony_ctx_t * ctx) {
     }
 }
 
-void stopRuntimeAnalysis() {
+void stopRuntimeAnalysis(bool killed) {
 	
 	if (analysisThreadRunning) {
+		analysisThreadWasKilledUnexpectedly = killed;
+		
 		analysisThreadRunning = false;
 		ponyint_thread_join(analysisThreadID);
 		

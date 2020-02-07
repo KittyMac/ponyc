@@ -1130,7 +1130,7 @@ static void ponyint_sched_shutdown()
   ponyint_mpmcq_destroy(&inject_main);
   
 #ifdef RUNTIME_ANALYSIS
-  stopRuntimeAnalysis();
+  stopRuntimeAnalysis(false);
 #endif
 }
 

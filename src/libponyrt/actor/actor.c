@@ -831,7 +831,7 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
   }
   
 #ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled) {
+  if (ctx->analysis_enabled > 1) {
     saveRuntimeAnalyticForActorMessage(ctx, ctx->current, to, (has_app_msg ? ANALYTIC_APP_MESSAGE_SENT : ANALYTIC_MESSAGE_SENT));
   }
 #endif
@@ -885,7 +885,7 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
   }
 
 #ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled) {
+  if (ctx->analysis_enabled > 1) {
     saveRuntimeAnalyticForActorMessage(ctx, ctx->current, to, (has_app_msg ? ANALYTIC_APP_MESSAGE_SENT : ANALYTIC_MESSAGE_SENT));
   }
 #endif

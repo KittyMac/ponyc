@@ -1004,16 +1004,16 @@ static void run(scheduler_t* sched)
         signal_suspended_threads(current_active_scheduler_count, sched->index);
       }
     }
-  
-    if(sched->main_thread && actor == NULL) {
-      actor = pop_global_main(sched);
-    }
-
+	
     // In response to reading a message, we might have unmuted an actor and
     // added it back to our queue. if we don't have an actor to run, we want
     // to pop from our queue to check for a recently unmuted actor
-    if(read_msg(sched) && actor == NULL)
-    {
+    read_msg(sched);
+
+    if(sched->main_thread && actor == NULL) {
+      actor = pop_global_main(sched);
+    }
+    if(actor == NULL) {
       actor = pop_global(sched);
     }
 
@@ -1031,12 +1031,12 @@ static void run(scheduler_t* sched)
       DTRACE2(ACTOR_SCHEDULED, (uintptr_t)sched, (uintptr_t)actor);
     }
   
-  // main thread only actors can only run on scheduler 0
-  if (actor->use_main_thread && sched->main_thread == false) {
-    ponyint_mpmcq_push(&inject_main, actor);
-    actor = NULL;
-    continue;
-  }
+    // main thread only actors can only run on scheduler 0
+    if (actor->use_main_thread && sched->main_thread == false) {
+      ponyint_mpmcq_push(&inject_main, actor);
+      actor = NULL;
+      continue;
+    }
 
     // We have at least one muted actor...
     // Try and wake up a sleeping scheduler thread to help with the load.
@@ -1317,19 +1317,19 @@ void ponyint_sched_add(pony_ctx_t* ctx, pony_actor_t* actor)
 {
   if(ctx->scheduler != NULL)
   {
-  if(actor->use_main_thread && ctx->scheduler->main_thread == false) {
-    ponyint_mpmcq_push(&inject_main, actor);
-  }else{
+    if(actor->use_main_thread && ctx->scheduler->main_thread == false) {
+      ponyint_mpmcq_push(&inject_main, actor);
+    }else{
       // Add to the current scheduler thread.
       push(ctx->scheduler, actor);
-  }
+    }
   } else {
     // Put on the shared mpmcq.
-  if(actor->use_main_thread) {
-    ponyint_mpmcq_push(&inject_main, actor);
-  }else{
-    ponyint_mpmcq_push(&inject, actor);
-  }
+    if(actor->use_main_thread) {
+      ponyint_mpmcq_push(&inject_main, actor);
+    }else{
+      ponyint_mpmcq_push(&inject, actor);
+    }
   }
 }
 

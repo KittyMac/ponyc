@@ -277,9 +277,6 @@ define USE_CHECK
     endif
     ALL_CFLAGS += -DUSE_DYNAMIC_TRACE
     PONY_BUILD_DIR := $(PONY_BUILD_DIR)-dtrace
-  else ifeq ($1,actor_continuations)
-    ALL_CFLAGS += -DUSE_ACTOR_CONTINUATIONS
-    PONY_BUILD_DIR := $(PONY_BUILD_DIR)-actor_continuations
   else ifeq ($1,scheduler_scaling_pthreads)
     ALL_CFLAGS += -DUSE_SCHEDULER_SCALING_PTHREADS
     PONY_BUILD_DIR := $(PONY_BUILD_DIR)-scheduler_scaling_pthreads

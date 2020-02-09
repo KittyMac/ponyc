@@ -13,6 +13,7 @@
 #include "../type/subtype.h"
 #include "../type/viewpoint.h"
 #include "../../libponyrt/mem/pool.h"
+#include "../type/assemble.h"
 #include "ponyassert.h"
 #include <string.h>
 
@@ -554,6 +555,46 @@ LLVMValueRef gen_string(compile_t* c, ast_t* ast)
   compile_type_t* c_t = (compile_type_t*)t->c_type;
 
   size_t len = ast_name_len(ast);
+
+  LLVMValueRef args[4];
+  args[0] = c_t->desc;
+  args[1] = LLVMConstInt(c->intptr, len, false);
+  args[2] = LLVMConstInt(c->intptr, len + 1, false);
+  args[3] = codegen_string(c, name, len);
+
+  LLVMValueRef inst = LLVMConstNamedStruct(c_t->structure, args, 4);
+  LLVMValueRef g_inst = LLVMAddGlobal(c->module, c_t->structure, "");
+  LLVMSetInitializer(g_inst, inst);
+  LLVMSetGlobalConstant(g_inst, true);
+  LLVMSetLinkage(g_inst, LLVMPrivateLinkage);
+  LLVMSetUnnamedAddr(g_inst, true);
+
+  string = POOL_ALLOC(genned_string_t);
+  string->string = name;
+  string->global = g_inst;
+  genned_strings_putindex(&c->strings, string, index);
+
+  return g_inst;
+}
+
+LLVMValueRef gen_string_from_cstring(compile_t* c, ast_t* ast, const char* name)
+{
+  pony_assert(ast != NULL);
+  
+  // given a c string, make a Pony string from it
+  genned_string_t k;
+  k.string = name;
+  size_t index = HASHMAP_UNKNOWN;
+  genned_string_t* string = genned_strings_get(&c->strings, &k, &index);
+
+  if(string != NULL)
+    return string->global;
+
+  ast_t* type = type_builtin(c->opt, ast, "String");
+  reach_type_t* t = reach_type(c->reach, type);
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+
+  size_t len = strlen(name);
 
   LLVMValueRef args[4];
   args[0] = c_t->desc;

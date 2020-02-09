@@ -3,9 +3,44 @@
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
 
+## Retrieve the source location where an error occurred
+
+Sometimes you just want a quick and dirty mechanism for knowing **where** an error was spawned. Such a mechanism now exists:
+
+```
+use "random"
+use "collections"
+
+primitive ErrorCodes
+	fun red():U32 => 42
+	fun blue():U32 => 17
+
+actor Main
+
+	new create(env:Env) =>
+		for _ in Range[U32](0, 20) do
+			try
+			    randomError(env)?
+			else
+				env.out.print("Error occured at " + __error_loc)
+			end
+		end
+
+	fun ref randomError(env:Env)? =>
+		match (@arc4random[U32]() % 6)
+		| 0 => error ErrorCodes.red()
+		| 1 => error ErrorCodes.blue()
+		| 2 => error 99
+		| 3 => error None
+		| 4 => error
+		else
+			env.out.print("success!")
+		end
+```
+
 ## Errors can optionally include a U32 value
 
-There was some discussion recently on Zulip regarding pony error's lack of information. Unlike exceptions in other languages, calling error in pony simply pops you out of the enclosing try, with no further information as to what caused the error.  This changes keeps error as it is syntactically, but allows the pony developer to optionally include a U32 value (either a literal or as the result of an expression.  The error value can be retrieved with the new ```__error``` value, and should only be considered valid in the ```else``` block of the ```try```.
+There was some discussion recently on Zulip regarding pony error's lack of information. Unlike exceptions in other languages, calling error in pony simply pops you out of the enclosing try, with no further information as to what caused the error.  This changes keeps error as it is syntactically, but allows the pony developer to optionally include a U32 value (either a literal or as the result of an expression.  The error value can be retrieved with the new ```__error_code``` value, and should only be considered valid in the ```else``` block of the ```try```.
 
 Example:
 
@@ -25,11 +60,11 @@ actor Main
 			try
 			    randomError(env)?
 			else
-				match __error
+				match __error_code
 				| ErrorCodes.red() => env.out.print("sorry, we encountered the red error")
 				| ErrorCodes.blue() => env.out.print("sorry, we encountered the blue error")
 				else
-					env.out.print("unrecognized error code: " + __error.string())
+					env.out.print("unrecognized error code: " + __error_code.string())
 				end
 			end
 		end

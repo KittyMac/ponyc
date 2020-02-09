@@ -504,9 +504,14 @@ DEF(location);
   TOKEN(NULL, TK_LOCATION);
   DONE();
 
-// __ERROR
-DEF(error_value);
-  TOKEN(NULL, TK_ERROR_VALUE);
+// __ERROR_CODE
+DEF(error_code);
+  TOKEN(NULL, TK_ERROR_CODE);
+  DONE();
+
+// __ERROR_LOC
+DEF(error_loc);
+  TOKEN(NULL, TK_ERROR_LOC);
   DONE();
 
 // AT (ID | STRING) typeargs (LPAREN | LPAREN_NEW) [positional] RPAREN
@@ -525,10 +530,10 @@ DEF(ffi);
   DONE();
 
 // ref | this | literal | tuple | array | object | lambda | barelambda | ffi |
-// location
+// location | error_code | error_loc
 DEF(atom);
   RULE("value", ref, thisliteral, literal, groupedexpr, array, object, lambda,
-    barelambda, ffi, location, error_value);
+    barelambda, ffi, location, error_code, error_loc);
   DONE();
 
 // ref | this | literal | tuple | array | object | lambda | barelambda| ffi |

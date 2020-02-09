@@ -122,6 +122,20 @@ bool expr_literal(pass_opt_t* opt, ast_t* ast, const char* name)
   return true;
 }
 
+bool expr_cstring(pass_opt_t* opt, ast_t* scope)
+{
+  ast_t* elem_type = type_builtin(opt, scope, "U8");
+
+  BUILD(typeargs, elem_type,
+    NODE(TK_TYPEARGS, TREE(elem_type)));
+
+  ast_t* pointer_type = type_builtin_args(opt, scope, "Pointer", typeargs);
+  ast_setid(ast_childidx(pointer_type, 3), TK_VAL);
+  ast_settype(scope, pointer_type);
+  
+  
+  return true;
+}
 
 void make_literal_type(ast_t* ast)
 {

@@ -13,6 +13,8 @@ void operatorliteral_deserialise_data(ast_t* ast);
 
 bool expr_literal(pass_opt_t* opt, ast_t* ast, const char* name);
 
+bool expr_cstring(pass_opt_t* opt, ast_t* ast);
+
 /// Set the given AST node to have literal type
 void make_literal_type(ast_t* ast);
 

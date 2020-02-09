@@ -1136,29 +1136,7 @@ const char * location_as_string(ast_t* location)
     memcpy(stringtabLocationString, locationString, locationStringLen);
     stringtabLocationString[locationStringLen] = '\0';
 
-	const char * stringTab = stringtab_consume(stringtabLocationString, locationStringLen + 1);
-    //ast_t* ast = ast_from_string(location, stringTab);
-	
-	
-    //ast_t* string = type_builtin(opt, location, "String");
-	//ast_t * ast = ast_from_string(location, locationString);
-	//ast_print(ast, 90);
-	//return ast;
-	
-	// TODO: how to make this a "string literal" and not just a TK_STRING
-	// (it appears to be missing the fact that it is not a pony string)
-	/*
-    BUILD(ast, location,
-	  NODE(TK_SEQ, 
-	    STRING(locationString)
-	  )
-    );*/
-	/*
-	fprintf(stderr, "token: %d\n", ast_id(ast));
-	ast_print(ast, 90);
-	*/
-		
-    return stringTab;
+	return stringtab_consume(stringtabLocationString, locationStringLen + 1);
 }
 
 ast_t* expand_location(ast_t* location)

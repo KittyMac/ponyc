@@ -643,10 +643,8 @@ static void init_runtime(compile_t* c)
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
-  LLVMAddAttributeAtIndex(value, 2, readonly_attr);  
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, noreturn_attr);
-  
-  
+    
   // i32 pony_error_code()
   type = LLVMFunctionType(c->i32, NULL, 0, false);
   value = LLVMAddFunction(c->module, "pony_error_code", type);
@@ -654,12 +652,15 @@ static void init_runtime(compile_t* c)
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, readonly_attr);
   
-  // i32 pony_error_location()
+  // i8* pony_error_loc()
   type = LLVMFunctionType(c->void_ptr, NULL, 0, false);
-  value = LLVMAddFunction(c->module, "pony_error_location", type);
+  value = LLVMAddFunction(c->module, "pony_error_loc", type);
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, readonly_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeReturnIndex, noalias_attr);
+  
   
 
   // i32 ponyint_personality_v0(...)

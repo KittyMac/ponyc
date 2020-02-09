@@ -610,7 +610,7 @@ PONY_API bool pony_try(pony_partial_fn callback, void* data);
  * If pony_error() is called and neither pony_try() nor a try block exist higher
  * in the call stack, the runtime calls the C abort() function.
  */
-PONY_API void pony_error(void);
+PONY_API void pony_error();
 
 /**
  * Raise a Pony error.
@@ -618,6 +618,16 @@ PONY_API void pony_error(void);
  * This should only be called from pony_try() or from a Pony try block. In both
  * cases, arbitrarily deep call stacks are allowed between the call to
  * pony_error() and the error destination.
+ *
+ * errcode can be any number and later referenced from your error handler by
+ * __error_code in Pony
+ * pony_error_code(); in C
+ *
+ * location is a Pony String object containing informationr regarding the error call location
+ * You can safely set this to NULL if you can't generate a call location string
+ * You can retrieve this value using:
+ * __error_loc in Pony
+ * pony_error_loc(); in C
  *
  * If pony_error() is called and neither pony_try() nor a try block exist higher
  * in the call stack, the runtime calls the C abort() function.
@@ -633,12 +643,13 @@ PONY_API void pony_error_int(uint32_t errcode, void * location);
 PONY_API uint32_t pony_error_code();
 
 /**
- * Retrieve the SourceLocation pony object related to the location the error was raised.
+ * Retrieve a string representing the location the error was raised.
  *
  * This should only be called from inside an try-else block or any other place
  * were execution has returned to after an error has been thrown.
  */
-PONY_API void * pony_error_location();
+PONY_API void * pony_error_loc();
+
 
 #if defined(__cplusplus)
 }

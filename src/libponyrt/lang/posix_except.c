@@ -19,8 +19,8 @@ PONY_EXTERN_C_BEGIN
 
 static __pony_thread_local struct _Unwind_Exception exception;
 static __pony_thread_local uintptr_t landing_pad;
-static __pony_thread_local uint32_t pony_errno = -99;
-static __pony_thread_local void * pony_errloc = NULL;
+static __pony_thread_local uint32_t pony_err_code = -99;
+static __pony_thread_local void * pony_err_loc = NULL;
 
 static void exception_cleanup(_Unwind_Reason_Code reason,
   struct _Unwind_Exception* exception)
@@ -38,8 +38,8 @@ PONY_API void pony_error_int(uint32_t errcode, void * location)
 #endif
   exception.exception_cleanup = exception_cleanup;
   
-  pony_errno = errcode;
-  pony_errloc = location;
+  pony_err_code = errcode;
+  pony_err_loc = location;
  
 #if __USING_SJLJ_EXCEPTIONS__
 	_Unwind_SjLj_RaiseException(&exception);
@@ -57,12 +57,17 @@ PONY_API void pony_error()
 
 PONY_API uint32_t pony_error_code()
 {
-	return pony_errno;
+	return pony_err_code;
 }
 
-PONY_API void * pony_error_location()
+PONY_API void * pony_error_loc()
 {
-	return pony_errloc;
+	// Note: pony_err_loc is a Pony String object or it is NULL
+	// if it is NULL, we want to return the generic location message
+	if(pony_err_loc) {
+		return pony_err_loc;
+	}
+	return "unknown error location";
 }
 
 static void set_registers(struct _Unwind_Exception* exception,

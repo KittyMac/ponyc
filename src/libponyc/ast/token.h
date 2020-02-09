@@ -169,7 +169,8 @@ typedef enum token_id
   TK_TRY_NO_CHECK,
   TK_WITH,
   TK_ERROR,
-  TK_ERROR_VALUE,
+  TK_ERROR_CODE,
+  TK_ERROR_LOC,
   TK_COMPILE_ERROR,
 
   TK_NOT,

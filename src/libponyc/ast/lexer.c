@@ -197,7 +197,8 @@ static const lextoken_t keywords[] =
   { "digestof", TK_DIGESTOF },
   { "addressof", TK_ADDRESS },
   { "__loc", TK_LOCATION },
-  { "__error", TK_ERROR_VALUE },
+  { "__error_code", TK_ERROR_CODE },
+  { "__error_loc", TK_ERROR_LOC },
 
   { "true", TK_TRUE },
   { "false", TK_FALSE },

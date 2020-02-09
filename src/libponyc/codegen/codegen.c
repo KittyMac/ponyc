@@ -635,12 +635,21 @@ static void init_runtime(compile_t* c)
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, readonly_attr);
 
-  // void pony_error()
+  // void pony_error_int()
   params[0] = LLVMPointerType(c->i32, 0);
   type = LLVMFunctionType(c->void_type, params, 1, false);
   value = LLVMAddFunction(c->module, "pony_error_int", type);
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, noreturn_attr);
+  
+  
+  // i32 pony_error_code()
+  type = LLVMFunctionType(c->i32, NULL, 0, false);
+  value = LLVMAddFunction(c->module, "pony_error_code", type);
+
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, readonly_attr);
+  
 
   // i32 ponyint_personality_v0(...)
   type = LLVMFunctionType(c->i32, NULL, 0, true);

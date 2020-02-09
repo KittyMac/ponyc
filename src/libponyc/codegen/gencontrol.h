@@ -28,6 +28,8 @@ LLVMValueRef gen_try(compile_t* c, ast_t* ast);
 
 LLVMValueRef gen_error(compile_t* c, ast_t* ast);
 
+LLVMValueRef gen_error_value(compile_t* c, ast_t* ast);
+
 void attach_branchweights_metadata(LLVMContextRef ctx, LLVMValueRef branch,
    unsigned int weights[], unsigned int count);
 

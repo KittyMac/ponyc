@@ -578,6 +578,8 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
     case TK_TUPLE:      r = expr_tuple(options, ast); break;
     case TK_ARRAY:      r = expr_array(options, astp); break;
 
+    case TK_ERROR_VALUE:
+                        r = expr_literal(options, ast, "U32"); break;
     case TK_DONTCAREREF:
                         r = expr_dontcareref(options, ast); break;
     case TK_TYPEREF:    r = expr_typeref(options, astp); break;

@@ -143,7 +143,7 @@ GROUP(expr,
   tilde, chain, qualify, call, ffi_call, match_capture,
   if_expr, ifdef, iftypeset, whileloop, repeat, for_loop, with, match, try_expr,
   lambda, barelambda, array_literal, object_literal, int_literal, float_literal,
-  string, bool_literal, id, rawseq, package_ref, location,
+  string, bool_literal, id, rawseq, package_ref, location, error_value,
   this_ref, ref, fun_ref, type_ref, field_ref, tuple_elem_ref, local_ref,
   param_ref);
 
@@ -562,6 +562,7 @@ RULE(id, HAS_TYPE(type) HAS_DATA, TK_ID);
 RULE(int_literal, HAS_TYPE(type), TK_INT);
 RULE(literal_type, LEAF, TK_LITERAL, TK_LITERALBRANCH);
 RULE(location, HAS_TYPE(nominal), TK_LOCATION);
+RULE(error_value, HAS_TYPE(nominal), TK_ERROR_VALUE);
 RULE(none, LEAF, TK_NONE);
 RULE(opliteral_type, HAS_DATA, TK_OPERATORLITERAL);
 RULE(question, LEAF, TK_QUESTION);

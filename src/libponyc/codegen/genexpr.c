@@ -135,6 +135,10 @@ LLVMValueRef gen_expr(compile_t* c, ast_t* ast)
     case TK_ERROR:
       ret = gen_error(c, ast);
       break;
+	
+	case TK_ERROR_VALUE:
+      ret = gen_error_value(c, ast);
+      break;
 
     case TK_IS:
       ret = gen_is(c, ast);

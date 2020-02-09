@@ -360,21 +360,6 @@ bool expr_break(pass_opt_t* opt, ast_t* ast)
   return true;
 }
 
-struct ast_t
-{
-  token_t* t;
-  symtab_t* symtab;
-  void* data;
-  ast_t* parent;
-  ast_t* child;
-  ast_t* sibling;
-  ast_t* annotation_type;
-  uint32_t flags;
-#ifndef PONY_NDEBUG
-  bool frozen;
-#endif
-};
-
 bool expr_error(pass_opt_t* opt, ast_t* ast)
 {
   pony_assert(ast_id(ast) == TK_ERROR);

@@ -742,6 +742,12 @@ LLVMValueRef gen_error(compile_t* c, ast_t* ast)
     return GEN_NOVALUE;
 }
 
+LLVMValueRef gen_error_value(compile_t* c, ast_t* ast)
+{
+	((void)ast);
+    return gencall_runtime(c, "pony_error_code", NULL, 0, "");
+}
+
 void attach_branchweights_metadata(LLVMContextRef ctx, LLVMValueRef branch,
    unsigned int weights[], unsigned int count)
 {

@@ -6,6 +6,7 @@
 #include "ponyassert.h"
 #include <unwind.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #if defined(PLATFORM_IS_ARM32) && !defined(PLATFORM_IS_IOS)
 #include <string.h>
@@ -19,6 +20,7 @@ PONY_EXTERN_C_BEGIN
 static __pony_thread_local struct _Unwind_Exception exception;
 static __pony_thread_local uintptr_t landing_pad;
 static __pony_thread_local uint32_t pony_errno = -99;
+static __pony_thread_local void * pony_errloc = NULL;
 
 static void exception_cleanup(_Unwind_Reason_Code reason,
   struct _Unwind_Exception* exception)
@@ -27,7 +29,7 @@ static void exception_cleanup(_Unwind_Reason_Code reason,
   (void)exception;
 }
 
-PONY_API void pony_error_int(uint32_t errcode)
+PONY_API void pony_error_int(uint32_t errcode, void * location)
 {
 #if defined(PLATFORM_IS_ARM32) && !defined(PLATFORM_IS_IOS)
   memcpy(exception.exception_class, PONY_EXCEPTION_CLASS, 8);
@@ -35,8 +37,9 @@ PONY_API void pony_error_int(uint32_t errcode)
   exception.exception_class = PONY_EXCEPTION_CLASS;
 #endif
   exception.exception_cleanup = exception_cleanup;
- 
+  
   pony_errno = errcode;
+  pony_errloc = location;
  
 #if __USING_SJLJ_EXCEPTIONS__
 	_Unwind_SjLj_RaiseException(&exception);
@@ -49,12 +52,17 @@ PONY_API void pony_error_int(uint32_t errcode)
 
 PONY_API void pony_error()
 {
-	pony_error_int(0);
+	pony_error_int(0, NULL);
 }
 
 PONY_API uint32_t pony_error_code()
 {
 	return pony_errno;
+}
+
+PONY_API void * pony_error_location()
+{
+	return pony_errloc;
 }
 
 static void set_registers(struct _Unwind_Exception* exception,

@@ -1410,20 +1410,20 @@ LLVMValueRef gencall_allocstruct(compile_t* c, reach_type_t* t)
   return result;
 }
 
-void gencall_error(compile_t* c, LLVMValueRef errorCode)
+void gencall_error(compile_t* c, LLVMValueRef errorCode, const char * errorLocation)
 {
   if(errorCode == NULL || LLVMGetTypeKind(LLVMTypeOf(errorCode)) == LLVMPointerTypeKind ) {
     errorCode = LLVMConstInt(c->i32, 0, false);
   }
-  
   LLVMValueRef func = LLVMGetNamedFunction(c->module, "pony_error_int");
-  
-  LLVMValueRef args[1];
+    
+  LLVMValueRef args[2];
   args[0] = errorCode;
+  args[1] = codegen_string(c, errorLocation, strlen(errorLocation));
   if(c->frame->invoke_target != NULL)
-    invoke_fun(c, func, args, 1, "", false);
+    invoke_fun(c, func, args, 2, "", false);
   else
-    LLVMBuildCall(c->builder, func, args, 1, "");
+    LLVMBuildCall(c->builder, func, args, 2, "");
 
   LLVMBuildUnreachable(c->builder);
 }

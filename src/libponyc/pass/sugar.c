@@ -1088,6 +1088,78 @@ static ast_result_t sugar_barelambda(pass_opt_t* opt, ast_t* ast)
   return AST_OK;
 }
 
+const char * location_as_string(ast_t* location)
+{
+	// returns the current source location as a string contained in the stringtab
+	
+    pony_assert(location != NULL);
+
+    const char* file_name = ast_source(location)->file;
+
+    if(file_name == NULL)
+      file_name = "";
+
+    // Find name of containing method.
+    const char* method_name = "";
+    for(ast_t* method = location; method != NULL; method = ast_parent(method))
+    {
+      token_id variety = ast_id(method);
+
+      if(variety == TK_FUN || variety == TK_BE || variety == TK_NEW)
+      {
+        method_name = ast_name(ast_childidx(method, 1));
+        break;
+      }
+    }
+
+    // Find name of containing type.
+    const char* type_name = "";
+    for(ast_t* typ = location; typ != NULL; typ = ast_parent(typ))
+    {
+      token_id variety = ast_id(typ);
+
+      if(variety == TK_INTERFACE || variety == TK_TRAIT ||
+        variety == TK_PRIMITIVE || variety == TK_STRUCT ||
+        variety == TK_CLASS || variety == TK_ACTOR)
+      {
+        type_name = ast_name(ast_child(typ));
+        break;
+      }
+    }
+	
+    // Create a single string which contains the entire location.
+	char locationString[1024] = {0};
+	snprintf(locationString, sizeof(locationString)-1, "%s: %s.%s() line %zu", strrchr(file_name, '/')+1, type_name, method_name, ast_line(location));
+	size_t locationStringLen = strlen(locationString);
+	
+    char* stringtabLocationString = (char*)ponyint_pool_alloc_size(locationStringLen + 1);
+    memcpy(stringtabLocationString, locationString, locationStringLen);
+    stringtabLocationString[locationStringLen] = '\0';
+
+	const char * stringTab = stringtab_consume(stringtabLocationString, locationStringLen + 1);
+    //ast_t* ast = ast_from_string(location, stringTab);
+	
+	
+    //ast_t* string = type_builtin(opt, location, "String");
+	//ast_t * ast = ast_from_string(location, locationString);
+	//ast_print(ast, 90);
+	//return ast;
+	
+	// TODO: how to make this a "string literal" and not just a TK_STRING
+	// (it appears to be missing the fact that it is not a pony string)
+	/*
+    BUILD(ast, location,
+	  NODE(TK_SEQ, 
+	    STRING(locationString)
+	  )
+    );*/
+	/*
+	fprintf(stderr, "token: %d\n", ast_id(ast));
+	ast_print(ast, 90);
+	*/
+		
+    return stringTab;
+}
 
 ast_t* expand_location(ast_t* location)
 {

@@ -8,7 +8,7 @@
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
 #include "../type/assemble.h"
-
+#include "../pass/sugar.h"
 
 LLVMValueRef gen_seq(compile_t* c, ast_t* ast)
 {
@@ -734,9 +734,13 @@ LLVMValueRef gen_error(compile_t* c, ast_t* ast)
 		value = gen_expr(c, expr);
 	}
 	
+	const char * location = location_as_string(ast);
+	
+	fprintf(stderr, "location: %s\n", location);
+		
     codegen_scope_lifetime_end(c);
     codegen_debugloc(c, ast);
-    gencall_error(c, value);
+    gencall_error(c, value, location);
     codegen_debugloc(c, NULL);
 
     return GEN_NOVALUE;
@@ -746,6 +750,12 @@ LLVMValueRef gen_error_value(compile_t* c, ast_t* ast)
 {
 	((void)ast);
     return gencall_runtime(c, "pony_error_code", NULL, 0, "");
+}
+
+LLVMValueRef gen_error_location(compile_t* c, ast_t* ast)
+{
+	((void)ast);
+    return gencall_runtime(c, "pony_error_location", NULL, 0, "");
 }
 
 void attach_branchweights_metadata(LLVMContextRef ctx, LLVMValueRef branch,

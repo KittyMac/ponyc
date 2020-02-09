@@ -18,6 +18,8 @@ void fun_defaults(ast_t* ast);
 // The resulting tree must be caught up with passes and freed by the caller.
 ast_t* expand_location(ast_t* location);
 
+const char * location_as_string(ast_t* location);
+
 ast_result_t pass_sugar(ast_t** astp, pass_opt_t* options);
 
 PONY_EXTERN_C_END

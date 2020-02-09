@@ -581,7 +581,7 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
     case TK_ERROR_CODE:
                         r = expr_literal(options, ast, "U32"); break;
     case TK_ERROR_LOC:
-                        r = expr_cstring(options, ast); break;
+						r = expr_pointer_u8(options, ast); break;
     case TK_DONTCAREREF:
                         r = expr_dontcareref(options, ast); break;
     case TK_TYPEREF:    r = expr_typeref(options, astp); break;

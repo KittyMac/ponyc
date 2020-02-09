@@ -62,8 +62,7 @@ PONY_API uint32_t pony_error_code()
 
 PONY_API void * pony_error_loc()
 {
-	// Note: pony_err_loc is a Pony String object or it is NULL
-	// if it is NULL, we want to return the generic location message
+	// Note: pony_err_loc is a C string or it is null (from someone calling error without location)
 	if(pony_err_loc) {
 		return pony_err_loc;
 	}

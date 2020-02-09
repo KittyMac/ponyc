@@ -1413,18 +1413,17 @@ LLVMValueRef gencall_allocstruct(compile_t* c, reach_type_t* t)
 void gencall_error(compile_t* c, ast_t* ast, LLVMValueRef errorCode, const char * errorLocation)
 {
   ((void)ast);
+  
+  LLVMValueRef func = LLVMGetNamedFunction(c->module, "pony_error_int");
+  
   if(errorCode == NULL || LLVMGetTypeKind(LLVMTypeOf(errorCode)) == LLVMPointerTypeKind ) {
     errorCode = LLVMConstInt(c->i32, 0, false);
   }
-  LLVMValueRef func = LLVMGetNamedFunction(c->module, "pony_error_int");
   
   LLVMValueRef args[2];
   args[0] = errorCode;
   args[1] = codegen_string(c, errorLocation, strlen(errorLocation));
-  
-  // Future reference: use this to generate a Pony string from a cstring
-  //gen_string_from_cstring(c, ast, errorLocation);
-  
+    
   if(c->frame->invoke_target != NULL)
     invoke_fun(c, func, args, 2, "", false);
   else

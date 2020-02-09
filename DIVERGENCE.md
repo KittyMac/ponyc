@@ -5,11 +5,12 @@ This purpose of this file is to catalogue the changes this fork has implemented 
 
 ## Retrieve the source location where an error occurred
 
-Sometimes you just want a quick and dirty mechanism for knowing **where** an error was spawned. Such a mechanism now exists:
+While developing it can be extremely helpful to quickly pinpoint exactly where the error originated from. To accomodate this, you can now use the ```__error_loc``` token to retrieve a C string suitable for printing to the cosole for runtime errors. The choice of C string is for performance; if you want you can convert the C string to a Pony string when you receive the error.
+
+Example:
 
 ```
 use "random"
-use "collections"
 
 primitive ErrorCodes
 	fun red():U32 => 42
@@ -18,12 +19,11 @@ primitive ErrorCodes
 actor Main
 
 	new create(env:Env) =>
-		for _ in Range[U32](0, 20) do
-			try
-			    randomError(env)?
-			else
-				env.out.print("Error occured at " + __error_loc)
-			end
+		try
+		    randomError(env)?
+		else
+			let stderr = @pony_os_stderr[Pointer[U8]]()
+			@fprintf[I32](stderr, "Error code was %d\n%s\n".cstring(), __error_code, __error_loc)
 		end
 
 	fun ref randomError(env:Env)? =>
@@ -36,6 +36,15 @@ actor Main
 		else
 			env.out.print("success!")
 		end
+```
+
+and the output is:
+
+```
+Error code was 17
+Error called in main.pony on line 21:10
+		| 1 => error ErrorCodes.blue()
+		       ^
 ```
 
 ## Errors can optionally include a U32 value

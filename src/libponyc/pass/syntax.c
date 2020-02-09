@@ -737,6 +737,11 @@ static ast_result_t syntax_return(pass_opt_t* opt, ast_t* ast,
     current = parent;
     parent = ast_parent(parent);
   }
+  
+  if(ast_id(ast) == TK_ERROR)
+  {
+     return AST_OK;
+  }
 
   if(ast_id(ast) == TK_RETURN)
   {
@@ -1375,10 +1380,10 @@ ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
     case TK_FFICALL:    r = syntax_ffi(options, ast, true); break;
     case TK_ELLIPSIS:   r = syntax_ellipsis(options, ast); break;
     case TK_CONSUME:    r = syntax_consume(options, ast); break;
+	case TK_ERROR:
     case TK_RETURN:
     case TK_BREAK:      r = syntax_return(options, ast, 1); break;
-    case TK_CONTINUE:
-    case TK_ERROR:      r = syntax_return(options, ast, 0); break;
+    case TK_CONTINUE:   r = syntax_return(options, ast, 0); break;
     case TK_LET:
     case TK_VAR:        r = syntax_local(options, ast); break;
     case TK_EMBED:      r = syntax_embed(options, ast); break;

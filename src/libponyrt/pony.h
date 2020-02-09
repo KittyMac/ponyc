@@ -612,6 +612,26 @@ PONY_API bool pony_try(pony_partial_fn callback, void* data);
  */
 PONY_API void pony_error(void);
 
+/**
+ * Raise a Pony error.
+ *
+ * This should only be called from pony_try() or from a Pony try block. In both
+ * cases, arbitrarily deep call stacks are allowed between the call to
+ * pony_error() and the error destination.
+ *
+ * If pony_error() is called and neither pony_try() nor a try block exist higher
+ * in the call stack, the runtime calls the C abort() function.
+ */
+PONY_API void pony_error_int(uint32_t errcode);
+
+/**
+ * Retrieve the user defined pony error code for an error.
+ *
+ * This should only be called from inside an try-else block or any other place
+ * were execution has returned to after an error has been thrown.
+ */
+PONY_API uint32_t pony_error_code();
+
 #if defined(__cplusplus)
 }
 #endif

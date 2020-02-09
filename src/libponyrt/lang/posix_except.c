@@ -18,6 +18,7 @@ PONY_EXTERN_C_BEGIN
 
 static __pony_thread_local struct _Unwind_Exception exception;
 static __pony_thread_local uintptr_t landing_pad;
+static __pony_thread_local uint32_t pony_errno = -99;
 
 static void exception_cleanup(_Unwind_Reason_Code reason,
   struct _Unwind_Exception* exception)
@@ -26,7 +27,7 @@ static void exception_cleanup(_Unwind_Reason_Code reason,
   (void)exception;
 }
 
-PONY_API void pony_error()
+PONY_API void pony_error_int(uint32_t errcode)
 {
 #if defined(PLATFORM_IS_ARM32) && !defined(PLATFORM_IS_IOS)
   memcpy(exception.exception_class, PONY_EXCEPTION_CLASS, 8);
@@ -35,6 +36,8 @@ PONY_API void pony_error()
 #endif
   exception.exception_cleanup = exception_cleanup;
  
+  pony_errno = errcode;
+ 
 #if __USING_SJLJ_EXCEPTIONS__
 	_Unwind_SjLj_RaiseException(&exception);
 #else
@@ -42,6 +45,16 @@ PONY_API void pony_error()
 #endif
 
   abort();
+}
+
+PONY_API void pony_error()
+{
+	pony_error_int(0);
+}
+
+PONY_API uint32_t pony_error_code()
+{
+	return pony_errno;
 }
 
 static void set_registers(struct _Unwind_Exception* exception,

@@ -531,7 +531,7 @@ static void nullable_pointer_apply(compile_t* c, void* data, token_id cap)
   LLVMBuildRet(c->builder, result);
 
   LLVMPositionBuilderAtEnd(c->builder, is_true);
-  gencall_error(c);
+  gencall_error(c, NULL);
 
   codegen_finishfun(c);
 }

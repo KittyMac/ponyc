@@ -360,6 +360,69 @@ bool expr_break(pass_opt_t* opt, ast_t* ast)
   return true;
 }
 
+struct ast_t
+{
+  token_t* t;
+  symtab_t* symtab;
+  void* data;
+  ast_t* parent;
+  ast_t* child;
+  ast_t* sibling;
+  ast_t* annotation_type;
+  uint32_t flags;
+#ifndef PONY_NDEBUG
+  bool frozen;
+#endif
+};
+
+bool expr_error(pass_opt_t* opt, ast_t* ast)
+{
+  pony_assert(ast_id(ast) == TK_ERROR);
+  
+  // error are allowed to return (None|U32)
+  BUILD(type, ast,
+    NODE(TK_UNIONTYPE, 
+	  TREE( type_builtin(opt, ast, "None") )
+	  TREE( type_builtin(opt, ast, "U32") )
+	)
+  );  
+  
+  ast_t* body = ast_child(ast);
+  
+  if(!coerce_literals(&body, type, opt))
+    return false;
+
+  ast_t* body_type = ast_type(body);
+  
+  bool ok = true;
+  if (body_type != NULL) {  
+      ast_t* a_type = alias(type);
+      ast_t* a_body_type = alias(body_type);
+
+      // The body type must be a subtype of the return type, and an alias of
+      // the body type must be a subtype of an alias of the return type.
+      errorframe_t info = NULL;
+      if(!is_subtype(body_type, type, &info, opt) || !is_subtype(a_body_type, a_type, &info, opt))
+      {
+        errorframe_t frame = NULL;
+        ast_t* last = ast_childlast(body);
+        ast_error_frame(&frame, last, "returned value isn't the return type");
+        ast_error_frame(&frame, type, "function return type: %s",
+          ast_print_type(type));
+        ast_error_frame(&frame, body_type, "returned value type: %s",
+          ast_print_type(body_type));
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        ok = false;
+      }
+
+      ast_free_unattached(a_type);
+      ast_free_unattached(a_body_type);
+  }
+  
+  return ok;
+}
+
 bool expr_return(pass_opt_t* opt, ast_t* ast)
 {
   pony_assert(ast_id(ast) == TK_RETURN);
@@ -419,8 +482,7 @@ bool expr_return(pass_opt_t* opt, ast_t* ast)
       ast_t* a_body_type = alias(body_type);
 
       errorframe_t info = NULL;
-      if(!is_subtype(body_type, type, &info, opt) ||
-        !is_subtype(a_body_type, a_type, &info, opt))
+      if(!is_subtype(body_type, type, &info, opt) || !is_subtype(a_body_type, a_type, &info, opt))
       {
         errorframe_t frame = NULL;
         ast_t* last = ast_childlast(body);

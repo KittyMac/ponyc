@@ -7,6 +7,7 @@
 #include "../type/subtype.h"
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
+#include "../type/assemble.h"
 
 
 LLVMValueRef gen_seq(compile_t* c, ast_t* ast)
@@ -720,19 +721,25 @@ LLVMValueRef gen_try(compile_t* c, ast_t* ast)
 
 LLVMValueRef gen_error(compile_t* c, ast_t* ast)
 {
-  size_t clause;
-  ast_t* try_expr = ast_try_clause(ast, &clause);
+    size_t clause;
+    ast_t* try_expr = ast_try_clause(ast, &clause);
 
-  // Do the then block only if we error out in the else clause.
-  if((try_expr != NULL) && (clause == 1))
-    gen_expr(c, ast_childidx(try_expr, 2));
+    // Do the then block only if we error out in the else clause.
+    if((try_expr != NULL) && (clause == 1))
+      gen_expr(c, ast_childidx(try_expr, 2));
+    
+    ast_t* expr = ast_child(ast);
+	LLVMValueRef value = NULL;
+	if (ast_id(expr) == TK_SEQ) {
+		value = gen_expr(c, expr);
+	}
+	
+    codegen_scope_lifetime_end(c);
+    codegen_debugloc(c, ast);
+    gencall_error(c, value);
+    codegen_debugloc(c, NULL);
 
-  codegen_scope_lifetime_end(c);
-  codegen_debugloc(c, ast);
-  gencall_error(c);
-  codegen_debugloc(c, NULL);
-
-  return GEN_NOVALUE;
+    return GEN_NOVALUE;
 }
 
 void attach_branchweights_metadata(LLVMContextRef ctx, LLVMValueRef branch,

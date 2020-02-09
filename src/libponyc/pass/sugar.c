@@ -15,7 +15,7 @@
 #include "ponyassert.h"
 #include <stdio.h>
 #include <string.h>
-
+#include <ctype.h>
 
 static ast_t* make_runtime_override_defaults(ast_t* ast)
 {
@@ -1088,55 +1088,66 @@ static ast_result_t sugar_barelambda(pass_opt_t* opt, ast_t* ast)
   return AST_OK;
 }
 
-const char * location_as_string(ast_t* location)
+const char * location_as_string(ast_t* ast)
 {
 	// returns the current source location as a string contained in the stringtab
+    pony_assert(ast != NULL);
+
+	source_t* source = ast_source(ast);
+	size_t line = ast_line(ast);
+	size_t pos = ast_pos(ast);
 	
-    pony_assert(location != NULL);
-
-    const char* file_name = ast_source(location)->file;
-
-    if(file_name == NULL)
-      file_name = "";
-
-    // Find name of containing method.
-    const char* method_name = "";
-    for(ast_t* method = location; method != NULL; method = ast_parent(method))
-    {
-      token_id variety = ast_id(method);
-
-      if(variety == TK_FUN || variety == TK_BE || variety == TK_NEW)
-      {
-        method_name = ast_name(ast_childidx(method, 1));
-        break;
-      }
-    }
-
-    // Find name of containing type.
-    const char* type_name = "";
-    for(ast_t* typ = location; typ != NULL; typ = ast_parent(typ))
-    {
-      token_id variety = ast_id(typ);
-
-      if(variety == TK_INTERFACE || variety == TK_TRAIT ||
-        variety == TK_PRIMITIVE || variety == TK_STRUCT ||
-        variety == TK_CLASS || variety == TK_ACTOR)
-      {
-        type_name = ast_name(ast_child(typ));
-        break;
-      }
-    }
+	char errorString[1024] = {0};
 	
-    // Create a single string which contains the entire location.
-	char locationString[1024] = {0};
-	snprintf(locationString, sizeof(locationString)-1, "%s: %s.%s() line %zu", strrchr(file_name, '/')+1, type_name, method_name, ast_line(location));
-	size_t locationStringLen = strlen(locationString);
+	const char* file_name = source->file;
 	
-    char* stringtabLocationString = (char*)ponyint_pool_alloc_size(locationStringLen + 1);
-    memcpy(stringtabLocationString, locationString, locationStringLen);
-    stringtabLocationString[locationStringLen] = '\0';
+	snprintf(errorString, sizeof(errorString)-1, "Error called in %s on line %zu:%zu", strrchr(file_name, '/')+1, line, pos);
 
-	return stringtab_consume(stringtabLocationString, locationStringLen + 1);
+	if((source != NULL) && (line != 0))
+	{
+		size_t idx = strlen(errorString);
+		size_t tline = 1;
+		size_t tpos = 0;
+		size_t epos = 0;
+		
+		errorString[idx++] = '\n';
+		
+		// advance until we find the right line
+		while((tline < line) && (tpos < source->len) && idx < sizeof(errorString)) {
+		    if(source->m[tpos] == '\n')
+		      tline++;
+			tpos++;
+		}
+		
+		// copy the line over out our output string
+		epos = tpos;
+		while((tline <= line) && (tpos < source->len) && idx < sizeof(errorString)) {
+			errorString[idx++] = source->m[tpos];
+		    if(source->m[tpos] == '\n')
+		    	tline++;
+			tpos++;
+		}
+		
+		// add a carat to the exact spot of the error
+		tpos = epos;
+		for (size_t i = 0; i < pos-1; i++) {
+			char c = source->m[tpos];
+			if (!isspace(c)) {
+				c = ' ';
+			}
+			errorString[idx++] = c;
+			tpos++;
+		}
+		errorString[idx++] = '^';
+	}
+	
+	size_t errorStringLen = strlen(errorString);
+	
+    char* stringtabLocationString = (char*)ponyint_pool_alloc_size(errorStringLen + 1);
+    memcpy(stringtabLocationString, errorString, errorStringLen);
+    stringtabLocationString[errorStringLen] = '\0';
+	
+	return stringtab_consume(stringtabLocationString, errorStringLen + 1);
 }
 
 ast_t* expand_location(ast_t* location)

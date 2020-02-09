@@ -79,7 +79,7 @@ Added a testsFinished() callback to ponytest.  This allows for things like runni
 
 ### --ponyanalysis 0
 
-Pony analysis disabled.
+*Pony analysis disabled.*
 
 ### --ponyanalysis 1
 
@@ -87,7 +87,11 @@ The runtime will monitor a limited number of statistics to provide you with help
 
 1. Identifying actor bottlenecks (actors who overload)
 2. Identifying muted actors and how much real time they spend muted (usually as a result of #1)
-3. Identifying actors who experienced back pressure and how much real time that occured
+3. Identifying actors who come under pressure and how much real time that occured for
+4. Identifying actors who use large amounts of memory and/or garbage collect the most
+5. If you SIGTERM your program, it will output information which can be used to help debug hanging programs:  
+  - List of all live actors at the time of SIGTERM
+  - List of all active schedulers, the inject queus, their current state including the number of actors waiting in their queues
 
 
 ### --ponyanalysis 2

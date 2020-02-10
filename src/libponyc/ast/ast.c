@@ -464,6 +464,26 @@ ast_t* ast_from_float(ast_t* ast, double value)
   return new_ast;
 }
 
+ast_t * ast_contains(ast_t * ast, token_id id)
+{
+  // returns the first occurance of token id or NULL if not found
+  if(ast == NULL)
+    return NULL;
+  
+  ast_t * other = NULL;
+  
+  other = ast_contains(ast->child, id);
+  if(other) return other;
+  
+  other = ast_contains(ast->sibling, id);
+  if(other) return other;
+  
+  if(ast_id(ast) == id)
+    return ast;
+  
+  return NULL;
+}
+
 ast_t* ast_dup(ast_t* ast)
 {
   return duplicate(NULL, ast);

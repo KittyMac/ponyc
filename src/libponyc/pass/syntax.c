@@ -740,7 +740,13 @@ static ast_result_t syntax_return(pass_opt_t* opt, ast_t* ast,
   
   if(ast_id(ast) == TK_ERROR)
   {
-     return AST_OK;
+    // If the argument of the error contains a partial, we are not ok with that
+    ast_t * partial = ast_contains(ast, TK_QUESTION);
+    if(partial){
+      ast_error(opt->check.errors, partial, "error code expression may not throw errors");
+      return AST_ERROR;
+    }
+    return AST_OK;
   }
 
   if(ast_id(ast) == TK_RETURN)
@@ -1380,7 +1386,7 @@ ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
     case TK_FFICALL:    r = syntax_ffi(options, ast, true); break;
     case TK_ELLIPSIS:   r = syntax_ellipsis(options, ast); break;
     case TK_CONSUME:    r = syntax_consume(options, ast); break;
-	case TK_ERROR:
+    case TK_ERROR:
     case TK_RETURN:
     case TK_BREAK:      r = syntax_return(options, ast, 1); break;
     case TK_CONTINUE:   r = syntax_return(options, ast, 0); break;

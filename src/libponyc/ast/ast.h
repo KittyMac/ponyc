@@ -60,6 +60,7 @@ ast_t* ast_from(ast_t* ast, token_id id);
 ast_t* ast_from_string(ast_t* ast, const char* name);
 ast_t* ast_from_int(ast_t* ast, uint64_t value);
 ast_t* ast_from_float(ast_t* ast, double value);
+ast_t* ast_contains(ast_t * ast, token_id id);
 ast_t* ast_dup(ast_t* ast);
 ast_t* ast_dup_partial(ast_t* ast, bool* dup_child, bool dup_type,
   bool dup_annotation, bool dup_symtab);

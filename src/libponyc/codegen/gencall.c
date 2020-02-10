@@ -1422,7 +1422,12 @@ void gencall_error(compile_t* c, ast_t* ast, LLVMValueRef errorCode, const char 
   
   LLVMValueRef args[2];
   args[0] = errorCode;
-  args[1] = codegen_string(c, errorLocation, strlen(errorLocation));
+  if(errorLocation != NULL) {
+    args[1] = codegen_string(c, errorLocation, strlen(errorLocation));
+  }else{
+    args[1] = LLVMConstNull(c->i32);
+  }
+  
     
   if(c->frame->invoke_target != NULL)
     invoke_fun(c, func, args, 2, "", false);

@@ -1141,7 +1141,7 @@ const char * location_as_string(ast_t* ast)
 		errorString[idx++] = '\n';
 		
 		// advance until we find the right line
-		while((tline < line) && (tpos < source->len) && idx < sizeof(errorString)) {
+		while((tline < (line-3)) && (tpos < source->len) && idx < sizeof(errorString)) {
 		    if(source->m[tpos] == '\n')
 		      tline++;
 			tpos++;
@@ -1151,8 +1151,12 @@ const char * location_as_string(ast_t* ast)
 		epos = tpos;
 		while((tline <= line) && (tpos < source->len) && idx < sizeof(errorString)) {
 			errorString[idx++] = source->m[tpos];
-		    if(source->m[tpos] == '\n')
-		    	tline++;
+		    if(source->m[tpos] == '\n'){
+				tline++;
+				if(tline <= line){
+					epos = tpos+1;
+				}
+		    }
 			tpos++;
 		}
 		

@@ -25,6 +25,7 @@ static bool is_method_called(pass_opt_t* opt, ast_t* ast)
 
     case TK_CALL:
     case TK_ADDRESS:
+    case TK_ADDRESS_USIZE:
       return true;
 
     default: {}

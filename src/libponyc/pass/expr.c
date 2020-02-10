@@ -552,7 +552,7 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
     case TK_LET:        r = expr_local(options, ast); break;
     case TK_BREAK:      r = expr_break(options, ast); break;
     case TK_RETURN:     r = expr_return(options, ast); break;
-	case TK_ERROR:      r = expr_error(options, ast); break;
+	  case TK_ERROR:      r = expr_error(options, ast); break;
     case TK_IS:
     case TK_ISNT:       r = expr_identity(options, ast); break;
     case TK_ASSIGN:     r = expr_assign(options, ast); break;
@@ -596,6 +596,8 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
                         r = expr_compile_intrinsic(options, ast); break;
     case TK_LOCATION:   r = expr_location(options, ast); break;
     case TK_ADDRESS:    r = expr_addressof(options, ast); break;
+    case TK_ADDRESS_USIZE:
+                        r = expr_addressof_usize(options, ast); break;
     case TK_DIGESTOF:   r = expr_digestof(options, ast); break;
 
     case TK_AS:

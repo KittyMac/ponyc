@@ -1204,6 +1204,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       break;
 
     case TK_ADDRESS:
+    case TK_ADDRESS_USIZE:
       reachable_addressof(r, reify, ast, opt);
       break;
 

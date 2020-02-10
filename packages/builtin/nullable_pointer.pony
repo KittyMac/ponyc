@@ -33,3 +33,9 @@ struct NullablePointer[A]
     Returns true if `this` is null (ie apply would raise an error).
     """
     compile_intrinsic
+  
+  fun tag usize(): USize =>
+    """
+    Convert the pointer into an integer.
+    """
+    compile_intrinsic

@@ -3,6 +3,32 @@
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
 
+## addressof_usize and adding .usize() to NullablePointer
+
+Some C libraries use an overloaded value which can reference a pointer or an integer values (looking at your libcurl). addressof_usize does the exact thing addressof does, but coerces the type of the value to be usize.
+
+I assume this is also why Pointer has a usize() method. NullablePointer didn't have one, so I added it there.
+
+Example:
+
+```
+// "parameter" is used as a pointer or an integer value depending on teh value of "option"
+use @curl_easy_setopt[CurlErrorCode](curl:CurlRef, option:CurlOptionCode, parameter:USize tag)
+
+// Here libcurl treats the parameter as a value
+@curl_easy_setopt(curl, CurlOption.upload(), 1)
+
+// Here libcurl treats it as a pointer
+@curl_easy_setopt(curl, CurlOption.readFunction(), addressof_usize this.payload_fn)
+
+// And here
+let emlString = eml.string()
+var payload = PayloadStruct(emlString.size(), emlString.cstring())
+var payloadPtr = NullablePointer[PayloadStruct](payload)
+r = @curl_easy_setopt(curl, CurlOption.readData(), payloadPtr.usize() )
+
+```
+
 ## Retrieve the source location where an error occurred
 
 While developing it can be extremely helpful to quickly pinpoint exactly where the error originated from. To accomodate this, you can now use the ```__error_loc``` token to retrieve a C string suitable for printing to the cosole for runtime errors. The choice of C string is for performance; if you want you can convert the C string to a Pony string when you receive the error.

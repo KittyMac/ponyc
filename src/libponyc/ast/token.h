@@ -180,6 +180,7 @@ typedef enum token_id
 
   TK_DIGESTOF,
   TK_ADDRESS,
+  TK_ADDRESS_USIZE,
   TK_LOCATION,
 
   // Abstract tokens which don't directly appear in the source

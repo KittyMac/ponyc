@@ -20,6 +20,8 @@ static bool check_partial_function_call(pass_opt_t* opt, ast_t* ast)
   ast_t* call = ast_parent(ast);
   if(ast_id(call) == TK_ADDRESS) // for bare method references.
     return true;
+  if(ast_id(call) == TK_ADDRESS_USIZE) // for bare method references.
+    return true;
   if(ast_id(call) != TK_CALL)
     call = ast_parent(call);
   pony_assert(ast_id(call) == TK_CALL);

@@ -563,6 +563,7 @@ void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t)
 
   nullable_pointer_create(c, t, t_elem);
   nullable_pointer_none(c, t);
+  pointer_usize(c, t);
   BOX_FUNCTION(nullable_pointer_apply, box_args);
   BOX_FUNCTION(nullable_pointer_is_none, t);
 }

@@ -325,6 +325,29 @@ LLVMValueRef gen_addressof(compile_t* c, ast_t* ast)
   return NULL;
 }
 
+LLVMValueRef gen_addressof_usize(compile_t* c, ast_t* ast)
+{
+  ast_t* expr = ast_child(ast);
+
+  switch(ast_id(expr))
+  {
+    case TK_VARREF:
+      return gen_localptr(c, expr);
+
+    case TK_FVARREF:
+      return gen_fieldptr(c, expr);
+
+    case TK_FUNREF:
+    case TK_BEREF:
+      return gen_funptr(c, expr);
+
+    default: {}
+  }
+
+  pony_assert(0);
+  return NULL;
+}
+
 static LLVMValueRef gen_digestof_box(compile_t* c, reach_type_t* type,
   LLVMValueRef value, int boxed_subtype)
 {

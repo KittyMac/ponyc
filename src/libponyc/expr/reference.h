@@ -18,6 +18,7 @@ bool expr_local(pass_opt_t* opt, ast_t* ast);
 bool expr_localref(pass_opt_t* opt, ast_t* ast);
 bool expr_paramref(pass_opt_t* opt, ast_t* ast);
 bool expr_addressof(pass_opt_t* opt, ast_t* ast);
+bool expr_addressof_usize(pass_opt_t* opt, ast_t* ast);
 bool expr_digestof(pass_opt_t* opt, ast_t* ast);
 bool expr_this(pass_opt_t* opt, ast_t* ast);
 bool expr_tuple(pass_opt_t* opt, ast_t* ast);

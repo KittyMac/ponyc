@@ -682,6 +682,85 @@ bool expr_addressof(pass_opt_t* opt, ast_t* ast)
   return true;
 }
 
+bool expr_addressof_usize(pass_opt_t* opt, ast_t* ast)
+{
+  // Check if we're in an FFI call.
+  ast_t* parent = ast_parent(ast);
+  bool ok = false;
+
+  if(ast_id(parent) == TK_SEQ)
+  {
+    parent = ast_parent(parent);
+
+    if(ast_id(parent) == TK_POSITIONALARGS)
+    {
+      parent = ast_parent(parent);
+
+      if(ast_id(parent) == TK_FFICALL)
+        ok = true;
+    }
+  }
+
+  if(!ok)
+  {
+    ast_error(opt->check.errors, ast,
+      "the addressof operator can only be used for FFI arguments");
+    return false;
+  }
+
+  ast_t* expr = ast_child(ast);
+
+  switch(ast_id(expr))
+  {
+    case TK_FVARREF:
+    case TK_VARREF:
+    case TK_FUNREF:
+    case TK_BEREF:
+      break;
+
+    case TK_FLETREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the address of a let field");
+      return false;
+
+    case TK_EMBEDREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the address of an embed field");
+      return false;
+
+    case TK_TUPLEELEMREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the address of a tuple element");
+      return false;
+
+    case TK_LETREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the address of a let local");
+      return false;
+
+    case TK_PARAMREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the address of a function parameter");
+      return false;
+
+    default:
+      ast_error(opt->check.errors, ast,
+        "can only take the address of a local, field or method");
+      return false;
+  }
+
+  ast_t* expr_type = ast_type(expr);
+
+  if(is_typecheck_error(expr_type))
+    return false;
+
+  // Set the type to Pointer[ast_type(expr)].
+  ast_t* type = type_builtin(opt, ast, "USize");
+
+  ast_settype(ast, type);
+  return true;
+}
+
 bool expr_digestof(pass_opt_t* opt, ast_t* ast)
 {
   ast_t* expr = ast_child(ast);

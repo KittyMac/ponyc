@@ -1101,7 +1101,35 @@ const char * location_as_string(ast_t* ast)
 	
 	const char* file_name = source->file;
 	
-	snprintf(errorString, sizeof(errorString)-1, "Error called in %s on line %zu:%zu", strrchr(file_name, '/')+1, line, pos);
+    // Find name of containing method.
+    const char* method_name = "";
+    for(ast_t* method = ast; method != NULL; method = ast_parent(method))
+    {
+      token_id variety = ast_id(method);
+
+      if(variety == TK_FUN || variety == TK_BE || variety == TK_NEW)
+      {
+        method_name = ast_name(ast_childidx(method, 1));
+        break;
+      }
+    }
+
+    // Find name of containing type.
+    const char* type_name = "";
+    for(ast_t* typ = ast; typ != NULL; typ = ast_parent(typ))
+    {
+      token_id variety = ast_id(typ);
+
+      if(variety == TK_INTERFACE || variety == TK_TRAIT ||
+        variety == TK_PRIMITIVE || variety == TK_STRUCT ||
+        variety == TK_CLASS || variety == TK_ACTOR)
+      {
+        type_name = ast_name(ast_child(typ));
+        break;
+      }
+    }
+	
+	snprintf(errorString, sizeof(errorString)-1, "Error called in %s, %s.%s() on line %zu:%zu", strrchr(file_name, '/')+1, type_name, method_name, line, pos);
 
 	if((source != NULL) && (line != 0))
 	{

@@ -58,6 +58,9 @@ libponyrt:
 	mkdir -p build/$(config)/lib/ios/
 	lipo -create -output build/$(config)/lib/ios/libponyrt.a build/$(config)/lib/armv7/libponyrt.a build/$(config)/lib/armv7s/libponyrt.a build/$(config)/lib/arm64/libponyrt.a
 
+install:
+	@IPHONESDK="" $(MAKE) -f Makefile-ponyc LLVM_CONFIG="$(llvm_config)" -j$(sysctl -n hw.ncpu) config=$(config) install
+
 all: ponyc libponyrt
 	@echo "all done"
 

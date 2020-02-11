@@ -4,7 +4,7 @@
 # This makefile assumes that you can already compile ponyc normally (you have your llvm paths set)
 #
 # Sample command:
-# make -f Makefile-ios config=release all
+# make -f Makefile-ios config=release all install
 #
 # Install LLVM (only necessary until I can get this hooked up to the submoduled llvm)
 #

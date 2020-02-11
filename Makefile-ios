@@ -64,6 +64,8 @@ install:
 all: ponyc libponyrt
 	@echo "all done"
 
+ci: all install
+
 clean:
 	$(MAKE) -f Makefile-ponyc config=$(config) clean
 

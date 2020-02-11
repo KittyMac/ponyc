@@ -98,8 +98,7 @@ static void send_unblock(pony_ctx_t* ctx, pony_actor_t* actor)
   ponyint_cycle_unblock(ctx, actor);
 }
 
-static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
-  pony_msg_t* msg)
+static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor, pony_msg_t* msg)
 {
 #ifdef USE_MEMTRACK_MESSAGES
   ctx->num_messages--;
@@ -158,7 +157,7 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
         send_unblock(ctx, actor);
       }
 	  
-	  actor->heap_is_dirty = true;
+	    actor->heap_is_dirty = true;
 	  
       return false;
     }
@@ -381,9 +380,9 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   ctx->current = actor;
   
   if(actor->running) {
-	// we're actively running, but someone else is trying to run us at the same time! No worries,
-	// we will just flag ourself to be rescheduled.
-	return true;
+  	// we're actively running, but someone else is trying to run us at the same time! No worries,
+  	// we will just flag ourself to be rescheduled.
+  	return true;
   }
   actor->running = true;
   
@@ -407,13 +406,13 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 	    actor->tag = (int32_t)actor->type->tag_fn(actor);
 	  }
 	  if(actor->type->priority_fn != NULL && actor->priority == PONY_DEFAULT_ACTOR_PRIORITY){
-	    actor->priority = (int32_t)actor->type->priority_fn(actor);
+      actor->priority = (int32_t)actor->type->priority_fn(actor);
 	  }
 	  if(actor->type->batch_fn != NULL && actor->batch == PONY_SCHED_BATCH){
 	    actor->batch = (int32_t)actor->type->batch_fn(actor);
-		if (actor->batch <= 0) {
-			actor->batch = 1;
-		}
+  		if (actor->batch <= 0) {
+  			actor->batch = 1;
+  		}
 	  }
   }
   
@@ -443,26 +442,26 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // maybe mute actor; returns true if mute occurs
       if(maybe_mute(actor)){
 #ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled > 1) {
-    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-  }
+        if (ctx->analysis_enabled > 1) {
+          saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+        }
 #endif
-  		try_gc(ctx, actor);
-		actor->running = false;
+        try_gc(ctx, actor);
+        actor->running = false;
         return false;
-	  }
+      }
       // if we've reached our batch limit
       // or if we're polling where we want to stop after one app message
       if(actor->yield || app >= actor->batch || polling) {
 #ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled > 1) {
-    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-  }
+        if (ctx->analysis_enabled > 1) {
+          saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+        }
 #endif
-  		try_gc(ctx, actor);
-		actor->running = false;
+        try_gc(ctx, actor);
+        actor->running = false;
         return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
-	  }
+	    }
     }
 
     // Stop handling a batch if we reach the head we found when we were
@@ -493,9 +492,9 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     // When unscheduling, don't mark the queue as empty, since we don't want
     // to get rescheduled if we receive a message.
 #ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled > 1) {
-    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-  }
+    if (ctx->analysis_enabled > 1) {
+      saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+    }
 #endif
     actor->running = false;
     return false;
@@ -504,9 +503,9 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   // If we have processed any application level messages, defer blocking.
   if(app > 0) {
 #ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled > 1) {
-    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-  }
+    if (ctx->analysis_enabled > 1) {
+      saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+    }
 #endif
     actor->running = false;
     return true;
@@ -527,17 +526,17 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   bool empty = ponyint_messageq_markempty(&actor->q);
   if (empty && actor_noblock && (actor->gc.rc == 0))
   {
-      // when 'actor_noblock` is true, the cycle detector isn't running.
-      // this means actors won't be garbage collected unless we take special
-      // action. Here, we know that:
-      // - the actor has no messages in its queue
-      // - there's no references to this actor
-      // therefore if `noblock` is on, we should garbage collect the actor.
+    // when 'actor_noblock` is true, the cycle detector isn't running.
+    // this means actors won't be garbage collected unless we take special
+    // action. Here, we know that:
+    // - the actor has no messages in its queue
+    // - there's no references to this actor
+    // therefore if `noblock` is on, we should garbage collect the actor.
 	  actor->running = false;
 	  
-      ponyint_actor_setpendingdestroy(actor);
-      ponyint_actor_final(ctx, actor);
-      ponyint_actor_destroy(actor);
+    ponyint_actor_setpendingdestroy(actor);
+    ponyint_actor_final(ctx, actor);
+    ponyint_actor_destroy(actor);
 	  
 	  return false;
   }
@@ -807,12 +806,35 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
   }
 }
 
+
+// This is a bit convoluted, but the idea is that we want to
+// catch any error thrown while handle_message is executing.
+// We will throw the error again, but we need to reset the 
+// context's current field first
+typedef struct {
+  pony_ctx_t* ctx;
+  pony_actor_t* to;
+  pony_msg_t* msg;
+}pony_handle_message_t;
+
+void pony_error_clear_context(void* arg)
+{
+  pony_handle_message_t* x = (pony_handle_message_t*)arg;
+  handle_message(x->ctx, x->to, x->msg);
+}
+
 PONY_API void pony_sendv_synchronous_constructor(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* msg)
 {
   pony_actor_t * saved = ctx->current;
   ctx->current = to;
-  handle_message(ctx, to, msg);
+  
+  pony_handle_message_t x = { ctx, to, msg };
+  bool success = pony_try(pony_error_clear_context, &x);
   ctx->current = saved;
+  
+  if(!success){
+    pony_error_again();
+  }
 }
 
 PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,

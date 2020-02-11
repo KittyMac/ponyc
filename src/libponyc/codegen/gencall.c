@@ -604,9 +604,9 @@ void gen_send_message(compile_t* c, reach_method_t* m, LLVMValueRef args[],
   LLVMValueRef send;
 
   if(ast_id(m->fun->ast) == TK_NEW) {
-	// actor constructors are allowed to be synchronous if they are partial
-	if(canError || c->opt->sync_actor_constructors) {	
-	  send = gencall_runtime_can_error(c, "pony_sendv_synchronous_constructor", msg_args, 3, "");
+	  // actor constructors are allowed to be synchronous if they are partial
+	  if(canError || c->opt->sync_actor_constructors) {	
+	    send = gencall_runtime_can_error(c, "pony_sendv_synchronous_constructor", msg_args, 3, "");
   	}else{
       send = gencall_runtime(c, "pony_sendv_single", msg_args, 5, "");
   	}

@@ -643,6 +643,11 @@ PONY_API void pony_error_int(uint32_t errcode, void * location);
 PONY_API uint32_t pony_error_code();
 
 /**
+ * Call this to throw the previous pony error again (with the same code and the same loc)
+ */
+PONY_API void pony_error_again();
+
+/**
  * Retrieve a string representing the location the error was raised.
  *
  * This should only be called from inside an try-else block or any other place

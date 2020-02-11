@@ -50,6 +50,11 @@ PONY_API void pony_error_int(uint32_t errcode, void * location)
   abort();
 }
 
+PONY_API void pony_error_again()
+{
+	pony_error_int(pony_err_code, pony_err_loc);
+}
+
 PONY_API void pony_error()
 {
 	pony_error_int(0, NULL);

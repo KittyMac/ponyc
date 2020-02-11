@@ -561,8 +561,7 @@ static void init_runtime(compile_t* c)
   value = LLVMAddFunction(c->module, "pony_serialise_reserve", type);
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex,
-    inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
   LLVMAddAttributeAtIndex(value, 2, readnone_attr);
 
   // intptr pony_serialise_offset(i8*, i8*)
@@ -572,8 +571,7 @@ static void init_runtime(compile_t* c)
   value = LLVMAddFunction(c->module, "pony_serialise_offset", type);
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex,
-    inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
   LLVMAddAttributeAtIndex(value, 2, readonly_attr);
 
   // i8* pony_deserialise_offset(i8*, __desc*, intptr)
@@ -583,8 +581,7 @@ static void init_runtime(compile_t* c)
   type = LLVMFunctionType(c->void_ptr, params, 3, false);
   value = LLVMAddFunction(c->module, "pony_deserialise_offset", type);
 
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex,
-    inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
 
   // i8* pony_deserialise_block(i8*, intptr, intptr)
   params[0] = c->void_ptr;
@@ -593,8 +590,7 @@ static void init_runtime(compile_t* c)
   type = LLVMFunctionType(c->void_ptr, params, 3, false);
   value = LLVMAddFunction(c->module, "pony_deserialise_block", type);
 
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex,
-    inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
   LLVMAddAttributeAtIndex(value, LLVMAttributeReturnIndex, noalias_attr);
 
   // i32 pony_init(i32, i8**)
@@ -604,8 +600,7 @@ static void init_runtime(compile_t* c)
   value = LLVMAddFunction(c->module, "pony_init", type);
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex,
-    inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
 
   // void pony_become(i8*, __object*)
   params[0] = c->void_ptr;
@@ -614,8 +609,7 @@ static void init_runtime(compile_t* c)
   value = LLVMAddFunction(c->module, "pony_become", type);
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex,
-    inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
 
   // i1 pony_start(i1, i32*, i8*)
   params[0] = c->i1;
@@ -625,8 +619,7 @@ static void init_runtime(compile_t* c)
   value = LLVMAddFunction(c->module, "pony_start", type);
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex,
-    inacc_or_arg_mem_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
 
   // i32 pony_get_exitcode()
   type = LLVMFunctionType(c->i32, NULL, 0, false);
@@ -643,6 +636,7 @@ static void init_runtime(compile_t* c)
   value = LLVMAddFunction(c->module, "pony_error_int", type);
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, noreturn_attr);
+  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, inacc_or_arg_mem_attr);
     
   // i32 pony_error_code()
   type = LLVMFunctionType(c->i32, NULL, 0, false);

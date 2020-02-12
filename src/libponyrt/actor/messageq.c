@@ -250,8 +250,8 @@ pony_msg_t* ponyint_actor_messageq_pop(messageq_t* q
     ANNOTATE_HAPPENS_BEFORE_FORGET_ALL(tail);
 #endif
     ponyint_pool_free(tail->index, tail);
-	
-	atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
+  
+    atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
   }
 
   return next;
@@ -276,8 +276,8 @@ pony_msg_t* ponyint_thread_messageq_pop(messageq_t* q
     ANNOTATE_HAPPENS_BEFORE_FORGET_ALL(tail);
 #endif
     ponyint_pool_free(tail->index, tail);
-	
-	atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
+  
+    atomic_fetch_sub_explicit(&q->num_messages, 1, memory_order_relaxed);
   }
 
   return next;
@@ -288,8 +288,10 @@ bool ponyint_messageq_markempty(messageq_t* q)
   pony_msg_t* tail = q->tail;
   pony_msg_t* head = atomic_load_explicit(&q->head, memory_order_relaxed);
 
-  if(((uintptr_t)head & 1) != 0)
+  if(((uintptr_t)head & 1) != 0) {
+    atomic_store_explicit(&q->num_messages, 0, memory_order_relaxed);
     return true;
+  }
 
   if(head != tail)
     return false;
@@ -299,6 +301,10 @@ bool ponyint_messageq_markempty(messageq_t* q)
 #ifdef USE_VALGRIND
   ANNOTATE_HAPPENS_BEFORE(&q->head);
 #endif
-  return atomic_compare_exchange_strong_explicit(&q->head, &tail, head,
-    memory_order_release, memory_order_relaxed);
+  bool empty = atomic_compare_exchange_strong_explicit(&q->head, &tail, head,
+  memory_order_release, memory_order_relaxed);
+  if(empty){
+    atomic_store_explicit(&q->num_messages, 0, memory_order_relaxed);
+  }
+  return empty;
 }

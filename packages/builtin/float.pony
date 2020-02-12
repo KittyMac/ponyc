@@ -1,6 +1,7 @@
 primitive F32 is FloatingPoint[F32]
   new create(value: F32 = 0) => value
   new pi() => 3.14159265358979323846
+  new pi_2() => 1.570796326794897
   new e() => 2.71828182845904523536
 
   new _nan() => compile_intrinsic
@@ -218,6 +219,7 @@ primitive F32 is FloatingPoint[F32]
 primitive F64 is FloatingPoint[F64]
   new create(value: F64 = 0) => value
   new pi() => 3.14159265358979323846
+  new pi_2() => 1.570796326794897
   new e() => 2.71828182845904523536
 
   new _nan() => compile_intrinsic

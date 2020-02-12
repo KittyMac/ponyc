@@ -581,7 +581,7 @@ static ast_result_t sugar_with(pass_opt_t* opt, ast_t** astp)
     pony_assert(ast_id(p) == TK_SEQ);
     AST_GET_CHILDREN(p, idseq, init);
     const char* init_name = package_hygienic_id(&opt->check);
-	
+  
     BUILD(assign, idseq,
       NODE(TK_ASSIGN,
         NODE(TK_LET, ID(init_name) NONE)
@@ -594,13 +594,13 @@ static ast_result_t sugar_with(pass_opt_t* opt, ast_t** astp)
 
     ast_add(replace, assign);
     ast_add(try_body, local);
-	if(ast_id(try_else) == TK_NONE) {
-		ast_add(try_else, local);
-	}
-	if(ast_id(try_then) != TK_NONE) {
-	    build_with_dispose(try_then, idseq);
-	    ast_add(try_then, local);
-	}
+    if(ast_id(try_else) == TK_NONE) {
+      ast_add(try_else, local);
+    }
+    if(ast_id(try_then) != TK_NONE) {
+        build_with_dispose(try_then, idseq);
+        ast_add(try_then, local);
+    }
   }
   
   ast_replace(astp, replace);
@@ -1090,96 +1090,106 @@ static ast_result_t sugar_barelambda(pass_opt_t* opt, ast_t* ast)
 
 const char * location_as_string(ast_t* ast)
 {
-	// returns the current source location as a string contained in the stringtab
-    pony_assert(ast != NULL);
+  // returns the current source location as a string contained in the stringtab
+  pony_assert(ast != NULL);
 
-	source_t* source = ast_source(ast);
-	size_t line = ast_line(ast);
-	size_t pos = ast_pos(ast);
-	
-	char errorString[1024] = {0};
-	
-	const char* file_name = source->file;
-	
-    // Find name of containing method.
-    const char* method_name = "";
-    for(ast_t* method = ast; method != NULL; method = ast_parent(method))
+  source_t* source = ast_source(ast);
+  size_t line = ast_line(ast);
+  size_t pos = ast_pos(ast);
+  
+  char errorString[1024] = {0};
+  
+  const char* file_name = source->file;
+  if(file_name == NULL) {
+    file_name = "(unknown)";
+  }
+  
+  // Find name of containing method.
+  const char* method_name = "";
+  for(ast_t* method = ast; method != NULL; method = ast_parent(method))
+  {
+    token_id variety = ast_id(method);
+
+    if(variety == TK_FUN || variety == TK_BE || variety == TK_NEW)
     {
-      token_id variety = ast_id(method);
-
-      if(variety == TK_FUN || variety == TK_BE || variety == TK_NEW)
-      {
-        method_name = ast_name(ast_childidx(method, 1));
-        break;
-      }
+      method_name = ast_name(ast_childidx(method, 1));
+      break;
     }
+  }
 
-    // Find name of containing type.
-    const char* type_name = "";
-    for(ast_t* typ = ast; typ != NULL; typ = ast_parent(typ))
-    {
-      token_id variety = ast_id(typ);
+  // Find name of containing type.
+  const char* type_name = "";
+  for(ast_t* typ = ast; typ != NULL; typ = ast_parent(typ))
+  {
+    token_id variety = ast_id(typ);
 
-      if(variety == TK_INTERFACE || variety == TK_TRAIT ||
+    if( variety == TK_INTERFACE || variety == TK_TRAIT ||
         variety == TK_PRIMITIVE || variety == TK_STRUCT ||
         variety == TK_CLASS || variety == TK_ACTOR)
-      {
-        type_name = ast_name(ast_child(typ));
-        break;
-      }
+    {
+      type_name = ast_name(ast_child(typ));
+      break;
     }
-	
-	snprintf(errorString, sizeof(errorString)-1, "Error called in %s, %s.%s() on line %zu:%zu", strrchr(file_name, '/')+1, type_name, method_name, line, pos);
+  }
+  
+  const char * last_path_component = strrchr(file_name, '/');
+  if(last_path_component == NULL) {
+    last_path_component = file_name;
+  }else{
+    last_path_component += 1;
+  }
+  
+  snprintf(errorString, sizeof(errorString)-1, "Error called in %s, %s.%s() on line %zu:%zu", last_path_component, type_name, method_name, line, pos);
 
-	if((source != NULL) && (line != 0))
-	{
-		size_t idx = strlen(errorString);
-		size_t tline = 1;
-		size_t tpos = 0;
-		size_t epos = 0;
-		
-		errorString[idx++] = '\n';
-		
-		// advance until we find the right line
-		while((tline < (line-3)) && (tpos < source->len) && idx < sizeof(errorString)) {
-		    if(source->m[tpos] == '\n')
-		      tline++;
-			tpos++;
-		}
-		
-		// copy the line over out our output string
-		epos = tpos;
-		while((tline <= line) && (tpos < source->len) && idx < sizeof(errorString)) {
-			errorString[idx++] = source->m[tpos];
-		    if(source->m[tpos] == '\n'){
-				tline++;
-				if(tline <= line){
-					epos = tpos+1;
-				}
-		    }
-			tpos++;
-		}
-		
-		// add a carat to the exact spot of the error
-		tpos = epos;
-		for (size_t i = 0; i < pos-1; i++) {
-			char c = source->m[tpos];
-			if (!isspace(c)) {
-				c = ' ';
-			}
-			errorString[idx++] = c;
-			tpos++;
-		}
-		errorString[idx++] = '^';
-	}
-	
-	size_t errorStringLen = strlen(errorString);
-	
-    char* stringtabLocationString = (char*)ponyint_pool_alloc_size(errorStringLen + 1);
-    memcpy(stringtabLocationString, errorString, errorStringLen);
-    stringtabLocationString[errorStringLen] = '\0';
-	
-	return stringtab_consume(stringtabLocationString, errorStringLen + 1);
+  if((source != NULL) && (line != 0))
+  {
+    size_t idx = strlen(errorString);
+    size_t tline = 1;
+    size_t tpos = 0;
+    size_t epos = 0;
+    
+    errorString[idx++] = '\n';
+    
+    // advance until we find the right line
+    while((tline < (line-3)) && (tpos < source->len) && idx < sizeof(errorString)) {
+      if(source->m[tpos] == '\n')
+        tline++;
+      tpos++;
+    }
+    
+    // copy the line over out our output string
+    epos = tpos;
+    while((tline <= line) && (tpos < source->len) && idx < sizeof(errorString)) {
+      errorString[idx++] = source->m[tpos];
+      if(source->m[tpos] == '\n'){
+        tline++;
+        if(tline <= line){
+          epos = tpos+1;
+        }
+      }
+      tpos++;
+    }
+    
+    // add a carat to the exact spot of the error
+    tpos = epos;
+    for (size_t i = 0; i < pos-1; i++) {
+      char c = source->m[tpos];
+      if (!isspace(c)) {
+        c = ' ';
+      }
+      errorString[idx++] = c;
+      tpos++;
+    }
+    errorString[idx++] = '^';
+  }
+  
+  size_t errorStringLen = strlen(errorString);
+  
+  char* stringtabLocationString = (char*)ponyint_pool_alloc_size(errorStringLen + 1);
+  memcpy(stringtabLocationString, errorString, errorStringLen);
+  stringtabLocationString[errorStringLen] = '\0';
+  
+  return stringtab_consume(stringtabLocationString, errorStringLen + 1);
 }
 
 ast_t* expand_location(ast_t* location)

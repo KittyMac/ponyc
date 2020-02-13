@@ -7,6 +7,7 @@
 PONY_EXTERN_C_BEGIN
 
 typedef const struct _pony_type_t pony_type_t;
+typedef struct ast_t ast_t;
 
 typedef struct source_t
 {
@@ -22,7 +23,7 @@ source_t* source_translate_package_end(bool print_generated_code);
  * Returns the opened source which must be closed later,
  * NULL on failure.
  */
-source_t* source_open(const char* file, const char** error_msgp, bool print_generated_code);
+source_t* source_open(ast_t* package, const char* file, const char** error_msgp, bool print_generated_code);
 
 /** Create a source based on the given string of code.
  * Intended for testing purposes only.

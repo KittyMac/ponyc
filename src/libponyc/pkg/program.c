@@ -20,6 +20,7 @@ typedef struct program_t
   size_t lib_args_size;
   size_t lib_args_alloced;
   char* lib_args;
+  char* info_plist;
 } program_t;
 
 
@@ -82,6 +83,11 @@ void program_free(program_t* program)
   POOL_FREE(program_t, program);
 }
 
+void program_assign_info_plist(program_t* prog, char * info_plist)
+{
+  pony_assert(prog != NULL);
+  prog->info_plist = info_plist;
+}
 
 uint32_t program_assign_pkg_id(ast_t* ast)
 {
@@ -287,6 +293,12 @@ void program_lib_build_args(ast_t* program, pass_opt_t* opt,
     append_to_args(data, "-framework ");
     append_to_args(data, lib);
     append_to_args(data, " ");
+  }
+  
+  // Info.plist
+  if(data->info_plist != NULL) {
+    append_to_args(data, "-sectcreate __TEXT __info_plist ");
+    append_to_args(data, data->info_plist);
   }
 
   append_to_args(data, global_postamble);

@@ -4,6 +4,7 @@
 #include "stringtab.h"
 #include "../../libponyrt/gc/serialise.h"
 #include "../../libponyrt/mem/pool.h"
+#include "../ast/ast.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -23,7 +24,7 @@ source_t* source_translate_package_end(bool print_generated_code)
   return source;
 }
 
-source_t* source_open(const char* file, const char** error_msgp, bool print_generated_code)
+source_t* source_open(ast_t* package, const char* file, const char** error_msgp, bool print_generated_code)
 {
   FILE* fp = fopen(file, "rb");
 
@@ -53,7 +54,10 @@ source_t* source_open(const char* file, const char** error_msgp, bool print_gene
   ssize_t read = fread(source->m, sizeof(char), size, fp);
   source->m[size] = '\0';
   
-  source->m = translate_source(file, source->m, print_generated_code);
+  ast_t* p = ast_nearest(package, TK_PROGRAM);
+  program_t* program = (program_t*)ast_data(p);
+  
+  source->m = translate_source(program, file, source->m, print_generated_code);
   source->len = strlen(source->m) + 1;
   
   if(read < size)

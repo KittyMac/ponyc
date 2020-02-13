@@ -152,9 +152,9 @@ static bool parse_source_file(ast_t* package, const char* file_path,
 
   if(opt->print_filenames)
     printf("Opening %s\n", file_path);
-
+  
   const char* error_msg = NULL;
-  source_t* source = source_open(file_path, &error_msg, opt->print_generated_code);
+  source_t* source = source_open(package, file_path, &error_msg, opt->print_generated_code);
 
   if(source == NULL)
   {
@@ -235,15 +235,15 @@ static bool parse_files_in_dir(ast_t* package, const char * qualified_name, cons
 
   if(dir == NULL)
   {
-	  if (!silent) {
-	      switch(err)
-	      {
-	        case EACCES:  errorf(errors, dir_path, "permission denied"); break;
-	        case ENOENT:  errorf(errors, dir_path, "does not exist");    break;
-	        case ENOTDIR: errorf(errors, dir_path, "not a directory");   break;
-	        default:      errorf(errors, dir_path, "unknown error");     break;
-	      }
-	  }
+    if (!silent) {
+        switch(err)
+        {
+          case EACCES:  errorf(errors, dir_path, "permission denied"); break;
+          case ENOENT:  errorf(errors, dir_path, "does not exist");    break;
+          case ENOTDIR: errorf(errors, dir_path, "not a directory");   break;
+          default:      errorf(errors, dir_path, "unknown error");     break;
+        }
+    }
 
     return false;
   }
@@ -261,31 +261,30 @@ static bool parse_files_in_dir(ast_t* package, const char * qualified_name, cons
 
     if(name[0] == '.')
       continue;
-	
-	// to help code separation, we treat all directories which start with a '+' as
-	// directories which contain extra code for this package
+  
+    // to help code separation, we treat all directories which start with a '+' as
+    // directories which contain extra code for this package
     if(name[0] == '+')
     {
       char additionalDirectory[FILENAME_MAX];
       path_cat(dir_path, name, additionalDirectory);
-	  //fprintf(stderr, "recursive add to package: %s\n", additionalDirectory);
+      //fprintf(stderr, "recursive add to package: %s\n", additionalDirectory);
       parse_files_in_dir(package, qualified_name, additionalDirectory, opt, true);
-	  continue;
-	}
-	
-
+      continue;
+    }
+    
     if(translate_valid_source_file(name))
     {
       if((count * sizeof(const char*)) == buf_size)
       {
         size_t new_buf_size = buf_size * 2;
-        entries = (const char**)ponyint_pool_realloc_size(buf_size,
-          new_buf_size, entries);
+        entries = (const char**)ponyint_pool_realloc_size(buf_size, new_buf_size, entries);
         buf_size = new_buf_size;
       }
 
       entries[count++] = name;
     }
+    
   }
 
   pony_closedir(dir);
@@ -1033,7 +1032,7 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
   
   source_t* source = source_translate_package_end(opt->print_generated_code);
   if(source != NULL) {
-  	module_passes(package, opt, source);
+    module_passes(package, opt, source);
   }
   
 

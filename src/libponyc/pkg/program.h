@@ -19,6 +19,9 @@ void program_free(program_t* program);
 /// The actual AST node passed in may be anywhere in the tree.
 uint32_t program_assign_pkg_id(ast_t* ast);
 
+// Let the program know we want to link in an Info.plist file
+void program_assign_info_plist(program_t* prog, char * info_plist);
+
 /// Process a "lib:" scheme use command.
 bool use_library(ast_t* use, const char* locator, ast_t* name,
   pass_opt_t* options);

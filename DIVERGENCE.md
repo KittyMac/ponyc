@@ -2,6 +2,10 @@
 
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
+## Link to Info.plist file
+
+If you include an Info.plist file (a special Mac/iOS resource file), the source translation feature will tell the linker to link the Info.plist file into your executable. This helps pave the way for using AppKit and other iOS or Mac OS libraries in your pony programs.
+
 
 ## addressof_usize and adding .usize() to NullablePointer
 

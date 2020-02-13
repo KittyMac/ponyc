@@ -207,7 +207,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
     }
     
     // continue until we've written all of our analytics events
-    if (analysisThreadRunning == false && local_analysisMessageQueuePtr->num_messages == 0) {
+    if (analysisThreadRunning == false && local_analysisMessageQueuePtr->num_messages <= 0) {
       break;
     }
     
@@ -416,16 +416,16 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
       for(uint32_t i = 0; i < active_scheduler_count; i++) {
         scheduler_t * sched = ponyint_sched_by_index(i);
         
-        fprintf(stderr, "  Scheduler #%d: \n", sched->index);
-        if((int32_t)sched->cpu >= 0) {    fprintf(stderr, "     cpu / node: %d / %d \n", sched->cpu, sched->node); }
-        if(sched->terminate) {        fprintf(stderr, "     is terminate\n"); }
+                                        fprintf(stderr, "  Scheduler #%d: \n", sched->index);
+        if((int32_t)sched->cpu >= 0) {  fprintf(stderr, "     cpu / node: %d / %d \n", sched->cpu, sched->node); }
+        if(sched->terminate) {          fprintf(stderr, "     is terminate\n"); }
         if(sched->asio_stoppable) {     fprintf(stderr, "     is asio stoppable \n"); }
-        if(sched->asio_noisy) {       fprintf(stderr, "     is asio noisy \n"); }
-        if(sched->main_thread) {      fprintf(stderr, "     is main thread \n");  }
-        if(sched->block_count) {      fprintf(stderr, "     block_count: %d \n", sched->block_count); }
-        if(sched->ack_token) {        fprintf(stderr, "     ack_token: %d \n", sched->ack_token); }
-        if(sched->ack_count) {        fprintf(stderr, "     ack_count: %d \n", sched->ack_count); }
-                          fprintf(stderr, "     waiting actors: %lld \n", sched->q.num_messages);
+        if(sched->asio_noisy) {         fprintf(stderr, "     is asio noisy \n"); }
+        if(sched->main_thread) {        fprintf(stderr, "     is main thread \n");  }
+        if(sched->block_count) {        fprintf(stderr, "     block_count: %d \n", sched->block_count); }
+        if(sched->ack_token) {          fprintf(stderr, "     ack_token: %d \n", sched->ack_token); }
+        if(sched->ack_count) {          fprintf(stderr, "     ack_count: %d \n", sched->ack_count); }
+                                        fprintf(stderr, "     waiting actors: %lld \n", sched->q.num_messages);
         if(sched->mq.num_messages) {    fprintf(stderr, "     mq num msgs: %lld\n", sched->mq.num_messages);  }
       }
       fprintf(stderr, "\n\n");
@@ -504,13 +504,13 @@ void saveRuntimeAnalyticForActorMessage(pony_ctx_t * ctx, pony_actor_t * from, p
     msg->fromUID = from->uid;
     msg->fromTag = from->tag;
     msg->eventID = event;
-    msg->fromNumMessages = (unsigned long)from->q.num_messages;
+    msg->fromNumMessages = (unsigned long)(from->q.num_messages > 0 ? from->q.num_messages : 0);
     msg->fromBatch = from->batch;
     msg->fromPriority = from->priority;
     msg->fromHeapUsed = from->heap.used;
     msg->toUID = to->uid;
     msg->toTag = to->tag;
-    msg->toNumMessages = (unsigned long)to->q.num_messages;
+    msg->toNumMessages = (unsigned long)(to->q.num_messages > 0 ? to->q.num_messages : 0);
     msg->totalMemory = ponyint_total_memory();
     
     // if we're overloading the save-to-file thread, slow down a little
@@ -567,7 +567,7 @@ void saveRuntimeAnalyticForActor(pony_ctx_t * ctx, pony_actor_t * actor, int eve
     msg->fromUID = actor->uid;
     msg->fromTag = actor->tag;
     msg->eventID = event;
-    msg->fromNumMessages = (unsigned long)actor->q.num_messages;
+    msg->fromNumMessages = (unsigned long)(actor->q.num_messages > 0 ? actor->q.num_messages : 0);
     msg->fromBatch = actor->batch;
     msg->fromPriority = actor->priority;
     msg->fromHeapUsed = actor->heap.used;

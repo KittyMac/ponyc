@@ -1,3 +1,4 @@
+#include "genheader.h"
 #include "genexe.h"
 #include "gencall.h"
 #include "genfun.h"
@@ -18,6 +19,8 @@
 #ifdef PLATFORM_IS_POSIX_BASED
 #  include <unistd.h>
 #endif
+
+extern bool reachable_actors(compile_t* c, ast_t* program);
 
 static LLVMValueRef create_main(compile_t* c, reach_type_t* t,
   LLVMValueRef ctx)
@@ -498,6 +501,11 @@ static bool link_exe(compile_t* c, ast_t* program,
 
 bool genexe(compile_t* c, ast_t* program)
 {
+  if(	!reachable_actors(c, program) ||
+     	!genheader(c))
+    return false;
+  
+  
   errors_t* errors = c->opt->check.errors;
 
   // The first package is the main package. It has to have a Main actor.

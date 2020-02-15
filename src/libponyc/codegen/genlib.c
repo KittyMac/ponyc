@@ -113,7 +113,7 @@ static bool reachable_methods(compile_t* c, ast_t* ast)
   return true;
 }
 
-static bool reachable_actors(compile_t* c, ast_t* program)
+bool reachable_actors(compile_t* c, ast_t* program)
 {
   if(c->opt->verbosity >= VERBOSITY_INFO)
     fprintf(stderr, " Library reachability\n");

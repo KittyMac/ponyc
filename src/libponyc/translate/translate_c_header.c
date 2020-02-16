@@ -5,8 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #include <clang-c/Index.h>
+
+#define min(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
 
 // Note: useful commands
 // clang -Xclang -ast-dump -fsyntax-only somefile.h
@@ -73,7 +79,137 @@ void addPonyTypeForCXType(CXType t, sds * code) {
   }
 }
 
-enum CXChildVisitResult printCursorType(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+
+
+
+bool compareTokenName(CXTranslationUnit unit, CXToken token, const char * otherNameString) {
+  CXString name = clang_getTokenSpelling(unit, token);
+  const char * nameString = clang_getCString(name);
+  bool didMatch = !strcmp(nameString, otherNameString);
+  clang_disposeString(name);
+  return didMatch;
+}
+
+void copyTokenName(CXTranslationUnit unit, CXToken token, char * buffer, int bufferSize) {
+  CXString name = clang_getTokenSpelling(unit, token);
+  const char * nameString = clang_getCString(name);
+  strncpy(buffer, nameString, bufferSize);
+  clang_disposeString(name);
+}
+
+unsigned long identifyTokenRootName(CXTranslationUnit unit, CXToken token, char * buffer) {
+  CXString name = clang_getTokenSpelling(unit, token);
+  const char * nameString = clang_getCString(name);
+  
+  unsigned long minSize = min(strlen(nameString), strlen(buffer));
+  for(unsigned long i = 0; i < minSize; i++) {
+    if(tolower(nameString[i]) != tolower(buffer[i])) {
+      clang_disposeString(name);
+      return i;
+    }
+  }
+  
+  clang_disposeString(name);
+  return minSize;
+}
+
+void printNumericDefinitions(CXTranslationUnit unit, sds * code) {
+  
+  CXToken * allTokens = NULL;
+  unsigned numTokens = 0;
+  
+  CXCursor unitCursor = clang_getTranslationUnitCursor(unit);
+  clang_tokenize(unit, clang_getCursorExtent(unitCursor), &allTokens, &numTokens);
+  
+  /*
+  for(unsigned i = 0; i < numTokens-1; i++) {
+    CXToken token = allTokens[i];
+    
+    CXString name = clang_getTokenSpelling(unit, token);
+    const char * nameString = clang_getCString(name);
+    CXTokenKind kind = clang_getTokenKind(token);
+    
+    fprintf(stderr, ">> [%d] %s\n", kind, nameString);
+    
+    clang_disposeString(name);
+  }*/
+  
+  for(unsigned i = 0; i < numTokens-1; i++) {                
+    // How many are in this group?  Do they have a common name root?
+    int sizeOfDefineGrouping = 0;
+    char primitiveName[1024] = {0};
+    unsigned long primitiveRootIndex = 0;
+    for(unsigned j = i; j < numTokens; j++) {
+      // skip any comments
+      if (clang_getTokenKind(allTokens[j]) == CXToken_Comment){
+        continue;
+      }
+      if(compareTokenName(unit, allTokens[j], "#") && compareTokenName(unit, allTokens[j+1], "define") && j+3 < numTokens) {
+        
+        // does this define share a root name with the previous one? If it doesn't, it belongs in a new group
+        if (sizeOfDefineGrouping == 0) {
+          copyTokenName(unit, allTokens[j+2], primitiveName, sizeof(primitiveName));
+        }else{
+          unsigned long newRootIndex = identifyTokenRootName(unit, allTokens[j+2], primitiveName);
+          if(primitiveRootIndex != 0 && newRootIndex == 0) {
+            break;
+          }
+          primitiveRootIndex = newRootIndex;
+          primitiveName[primitiveRootIndex] = 0;
+        }
+        sizeOfDefineGrouping++;
+        j += 3;
+      }
+    }
+    
+    if (sizeOfDefineGrouping >= 1) {
+      
+      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(primitiveName));
+      
+      for(unsigned j = i; j < numTokens; j++) {
+        if (clang_getTokenKind(allTokens[j]) == CXToken_Comment){
+          continue;
+        }
+        
+        if(compareTokenName(unit, allTokens[j], "#") && compareTokenName(unit, allTokens[j+1], "define") && j+3 < numTokens) {
+          CXToken defineNameToken = allTokens[j + 2];
+          CXTokenKind defineNameKind = clang_getTokenKind(defineNameToken);
+          CXToken defineValueToken = allTokens[j + 3];
+          CXTokenKind defineValueKind = clang_getTokenKind(defineValueToken);
+  
+          if (defineNameKind == CXToken_Identifier && defineValueKind == CXToken_Literal) {
+            CXString defineNameName = clang_getTokenSpelling(unit, defineNameToken);
+            const char * defineNameNameString = clang_getCString(defineNameName);
+            CXString defineValueName = clang_getTokenSpelling(unit, defineValueToken);
+            const char * defineValueNameString = clang_getCString(defineValueName);
+      
+            char * cleanedName = translate_function_name(defineNameNameString);
+            
+            if(defineValueNameString[0] == '\"') {
+              *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName + primitiveRootIndex, "String", defineValueNameString);
+            }else{
+              *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName + primitiveRootIndex, "U32", defineValueNameString);
+            }
+      
+          }
+          
+          j += 3;
+          i = j;
+          
+          sizeOfDefineGrouping--;
+          if (sizeOfDefineGrouping == 0){
+            break;
+          }
+        }
+      }
+      
+      *code = sdscatprintf(*code, "\n");
+    }        
+  }  
+}
+
+
+enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor parent, CXClientData client_data) {
   ((void)parent);
   int childVisit = CXChildVisit_Recurse;
   
@@ -125,8 +261,12 @@ enum CXChildVisitResult printCursorType(CXCursor cursor, CXCursor parent, CXClie
   
   clang_disposeString(name);
   
-  return CXChildVisit_Recurse;
+  return childVisit;
 }
+
+
+
+
 
 char* translate_c_header(bool print_generated_code, const char* file_name, const char* source_code)
 {
@@ -149,7 +289,14 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
   
   if (unit != NULL) {
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
-    clang_visitChildren(cursor, printCursorType, &code);
+    
+    // 1. print all of the function declarations ( use @foo[None]() )
+    clang_visitChildren(cursor, printFunctionDeclarations, &code);
+    
+    code = sdscatprintf(code, "\n");
+    
+    // 2. print all of the stright #defines (primitive SomeDefined\n  fun x():U32 => 2)
+    printNumericDefinitions(unit, &code);
     
     clang_disposeTranslationUnit(unit);
     

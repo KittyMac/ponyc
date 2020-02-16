@@ -127,32 +127,63 @@ char* translate_source_package_end(bool print_generated_code) {
 
 // helper functions shared by future translation classes
 
-char* translate_class_name(char* file_name)
+char* translate_class_name(const char* name)
 {
   // take a file name and turn it into a pony class name
-  char * start = strrchr(file_name, '/');
+  const char * start = strrchr(name, '/');
   if (start == NULL) {
-    start = file_name;
+    start = name;
   } else {
     start += 1;
   }
-  char * end = strchr(start, '.');
+  const char * end = strchr(start, '.');
   if (end == NULL) {
-    end = file_name + strlen(file_name);
+    end = name + strlen(name);
+  }
+  
+  char* class_name = (char*)ponyint_pool_alloc_size((end - start) + 1);
+  
+  int idx = 0;
+  bool uppercase_next = true;
+  for (; start < end; start++) {
+    if (uppercase_next) {
+      class_name[idx++] = (char)toupper(*start);
+      uppercase_next = false;
+      continue;
+    }
+    if (isspace(*start) == true || *start == '_') {
+      uppercase_next = true;
+      continue;
+    }
+    class_name[idx++] = (char)tolower(*start);
+  }
+  class_name[idx] = 0;
+  
+  return class_name;
+}
+
+char* translate_function_name(const char* name)
+{
+  // take a file name and turn it into a pony class name
+  const char * start = strrchr(name, '/');
+  if (start == NULL) {
+    start = name;
+  } else {
+    start += 1;
+  }
+  const char * end = strchr(start, '.');
+  if (end == NULL) {
+    end = name + strlen(name);
   }
   
   char* class_name = (char*)ponyint_pool_alloc_size((end - start) + 1);
   
   int idx = 0;
   for (; start < end; start++) {
-    if (idx == 0) {
-      class_name[idx++] = (char)toupper(*start);
+    if (isspace(*start) == true) {
       continue;
     }
-    if (isspace(*start) == true || *start == '_') {
-      continue;
-    }
-    class_name[idx++] = *start;
+    class_name[idx++] = (char)tolower(*start);
   }
   class_name[idx] = 0;
   

@@ -16,9 +16,13 @@ bool translate_valid_source_file(const char* file_name);
  */
 char* translate_source(program_t* program, const char* file_name, const char* source_code, bool print_generated_code);
 
-/** Convert file name into a pony compatibile class name
+/** Convert name into a pony compatibile class name
  */
-char* translate_class_name(const char* file_name);
+char* translate_class_name(const char* name);
+
+/** Convert name into a pony compatibile function name
+ */
+char* translate_function_name(const char* name);
 
 /** Know that a new source package is being compile
  */

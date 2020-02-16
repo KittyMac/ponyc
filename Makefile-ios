@@ -6,29 +6,9 @@
 # Sample command:
 # make -f Makefile-ios config=release all install
 #
-# Install LLVM (only necessary until I can get this hooked up to the submoduled llvm)
+# Note: you don't need to manually install llvm. This makefile will download and build the appropriate
+# llvm with the appropriate options enabled and install it for future use.
 #
-#    - curl -o macports.pkg https://distfiles.macports.org/MacPorts/MacPorts-2.6.0-10.14-Mojave.pkg
-#    - sudo installer -verbose -pkg macports.pkg -target /
-#    - sudo /opt/local/bin/port selfupdate
-#    - sudo /opt/local/bin/port install clang-7.0
-#
-# Overview:
-#
-# 1. Compile ponyc as normal
-# 2. Compile libponyrt for all desired arm architectures (currently armv7, armv7s, arm64)
-# 3. Create a fat binary .a of libponyrt.a; this is what you will include in your XCode project
-# 4. [TODO]
-# 
-# TODO: Compile your pony program into your XCode project
-# 
-# - Easily compile your pony program into a .o which you can include in XCode
-# BUILD YOUR PONY CODE WITH:
-# /Volumes/Development/Development/pony/PonyIOS/ponyc/build/release/ponyc --link-arch arm64 --triple arm64-apple-ios -robj
-#
-# Drag the .o file to your XCode project and build!
-#
-# TODO: Make the pony runtime play nice on an iOS device
 
 iphonesdk_ar=$(shell xcrun --sdk iphoneos --find ar)
 iphonesdk_clang=$(shell xcrun --sdk iphoneos --find clang)

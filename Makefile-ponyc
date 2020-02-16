@@ -489,6 +489,48 @@ ifeq ($(OSTYPE),linux)
   libponyrt-pic := $(lib)
 endif
 
+clang.libdir := $(shell $(LLVM_CONFIG) --libdir)
+
+clang.libs := ""
+clang.libs += $(clang.libdir)/libclang.a
+clang.libs += $(clang.libdir)/libclangAST.a
+clang.libs += $(clang.libdir)/libclangASTMatchers.a
+clang.libs += $(clang.libdir)/libclangAnalysis.a
+clang.libs += $(clang.libdir)/libclangApplyReplacements.a
+clang.libs += $(clang.libdir)/libclangBasic.a
+clang.libs += $(clang.libdir)/libclangChangeNamespace.a
+clang.libs += $(clang.libdir)/libclangCodeGen.a
+clang.libs += $(clang.libdir)/libclangCrossTU.a
+clang.libs += $(clang.libdir)/libclangDaemon.a
+clang.libs += $(clang.libdir)/libclangDoc.a
+clang.libs += $(clang.libdir)/libclangDriver.a
+clang.libs += $(clang.libdir)/libclangDynamicASTMatchers.a
+clang.libs += $(clang.libdir)/libclangEdit.a
+clang.libs += $(clang.libdir)/libclangFormat.a
+clang.libs += $(clang.libdir)/libclangFrontend.a
+clang.libs += $(clang.libdir)/libclangFrontendTool.a
+clang.libs += $(clang.libdir)/libclangHandleCXX.a
+clang.libs += $(clang.libdir)/libclangHandleLLVM.a
+clang.libs += $(clang.libdir)/libclangIncludeFixer.a
+clang.libs += $(clang.libdir)/libclangIncludeFixerPlugin.a
+clang.libs += $(clang.libdir)/libclangIndex.a
+clang.libs += $(clang.libdir)/libclangLex.a
+clang.libs += $(clang.libdir)/libclangMove.a
+clang.libs += $(clang.libdir)/libclangParse.a
+clang.libs += $(clang.libdir)/libclangQuery.a
+clang.libs += $(clang.libdir)/libclangReorderFields.a
+clang.libs += $(clang.libdir)/libclangRewrite.a
+clang.libs += $(clang.libdir)/libclangRewriteFrontend.a
+clang.libs += $(clang.libdir)/libclangSema.a
+clang.libs += $(clang.libdir)/libclangSerialization.a
+clang.libs += $(clang.libdir)/libclangTooling.a
+clang.libs += $(clang.libdir)/libclangToolingASTDiff.a
+clang.libs += $(clang.libdir)/libclangToolingCore.a
+clang.libs += $(clang.libdir)/libclangToolingInclusions.a
+clang.libs += $(clang.libdir)/libclangToolingRefactor.a
+
+
+
 # Define special case rules for a targets source files. By default
 # this makefile assumes that a targets source files can be found
 # relative to a parent directory of the same name in $(PONY_SOURCE_DIR).
@@ -972,7 +1014,7 @@ else
 $($(1))/$(1): $(depends) $(ofiles)
 	@mkdir -p $$(dir $$@)
 	@echo 'Linking $(1)'
-	$(SILENT)$(linker) -o $$@ $(ofiles) $(linkcmd)
+	$(SILENT)$(linker) -o $$@ $(ofiles) $(clang.libs) $(linkcmd)
 $(1): $($(1))/$(1)
 endif
 

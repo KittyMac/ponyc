@@ -1,5 +1,6 @@
 #include "translate_json_schema.h"
 #include "translate_text_resource.h"
+#include "translate_c_header.h"
 #include "../../libponyrt/gc/serialise.h"
 #include "../../libponyrt/mem/pool.h"
 #include "../pkg/program.h"
@@ -17,6 +18,7 @@
 #define JSON_EXTENSION ".json"
 #define TEXT_EXTENSION ".txt"
 #define INFO_PLIST_EXTENSION "Info.plist"
+#define C_HEADER_EXTENSION ".h"
 
 // converts a JSON Schema file to Pony classes. Used in source.c.
 
@@ -41,7 +43,9 @@ bool translate_valid_source_file(const char* file_name)
       
       string_ends_with(file_name, JSON_SCHEMA_EXTENSION) ||
       
-      string_ends_with(file_name, INFO_PLIST_EXTENSION)
+      string_ends_with(file_name, INFO_PLIST_EXTENSION) ||
+      
+      string_ends_with(file_name, C_HEADER_EXTENSION)
     )
   {
     return true;
@@ -64,7 +68,11 @@ char* translate_source(program_t* program, const char* file_name, const char* so
     
     return empty_code;
   }
-  if(string_ends_with(file_name, JSON_SCHEMA_EXTENSION))
+  else if(string_ends_with(file_name, C_HEADER_EXTENSION))
+  {
+    return translate_c_header(print_generated_code, file_name, source_code);
+  }
+  else if(string_ends_with(file_name, JSON_SCHEMA_EXTENSION))
   {
     return translate_json_schema(print_generated_code, file_name, source_code);
   }

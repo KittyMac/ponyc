@@ -173,92 +173,92 @@ bool reachable_actors(compile_t* c, ast_t* program)
 
 bool genlib(compile_t* c, ast_t* program)
 {
-    if(	!reachable_actors(c, program) ||
-       	!genheader(c))
-      return false;
-	
-	
-    errors_t* errors = c->opt->check.errors;
+  if(	!reachable_actors(c, program) ||
+     	!genheader(c))
+    return false;
 
-    // The first package is the main package. It has to have a Main actor.
-    const char* main_actor = c->str_Main;
-    const char* env_class = c->str_Env;
-    const char* package_name = c->filename;
 
-    if((c->opt->bin_name != NULL) && (strlen(c->opt->bin_name) > 0))
-      c->filename = c->opt->bin_name;
+  errors_t* errors = c->opt->check.errors;
 
-    ast_t* package = ast_child(program);
-    ast_t* main_def = ast_get(package, main_actor, NULL);
+  // The first package is the main package. It has to have a Main actor.
+  const char* main_actor = c->str_Main;
+  const char* env_class = c->str_Env;
+  const char* package_name = c->filename;
 
-    if(main_def == NULL)
-    {
-      errorf(errors, NULL, "no Main actor found in package '%s'", package_name);
-      return false;
-    }
+  if((c->opt->bin_name != NULL) && (strlen(c->opt->bin_name) > 0))
+    c->filename = c->opt->bin_name;
 
-    // Generate the Main actor and the Env class.
-    ast_t* main_ast = type_builtin(c->opt, main_def, main_actor);
-    ast_t* env_ast = type_builtin(c->opt, main_def, env_class);
+  ast_t* package = ast_child(program);
+  ast_t* main_def = ast_get(package, main_actor, NULL);
 
-    deferred_reification_t* main_create = lookup(c->opt, main_ast, main_ast,
-      c->str_create);
+  if(main_def == NULL)
+  {
+    errorf(errors, NULL, "no Main actor found in package '%s'", package_name);
+    return false;
+  }
 
-    if(main_create == NULL)
-    {
-      ast_free(main_ast);
-      ast_free(env_ast);
-      return false;
-    }
+  // Generate the Main actor and the Env class.
+  ast_t* main_ast = type_builtin(c->opt, main_def, main_actor);
+  ast_t* env_ast = type_builtin(c->opt, main_def, env_class);
 
-    deferred_reify_free(main_create);
+  deferred_reification_t* main_create = lookup(c->opt, main_ast, main_ast,
+    c->str_create);
 
-    if(c->opt->verbosity >= VERBOSITY_INFO)
-      fprintf(stderr, " Reachability\n");
-    reach(c->reach, main_ast, c->str_create, NULL, c->opt);
-    reach(c->reach, main_ast, stringtab("runtime_override_defaults"), NULL, c->opt);
-    reach(c->reach, env_ast, c->str__create, NULL, c->opt);
-
-    if(c->opt->limit == PASS_REACH)
-    {
-      ast_free(main_ast);
-      ast_free(env_ast);
-      return true;
-    }
-
-    if(c->opt->verbosity >= VERBOSITY_INFO)
-      fprintf(stderr, " Selector painting\n");
-    paint(&c->reach->types);
-
-    plugin_visit_reach(c->reach, c->opt, true);
-
-    if(c->opt->limit == PASS_PAINT)
-    {
-      ast_free(main_ast);
-      ast_free(env_ast);
-      return true;
-    }
-
-    if(!gentypes(c))
-    {
-      ast_free(main_ast);
-      ast_free(env_ast);
-      return false;
-    }
-
-    if(c->opt->verbosity >= VERBOSITY_ALL)
-      reach_dump(c->reach);
-
-    reach_type_t* t_main = reach_type(c->reach, main_ast);
-    reach_type_t* t_env = reach_type(c->reach, env_ast);
-
+  if(main_create == NULL)
+  {
     ast_free(main_ast);
     ast_free(env_ast);
+    return false;
+  }
 
-    if((t_main == NULL) || (t_env == NULL))
-      return false;
+  deferred_reify_free(main_create);
 
-    gen_main(c, t_main, t_env, true);
+  if(c->opt->verbosity >= VERBOSITY_INFO)
+    fprintf(stderr, " Reachability\n");
+  reach(c->reach, main_ast, c->str_create, NULL, c->opt);
+  reach(c->reach, main_ast, stringtab("runtime_override_defaults"), NULL, c->opt);
+  reach(c->reach, env_ast, c->str__create, NULL, c->opt);
+
+  if(c->opt->limit == PASS_REACH)
+  {
+    ast_free(main_ast);
+    ast_free(env_ast);
+    return true;
+  }
+
+  if(c->opt->verbosity >= VERBOSITY_INFO)
+    fprintf(stderr, " Selector painting\n");
+  paint(&c->reach->types);
+
+  plugin_visit_reach(c->reach, c->opt, true);
+
+  if(c->opt->limit == PASS_PAINT)
+  {
+    ast_free(main_ast);
+    ast_free(env_ast);
+    return true;
+  }
+
+  if(!gentypes(c))
+  {
+    ast_free(main_ast);
+    ast_free(env_ast);
+    return false;
+  }
+
+  if(c->opt->verbosity >= VERBOSITY_ALL)
+    reach_dump(c->reach);
+
+  reach_type_t* t_main = reach_type(c->reach, main_ast);
+  reach_type_t* t_env = reach_type(c->reach, env_ast);
+
+  ast_free(main_ast);
+  ast_free(env_ast);
+
+  if((t_main == NULL) || (t_env == NULL))
+    return false;
+
+  gen_main(c, t_main, t_env, true);
 
   plugin_visit_compile(c, c->opt);
 

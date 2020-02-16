@@ -11,7 +11,7 @@
 #    - curl -o macports.pkg https://distfiles.macports.org/MacPorts/MacPorts-2.6.0-10.14-Mojave.pkg
 #    - sudo installer -verbose -pkg macports.pkg -target /
 #    - sudo /opt/local/bin/port selfupdate
-#    - sudo /opt/local/bin/port install llvm-7.0
+#    - sudo /opt/local/bin/port install clang-7.0
 #
 # Overview:
 #
@@ -36,8 +36,16 @@ iphonesdk_clangxx=$(shell xcrun --sdk iphoneos --find clang++)
 iphonesdk_isysroot=$(shell xcrun --sdk iphoneos --show-sdk-path)
 iphonesdklib="$(iphonesdk_isysroot)/usr/lib"
 
-# Note: not sure yet how to get this to work with the version of llvm submoduled
-llvm_config=/opt/local/bin/llvm-config-mp-7.0
+# Note: We're using the custom llvm in llvm-mac
+llvm_config=./lib/llvm-mac/build/bin/llvm-config
+
+llvm:
+ifneq ("$(wildcard $(llvm_config))","")
+    
+else
+	cd ./lib/llvm-mac/ && ./build.sh
+endif
+	
 
 ponyc:
 #Makefile-lib-llvm default_pic=true
@@ -47,7 +55,7 @@ ponyc:
 
 libponyrt:
 	export LDFLAGS="-L$(iphonesdklib)"
-	@echo "Compiling libponyrt for armv7"
+	#@echo "Compiling libponyrt for armv7"
 	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7 LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
 	@echo "Compiling libponyrt for armv7s"
 	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7s LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
@@ -61,7 +69,7 @@ libponyrt:
 install:
 	@IPHONESDK="" $(MAKE) -f Makefile-ponyc LLVM_CONFIG="$(llvm_config)" -j$(sysctl -n hw.ncpu) config=$(config) install
 
-all: ponyc libponyrt
+all: llvm ponyc libponyrt
 	@echo "all done"
 
 ci: all install

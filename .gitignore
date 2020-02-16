@@ -34,5 +34,9 @@ packages/stdlib/stdlib
 
 /stdlib-docs/
 
+lib/llvm-mac/src
+lib/llvm-mac/build
+
+
 # Allow these paths
 !src/libponyrt/lang/except_try_catch.ll

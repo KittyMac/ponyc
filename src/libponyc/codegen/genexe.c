@@ -195,7 +195,7 @@ LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env, b
   if (use_pony_main) {
   	args[0] = LLVMConstInt(c->i1, 1, false);
   }else{
-	args[0] = LLVMConstInt(c->i1, 0, false);
+	  args[0] = LLVMConstInt(c->i1, 0, false);
   }
   args[1] = LLVMConstNull(LLVMPointerType(c->i32, 0));
   args[2] = make_lang_features_init(c);

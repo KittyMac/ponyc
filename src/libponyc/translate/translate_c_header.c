@@ -59,16 +59,41 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     case CXType_Double:               ( *code = sdscatprintf(*code, "F64") );    break;
     case CXType_Float128:           
     case CXType_LongDouble:           ( *code = sdscatprintf(*code, "F128") );    break;
+  
+    case CXType_Typedef:              {
+                                        addPonyTypeForCXType(clang_getTypedefDeclUnderlyingType(clang_getTypeDeclaration(t)), code);
+                                      }
+                                      break;
+    case CXType_Elaborated:           {
+                                        CXString name = clang_getTypeSpelling(clang_Type_getNamedType(t));
+                                        const char * nameString = clang_getCString(name);
+                                        if(!strncmp("struct ", nameString, 7)) {
+                                          *code = sdscatprintf(*code, "%s", nameString + 7);
+                                        }else{
+                                          *code = sdscatprintf(*code, "%s", nameString);
+                                        }
+                                        clang_disposeString(name);
+                                      }
+                                      break;
     
     case CXType_ObjCId:
     case CXType_ObjCClass:
     case CXType_ObjCSel:
     case CXType_ObjCObjectPointer:
     case CXType_Pointer:
-    case CXType_NullPtr:
-                                      *code = sdscatprintf(*code, "Pointer[");
-                                      addPonyTypeForCXType(clang_getPointeeType(t), code);
-                                      *code = sdscatprintf(*code, "] tag");
+    case CXType_NullPtr:              {
+                                        // If the pointee is elaborated or typedef, we don't use Pointer
+                                        CXType pointeeType = clang_getPointeeType(t);
+                                        if(pointeeType.kind == CXType_Elaborated) {
+                                          addPonyTypeForCXType(pointeeType, code);
+                                        }else if(pointeeType.kind == CXType_Typedef) {
+                                          addPonyTypeForCXType(pointeeType, code);
+                                        }else{
+                                          *code = sdscatprintf(*code, "Pointer[");
+                                          addPonyTypeForCXType(pointeeType, code);
+                                          *code = sdscatprintf(*code, "] tag");
+                                        }
+                                      }
                                       break;
     
     case CXType_IncompleteArray:      ( *code = sdscatprintf(*code, "...") );    break;
@@ -78,6 +103,69 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     default:                          ( *code = sdscatprintf(*code, "None") );    break;
   }
 }
+
+void addPonyDefaultValueForCXType(CXType t, sds * code) {
+  //fprintf(stderr, "CXType.kind is %d\n", t.kind);
+  
+  switch(t.kind) {
+    case CXType_Void:                 ( *code = sdscatprintf(*code, "None") );    break;
+    case CXType_Bool:                 ( *code = sdscatprintf(*code, "false") );    break;
+    
+    case CXType_Char_S:               
+    case CXType_Char_U:               
+    case CXType_UChar:              
+    case CXType_Char16:               
+    case CXType_UShort:             
+    case CXType_Enum:               
+    case CXType_Char32:               
+    case CXType_UInt:
+    case CXType_ULong:              
+    case CXType_ULongLong:            
+    case CXType_UInt128:            
+    case CXType_SChar:
+    case CXType_WChar:                
+    case CXType_Short:
+    case CXType_Int:
+    case CXType_Long:               
+    case CXType_LongLong:             
+    case CXType_Int128:               ( *code = sdscatprintf(*code, "0") );    break;
+                                    
+    case CXType_Half:               
+    case CXType_Float16:              
+    case CXType_Float:
+    case CXType_Double:
+    case CXType_Float128:           
+    case CXType_LongDouble:           ( *code = sdscatprintf(*code, "0.0") );    break;
+  
+    case CXType_Elaborated:           {
+                                        CXString name = clang_getTypeSpelling(clang_Type_getNamedType(t));
+                                        const char * nameString = clang_getCString(name);
+                                        if(!strncmp("struct ", nameString, 7)) {
+                                          *code = sdscatprintf(*code, "%s", nameString + 7);
+                                        }else{
+                                          *code = sdscatprintf(*code, "%s", nameString);
+                                        }
+                                        clang_disposeString(name);
+                                      }
+                                      break;
+    
+    case CXType_ObjCId:
+    case CXType_ObjCClass:
+    case CXType_ObjCSel:
+    case CXType_ObjCObjectPointer:
+    case CXType_Pointer:
+    case CXType_NullPtr:              {
+                                        addPonyTypeForCXType(t, code);
+                                      }
+                                      break;
+        
+    default:                          ( *code = sdscatprintf(*code, "None") );    break;
+  }
+}
+
+
+
+
 
 
 
@@ -266,6 +354,64 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
 
 
 
+enum CXVisitorResult printStructFields(CXCursor cursor, CXClientData client_data) {
+  sds * code = (sds *)client_data;
+  
+  int kind = clang_getCursorKind(cursor);
+  CXType type = clang_getCursorType(cursor);
+  CXString name = clang_getCursorSpelling(cursor);
+  
+  if (kind == CXCursor_FieldDecl) {
+    
+    if (type.kind == CXType_Elaborated) {
+      *code = sdscatprintf(*code, "  embed %s: ", clang_getCString(name));
+    }else{
+      *code = sdscatprintf(*code, "  var %s: ", clang_getCString(name));
+    }
+    
+    addPonyTypeForCXType(type, code);
+    *code = sdscatprintf(*code, " = ");
+    addPonyDefaultValueForCXType(type, code);
+    
+    
+    *code = sdscatprintf(*code, "\n");
+  }
+  
+  return CXVisit_Continue;
+}
+
+enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+  ((void)parent);
+  int childVisit = CXChildVisit_Recurse;
+  
+  sds * code = (sds *)client_data;
+  
+  int kind = clang_getCursorKind(cursor);
+  CXType type = clang_getCursorType(cursor);
+  CXString name = clang_getCursorSpelling(cursor);
+  
+  if (kind == CXCursor_TypedefDecl) {
+    childVisit = CXChildVisit_Continue;
+  }
+  
+  if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
+    *code = sdscatprintf(*code, "struct %s\n", clang_getCString(name));
+    
+    clang_Type_visitFields(type, printStructFields, code);
+    
+    *code = sdscatprintf(*code, "\n");
+    
+    childVisit = CXChildVisit_Continue;
+  }
+  
+  //fprintf(stderr, ">> [%d][%d}] %s\n", kind, type.kind, clang_getCString(name));
+  
+  clang_disposeString(name);
+  
+  return childVisit;
+}
+
+
 
 
 char* translate_c_header(bool print_generated_code, const char* file_name, const char* source_code)
@@ -297,6 +443,11 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
     
     // 2. print all of the stright #defines (primitive SomeDefined\n  fun x():U32 => 2)
     printNumericDefinitions(unit, &code);
+    
+    code = sdscatprintf(code, "\n");
+    
+    // 3. transpile all structures
+    clang_visitChildren(cursor, printStructDeclarations, &code);
     
     clang_disposeTranslationUnit(unit);
     

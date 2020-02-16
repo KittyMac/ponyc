@@ -17,13 +17,15 @@ iphonesdk_isysroot=$(shell xcrun --sdk iphoneos --show-sdk-path)
 iphonesdklib="$(iphonesdk_isysroot)/usr/lib"
 
 # Note: We're using the custom llvm in llvm-mac
-llvm_config=./lib/llvm-mac/build/bin/llvm-config
+llvm_installdir = ~/.pony/llvm/
+llvm_config=$(llvm_installdir)/build/bin/llvm-config
 
 llvm:
 ifneq ("$(wildcard $(llvm_config))","")
     
 else
-	cd ./lib/llvm-mac/ && ./build.sh
+	@echo "Pony installation of llvm not found, building to at $llvm_installdir"
+	cd ./lib/llvm-mac/ && ./build.sh $(llvm_installdir)
 endif
 	
 

@@ -13,10 +13,10 @@
 # 0. When this is run, it is assumed we want to do the full monty so we clean up any left over cruft
 
 rm -rf src/
-rm -rf build/
+rm -rf "$1/build/"
 
 mkdir -p src/
-mkdir -p build/
+mkdir -p "$1/build/"
 
 # 1. Download the exact same tar.xz files the MacPorts version does
 cd src 
@@ -82,9 +82,12 @@ patch -p3 < ../../patches/1006-Fixup-libstdc-header-search-paths-for-older-versi
 patch -p3 < ../../patches/1007-Fix-build-issues-pre-Lion-due-to-missing-a-strnlen-d.patch
 patch -p3 < ../../patches/openmp-locations.patch
 
+cd ../../
 
 # 3. Compile the sources as per the "Getting Started" guihe, with out options enabled
-cd ../../build
+LLVMMACROOT="${PWD}"
+echo "${LLVMMACROOT}"
+cd "$1/build/"
 cmake -G "Unix Makefiles" \
   -DCMAKE_BUILD_TYPE=Release \
   -DLLVM_ENABLE_WARNINGS=OFF \
@@ -100,8 +103,11 @@ cmake -G "Unix Makefiles" \
   -DCLANG_ENABLE_ARCMT=OFF \
   -DCLANG_ENABLE_STATIC_ANALYZER=OFF \
   -DLLVM_BINDINGS_LIST=none \
-  ../src/llvm
+  "${LLVMMACROOT}/src/llvm"
 make -j28
 
 # 4. clang-c headers are not being generated for some reason; until i figure out why, copy them over manually
-cp -R ./patches/clang-c ./build/include
+cp -R "${LLVMMACROOT}/patches/clang-c" "$1/build/include"
+
+# 5. Clean up.  Remove any unnecessary files which we no longer need since we have built a functioning llvm install.
+rm -rf "${LLVMMACROOT}/src"

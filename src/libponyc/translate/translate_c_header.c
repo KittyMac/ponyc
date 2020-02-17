@@ -14,14 +14,12 @@
        __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
 
-
 typedef struct {
   sds * code;
   CXCursor previous;
   CXTranslationUnit unit;
 }VisitorData;
 
-static bool ponyTypeForStructIsPointer(CXCursor cursor);
 static int unknownThingCounter = 0;
 
 extern int string_ends_with(const char *str, const char *suffix);
@@ -73,6 +71,8 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     case CXType_Float128:           
     case CXType_LongDouble:           ( *code = sdscatprintf(*code, "F128") );    break;
     
+    case CXType_Record:               ( *code = sdscatprintf(*code, "U32") );    break;
+    
     case CXType_Enum:                 {
                                         addPonyTypeForCXType(clang_getEnumDeclIntegerType(clang_getTypeDeclaration(t)), code);
                                       }
@@ -106,10 +106,8 @@ void addPonyTypeForCXType(CXType t, sds * code) {
                                         // If the pointee is elaborated or typedef, we don't use Pointer
                                         CXType pointeeType = clang_getPointeeType(t);
                                         if(pointeeType.kind == CXType_Elaborated || pointeeType.kind == CXType_Typedef) {
-                                          bool shouldBePointer = ponyTypeForStructIsPointer(clang_getTypeDeclaration(pointeeType));
-                                          if(shouldBePointer) { *code = sdscatprintf(*code, "Pointer["); }
                                           addPonyTypeForCXType(pointeeType, code);
-                                          if(shouldBePointer) { *code = sdscatprintf(*code, "] tag"); }
+                                          *code = sdscatprintf(*code, "Ref");
                                         }else{
                                           *code = sdscatprintf(*code, "Pointer[");
                                           addPonyTypeForCXType(pointeeType, code);
@@ -122,7 +120,9 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     case CXType_DependentSizedArray:  ( *code = sdscatprintf(*code, "...") );    break;
     case CXType_VariableArray:        ( *code = sdscatprintf(*code, "...") );    break;
     
-    default:                          ( *code = sdscatprintf(*code, "None") );    break;
+    case CXType_FunctionProto:        ( *code = sdscatprintf(*code, "Pointer[None] tag") );    break;
+    
+    default:                          ( *code = sdscatprintf(*code, "*** UNKNOWN TYPE %d ***", t.kind) );    break;
   }
 }
 
@@ -440,31 +440,6 @@ enum CXVisitorResult countStructFields(CXCursor cursor, CXClientData client_data
   return CXVisit_Continue;
 }
 
-char * ponyTypeForStruct(CXCursor cursor) {
-  int kind = clang_getCursorKind(cursor);
-  CXType type = clang_getCursorType(cursor);
-  
-  int countOfFields = 0;
-  if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
-    clang_Type_visitFields(type, countStructFields, &countOfFields);
-  }
-  if(countOfFields == 0) {
-    return "primitive";
-  }
-  return "struct";
-}
-
-bool ponyTypeForStructIsPointer(CXCursor cursor) {
-  int kind = clang_getCursorKind(cursor);
-  CXType type = clang_getCursorType(cursor);
-  
-  int countOfFields = 0;
-  if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
-    clang_Type_visitFields(type, countStructFields, &countOfFields);
-  }
-  return (countOfFields == 0);
-}
-
 enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent, CXClientData client_data) {
   ((void)parent);
   int childVisit = CXChildVisit_Recurse;
@@ -488,29 +463,25 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   const char * previousNameString = clang_getCString(previousName);
   
   
-  // Ok, here's the deal:
-  // typedef struct YYY { ... } XXX;
-  // In the above, struct with name YYY is encountered first, then typedef with XXX encountered second.  YYY can be missing.
-  // Structs don't require typedef, so struct YYY { ... }; is valid.
   if (kind == CXCursor_TypedefDecl) {
     // if we are a typedef and the previous entity was a struct without a name, then we need to make type declaration to it
     if(previousKind == CXCursor_StructDecl && previousType.kind == CXType_Record && previousNameString[0] == 0) {
-      *code = sdscatprintf(*code, "type %s is Struct%d\n\n", translate_class_name(nameString), unknownThingCounter-1);
+      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
+      *code = sdscatprintf(*code, "type %sRef is Pointer[%s] tag\n", translate_class_name(nameString), translate_class_name(nameString));
+      *code = sdscatprintf(*code, "\n");
+    }else{
+      //fprintf(stderr, "++ [%d][%d}] %s\n", previousKind, previousType.kind, previousNameString);
     }
     childVisit = CXChildVisit_Continue;
   }
-  
   if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
-    if(nameString[0] == 0) {
-       *code = sdscatprintf(*code, "%s Struct%d\n", ponyTypeForStruct(cursor), unknownThingCounter++);
-    }else{
-      *code = sdscatprintf(*code, "%s %s\n", ponyTypeForStruct(cursor), translate_class_name(nameString));
+    if(nameString[0] != 0) {
+      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
+      *code = sdscatprintf(*code, "type %sRef is Pointer[%s] tag\n", translate_class_name(nameString), translate_class_name(nameString));
     }
-     
-    clang_Type_visitFields(type, printStructFields, code);
     *code = sdscatprintf(*code, "\n");
     childVisit = CXChildVisit_Continue;
-  }
+  }  
   
   //fprintf(stderr, ">> [%d][%d}] %s\n", kind, type.kind, clang_getCString(name));
   
@@ -590,14 +561,14 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
   const char * tmpFileName = "/tmp/pony_c_header_transpiler.h";
   FILE * file = fopen(tmpFileName, "w");
   
-  fprintf(file, "typedef signed char  int8_t\n");
-  fprintf(file, "typedef unsigned char  uint8_t\n");
-  fprintf(file, "typedef signed int  int16_t\n");
-  fprintf(file, "typedef unsigned int 	uint16_t\n");
-  fprintf(file, "typedef signed long int 	int32_t\n");
-  fprintf(file, "typedef unsigned long int 	uint32_t\n");
-  fprintf(file, "typedef signed long long int 	int64_t\n");
-  fprintf(file, "typedef unsigned long long int 	uint64_t\n");
+  fprintf(file, "#define int8_t signed char\n");
+  fprintf(file, "#define uint8_t unsigned char\n");
+  fprintf(file, "#define int16_t signed int\n");
+  fprintf(file, "#define uint16_t unsigned int\n");
+  fprintf(file, "#define int32_t signed long int\n");
+  fprintf(file, "#define uint32_t unsigned long int\n");
+  fprintf(file, "#define int64_t signed long long int\n");
+  fprintf(file, "#define uint64_t unsigned long long int\n");
   
   fprintf(file, "%s\n", source_code);
   fclose(file);

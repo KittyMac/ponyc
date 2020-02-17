@@ -213,8 +213,10 @@ const char* translate_class_name(const char* name)
   
   int idx = 0;
   bool uppercase_next = true;
+  int uppercase_count = 0;
   for (; start < end; start++) {
     if (uppercase_next) {
+      uppercase_count++;
       class_name[idx++] = (char)toupper(*start);
       uppercase_next = false;
       continue;
@@ -223,7 +225,18 @@ const char* translate_class_name(const char* name)
       uppercase_next = true;
       continue;
     }
-    class_name[idx++] = *start;
+    
+    if(isupper(*start)) {
+      uppercase_count++;
+    }
+    
+    if(uppercase_count > 1 && isupper(*start)) {
+      class_name[idx++] = (char)tolower(*start);
+    }else{
+      uppercase_count = 0;
+      class_name[idx++] = *start;
+    }
+    
   }
   class_name[idx] = 0;
   

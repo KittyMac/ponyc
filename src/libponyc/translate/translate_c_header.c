@@ -18,6 +18,7 @@
 typedef struct {
   sds * code;
   CXCursor previous;
+  CXTranslationUnit unit;
 }VisitorData;
 
 static bool ponyTypeForStructIsPointer(CXCursor cursor);
@@ -185,7 +186,7 @@ void addPonyDefaultValueForCXType(CXType t, sds * code) {
                                       }
                                       break;
         
-    default:                          ( *code = sdscatprintf(*code, "None") );    break;
+    default:                          ( *code = sdscatprintf(*code, "0") );    break;
   }
 }
 
@@ -211,20 +212,22 @@ void copyTokenName(CXTranslationUnit unit, CXToken token, char * buffer, int buf
   clang_disposeString(name);
 }
 
-unsigned long identifyTokenRootName(CXTranslationUnit unit, CXToken token, char * buffer) {
-  CXString name = clang_getTokenSpelling(unit, token);
-  const char * nameString = clang_getCString(name);
-  
+unsigned long identifyRootName(const char * nameString, const char * buffer) {  
   unsigned long minSize = min(strlen(nameString), strlen(buffer));
   for(unsigned long i = 0; i < minSize; i++) {
     if(tolower(nameString[i]) != tolower(buffer[i])) {
-      clang_disposeString(name);
       return i;
     }
   }
-  
-  clang_disposeString(name);
   return minSize;
+}
+
+unsigned long identifyTokenRootName(CXTranslationUnit unit, CXToken token, char * buffer) {
+  CXString name = clang_getTokenSpelling(unit, token);
+  const char * nameString = clang_getCString(name);
+  unsigned long r = identifyRootName(nameString, buffer);
+  clang_disposeString(name);  
+  return r;
 }
 
 void printNumericDefinitions(CXTranslationUnit unit, sds * code) {
@@ -613,6 +616,7 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
     
     VisitorData data = {0};
     data.code = &code;
+    data.unit = unit;
     
     // 1. print all of the function declarations ( use @foo[None]() )
     clang_visitChildren(cursor, printFunctionDeclarations, &data);

@@ -216,6 +216,14 @@ const char* translate_class_name(const char* name)
   int idx = 0;
   bool uppercase_next = true;
   int uppercase_count = 0;
+  
+  // skip leading "_"
+  for (; start < end; start++) {
+    if(*start != '_') {
+      break;
+    }
+  }
+  
   for (; start < end; start++) {
     if (uppercase_next) {
       uppercase_count++;

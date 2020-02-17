@@ -220,7 +220,9 @@ const char* translate_class_name(const char* name)
     if (uppercase_next) {
       uppercase_count++;
       class_name[idx++] = (char)toupper(*start);
-      uppercase_next = false;
+      if(isalpha(*start)){
+        uppercase_next = false;
+      }
       continue;
     }
     if (isspace(*start) == true || *start == '_') {

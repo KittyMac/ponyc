@@ -531,8 +531,8 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
     if(nameString[0] != 0) {
       const char * className = translate_class_name(nameString);
       if(checkForDuplicatedNames(className, dedup) == false) {
-        *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
-        *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", translate_class_name(nameString), translate_class_name(nameString));
+        *code = sdscatprintf(*code, "primitive %s\n", className);
+        *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
       }
       translate_free_name(className);
     }

@@ -127,7 +127,75 @@ char* translate_source_package_end(bool print_generated_code) {
 
 // helper functions shared by future translation classes
 
-char* translate_class_name(const char* name)
+const char * translate_clean_class_name_conflict(const char * name) {
+  // if our json keys match pony keywords we will get compile errors, so we find those
+  // and deal with it somehow...
+  if (!strcmp(name, "Actor")) { return "ActorPony"; }
+  if (!strcmp(name, "Addressof")) { return "AddressofPony"; }
+  if (!strcmp(name, "And")) { return "AndPony"; }
+  if (!strcmp(name, "As")) { return "AsPony"; }
+  if (!strcmp(name, "Be")) { return "BePony"; }
+  if (!strcmp(name, "Break")) { return "BreakPony"; }
+  if (!strcmp(name, "Class")) { return "ClassPony"; }
+  if (!strcmp(name, "Compile_error")) { return "Compile_errorPony"; }
+  if (!strcmp(name, "Compile_intrinsic")) { return "Compile_intrinsicPony"; }
+  
+  if (!strcmp(name, "Consume")) { return "ConsumePony"; }
+  if (!strcmp(name, "Continue")) { return "ContinuePony"; }
+  if (!strcmp(name, "Delegate")) { return "DelegatePony"; }
+  if (!strcmp(name, "Digestof")) { return "DigestofPony"; }
+  if (!strcmp(name, "Do")) { return "DoPony"; }
+  if (!strcmp(name, "Else")) { return "ElsePony"; }
+  if (!strcmp(name, "Elseif")) { return "ElseifPony"; }
+  if (!strcmp(name, "Embed")) { return "EmbedPony"; }
+  if (!strcmp(name, "End")) { return "EndPony"; }
+  if (!strcmp(name, "Error")) { return "ErrorPony"; }
+  
+  if (!strcmp(name, "For")) { return "ForPony"; }
+  if (!strcmp(name, "Fun")) { return "FunPony"; }
+  if (!strcmp(name, "If")) { return "IfPony"; }
+  if (!strcmp(name, "Ifdef")) { return "IfdefPony"; }
+  if (!strcmp(name, "In")) { return "InPony"; }
+  if (!strcmp(name, "Interface")) { return "InterfacePony"; }
+  if (!strcmp(name, "Is")) { return "IsPony"; }
+  if (!strcmp(name, "Isnt")) { return "IsntPony"; }
+  if (!strcmp(name, "Lambda")) { return "LambdaPony"; }
+  if (!strcmp(name, "Let")) { return "LetPony"; }
+  if (!strcmp(name, "Match")) { return "MatchPony"; }
+  if (!strcmp(name, "New")) { return "NewPony"; }
+  if (!strcmp(name, "Not")) { return "NotPony"; }
+  if (!strcmp(name, "Object")) { return "ObjectPony"; }
+  
+  if (!strcmp(name, "Primitive")) { return "PrimitivePony"; }
+  if (!strcmp(name, "Recover")) { return "RecoverPony"; }
+  if (!strcmp(name, "Repeat")) { return "RepeatPony"; }
+  if (!strcmp(name, "Return")) { return "ReturnPony"; }
+  if (!strcmp(name, "Struct")) { return "StructPony"; }
+  if (!strcmp(name, "Then")) { return "ThenPony"; }
+  if (!strcmp(name, "Trait")) { return "TraitPony"; }
+  if (!strcmp(name, "Try")) { return "TryPony"; }
+  if (!strcmp(name, "Type")) { return "TypePony"; }
+  if (!strcmp(name, "Until")) { return "UntilPony"; }
+  
+  if (!strcmp(name, "Use")) { return "UsePony"; }
+  if (!strcmp(name, "Var")) { return "VarPony"; }
+  if (!strcmp(name, "Where")) { return "WherePony"; }
+  if (!strcmp(name, "While")) { return "WhilePony"; }
+  if (!strcmp(name, "With")) { return "WithPony"; }
+  if (!strcmp(name, "Xor")) { return "XorPony"; }
+  
+  if (!strcmp(name, "Iso")) { return "IsoPony"; }
+  if (!strcmp(name, "Val")) { return "ValPony"; }
+  if (!strcmp(name, "Tag")) { return "TagPony"; }
+  if (!strcmp(name, "Trn")) { return "TrnPony"; }
+  if (!strcmp(name, "Box")) { return "BoxPony"; }
+  if (!strcmp(name, "Ref")) { return "RefPony"; }
+  
+  return name;
+}
+
+
+const char* translate_class_name(const char* name)
 {
   // take a file name and turn it into a pony class name
   const char * start = strrchr(name, '/');
@@ -159,10 +227,80 @@ char* translate_class_name(const char* name)
   }
   class_name[idx] = 0;
   
-  return class_name;
+  return translate_clean_class_name_conflict(class_name);
 }
 
-char* translate_function_name(const char* name)
+
+
+
+const char * translate_clean_function_name_conflict(const char * name) {
+  // if our json keys match pony keywords we will get compile errors, so we find those
+  // and deal with it somehow...
+  if (!strcmp(name, "actor")) { return "actor_pony"; }
+  if (!strcmp(name, "addressof")) { return "addressof_pony"; }
+  if (!strcmp(name, "and")) { return "and_pony"; }
+  if (!strcmp(name, "as")) { return "as_pony"; }
+  if (!strcmp(name, "be")) { return "be_pony"; }
+  if (!strcmp(name, "break")) { return "break_pony"; }
+  if (!strcmp(name, "class")) { return "class_pony"; }
+  if (!strcmp(name, "compile_error")) { return "compile_error_pony"; }
+  if (!strcmp(name, "compile_intrinsic")) { return "compile_intrinsic_pony"; }
+  
+  if (!strcmp(name, "consume")) { return "consume_pony"; }
+  if (!strcmp(name, "continue")) { return "continue_pony"; }
+  if (!strcmp(name, "delegate")) { return "delegate_pony"; }
+  if (!strcmp(name, "digestof")) { return "digestof_pony"; }
+  if (!strcmp(name, "do")) { return "do_pony"; }
+  if (!strcmp(name, "else")) { return "else_pony"; }
+  if (!strcmp(name, "elseif")) { return "elseif_pony"; }
+  if (!strcmp(name, "embed")) { return "embed_pony"; }
+  if (!strcmp(name, "end")) { return "end_pony"; }
+  if (!strcmp(name, "error")) { return "error_pony"; }
+  
+  if (!strcmp(name, "for")) { return "for_pony"; }
+  if (!strcmp(name, "fun")) { return "fun_pony"; }
+  if (!strcmp(name, "if")) { return "if_pony"; }
+  if (!strcmp(name, "ifdef")) { return "ifdef_pony"; }
+  if (!strcmp(name, "in")) { return "in_pony"; }
+  if (!strcmp(name, "interface")) { return "interface_pony"; }
+  if (!strcmp(name, "is")) { return "is_pony"; }
+  if (!strcmp(name, "isnt")) { return "isnt_pony"; }
+  if (!strcmp(name, "lambda")) { return "lambda_pony"; }
+  if (!strcmp(name, "let")) { return "let_pony"; }
+  if (!strcmp(name, "match")) { return "match_pony"; }
+  if (!strcmp(name, "new")) { return "new_pony"; }
+  if (!strcmp(name, "not")) { return "not_pony"; }
+  if (!strcmp(name, "object")) { return "object_pony"; }
+  
+  if (!strcmp(name, "primitive")) { return "primitive_pony"; }
+  if (!strcmp(name, "recover")) { return "recover_pony"; }
+  if (!strcmp(name, "repeat")) { return "repeat_pony"; }
+  if (!strcmp(name, "return")) { return "return_pony"; }
+  if (!strcmp(name, "struct")) { return "struct_pony"; }
+  if (!strcmp(name, "then")) { return "then_pony"; }
+  if (!strcmp(name, "trait")) { return "trait_pony"; }
+  if (!strcmp(name, "try")) { return "try_pony"; }
+  if (!strcmp(name, "type")) { return "type_pony"; }
+  if (!strcmp(name, "until")) { return "until_pony"; }
+  
+  if (!strcmp(name, "use")) { return "use_pony"; }
+  if (!strcmp(name, "var")) { return "var_pony"; }
+  if (!strcmp(name, "where")) { return "where_pony"; }
+  if (!strcmp(name, "while")) { return "while_pony"; }
+  if (!strcmp(name, "with")) { return "with_pony"; }
+  if (!strcmp(name, "xor")) { return "xor_pony"; }
+  
+  if (!strcmp(name, "iso")) { return "iso_pony"; }
+  if (!strcmp(name, "val")) { return "val_pony"; }
+  if (!strcmp(name, "tag")) { return "tag_pony"; }
+  if (!strcmp(name, "trn")) { return "trn_pony"; }
+  if (!strcmp(name, "box")) { return "box_pony"; }
+  if (!strcmp(name, "ref")) { return "ref_pony"; }
+  
+  return name;
+}
+
+const char* translate_function_name(const char* name)
 {
   // take a file name and turn it into a pony class name
   const char * start = strrchr(name, '/');
@@ -187,5 +325,10 @@ char* translate_function_name(const char* name)
   }
   class_name[idx] = 0;
   
-  return class_name;
+  // function names may not have a trailing _
+  if(class_name[idx-1] == '_') {
+    class_name[idx-1] = 0;
+  }
+  
+  return translate_clean_function_name_conflict(class_name);
 }

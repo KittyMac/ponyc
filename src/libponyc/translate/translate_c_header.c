@@ -248,29 +248,41 @@ void printNumericDefinitions(CXTranslationUnit unit, sds * code) {
     int sizeOfDefineGrouping = 0;
     char primitiveName[1024] = {0};
     unsigned long primitiveRootIndex = 0;
+    
     for(unsigned j = i; j < numTokens; j++) {
       // skip any comments
       if (clang_getTokenKind(allTokens[j]) == CXToken_Comment){
         continue;
-      }
-      if(compareTokenName(unit, allTokens[j], "#") && compareTokenName(unit, allTokens[j+1], "define") && j+3 < numTokens) {
+      }else if(compareTokenName(unit, allTokens[j], "#") && compareTokenName(unit, allTokens[j+1], "define") && j+3 < numTokens) {
+        CXToken defineNameToken = allTokens[j + 2];
+        CXTokenKind defineNameKind = clang_getTokenKind(defineNameToken);
+        CXToken defineValueToken = allTokens[j + 3];
+        CXTokenKind defineValueKind = clang_getTokenKind(defineValueToken);
         
-        // does this define share a root name with the previous one? If it doesn't, it belongs in a new group
-        if (sizeOfDefineGrouping == 0) {
-          copyTokenName(unit, allTokens[j+2], primitiveName, sizeof(primitiveName));
-        }else{
-          unsigned long newRootIndex = identifyTokenRootName(unit, allTokens[j+2], primitiveName);
-          if(primitiveRootIndex != 0 && newRootIndex == 0) {
-            break;
-          }
-          primitiveRootIndex = newRootIndex;
+        // Needs to be a define which equates to a literal
+        if (defineNameKind == CXToken_Identifier && defineValueKind == CXToken_Literal) {
+          // does this define share a root name with the previous one? If it doesn't, it belongs in a new group
+          if (sizeOfDefineGrouping == 0) {
+            copyTokenName(unit, allTokens[j+2], primitiveName, sizeof(primitiveName));
+          }else{
+            unsigned long newRootIndex = identifyTokenRootName(unit, allTokens[j+2], primitiveName);
+            if(primitiveRootIndex != 0 && newRootIndex == 0) {
+              break;
+            }
+            primitiveRootIndex = newRootIndex;
           
-          if(primitiveRootIndex != 0) {
-            primitiveName[primitiveRootIndex] = 0;
+            if(primitiveRootIndex != 0) {
+              primitiveName[primitiveRootIndex] = 0;
+            }
           }
+          sizeOfDefineGrouping++;
+        }else{
+          break;
         }
-        sizeOfDefineGrouping++;
+        
         j += 3;
+      }else{
+        break;
       }
     }
     
@@ -295,12 +307,12 @@ void printNumericDefinitions(CXTranslationUnit unit, sds * code) {
             CXString defineValueName = clang_getTokenSpelling(unit, defineValueToken);
             const char * defineValueNameString = clang_getCString(defineValueName);
       
-            char * cleanedName = translate_function_name(defineNameNameString);
+            const char * cleanedName = translate_function_name(defineNameNameString + primitiveRootIndex);
             
             if(defineValueNameString[0] == '\"') {
-              *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName + primitiveRootIndex, "String", defineValueNameString);
+              *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "String", defineValueNameString);
             }else{
-              *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName + primitiveRootIndex, "U32", defineValueNameString);
+              *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "U32", defineValueNameString);
             }
       
           }
@@ -376,7 +388,7 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
     childVisit = CXChildVisit_Continue;
   }
   
-  //fprintf(stderr, ">> [%d] %s\n", kind, clang_getCString(name));
+  fprintf(stderr, ">> [%d] %s\n", kind, clang_getCString(name));
   
   clang_disposeString(name);
   
@@ -475,7 +487,7 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   if (kind == CXCursor_TypedefDecl) {
     // if we are a typedef and the previous entity was a struct without a name, then we need to make type declaration to it
     if(previousKind == CXCursor_StructDecl && previousType.kind == CXType_Record && previousNameString[0] == 0) {
-      *code = sdscatprintf(*code, "type Struct%d is %s\n\n", unknownThingCounter-1, translate_class_name(nameString));
+      *code = sdscatprintf(*code, "type %s is Struct%d\n\n", translate_class_name(nameString), unknownThingCounter-1);
     }
     childVisit = CXChildVisit_Continue;
   }
@@ -519,20 +531,27 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
   CXString parentName = clang_getCursorSpelling(parent);
   const char * parentNameString = clang_getCString(parentName);
   
+  // TODO: strip the root name from enums (ie in this case, strip curlinfo_ )
+  // fun curlinfo_none():U32 => 0x0
+  // fun curlinfo_effective_url():U32 => 0x100001
+  // fun curlinfo_response_code():U32 => 0x200002
+  // fun curlinfo_total_time():U32 => 0x300003
+
+  
   if (kind == CXCursor_EnumDecl && type.kind == CXType_Enum) {
     if(clang_getCursorKind(parent) == CXCursor_TypedefDecl) {
-      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(parentNameString));
+      *code = sdscatprintf(*code, "primitive %sEnum\n", translate_class_name(parentNameString));
     }else{
       if(nameString[0] == 0) {
         clang_disposeString(parentName);
         clang_disposeString(name);
         return CXChildVisit_Continue;
       }
-      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
+      *code = sdscatprintf(*code, "primitive %sEnum\n", translate_class_name(nameString));
     }
   }
   if (kind == CXCursor_EnumConstantDecl) {
-    *code = sdscatprintf(*code, "  fun %s():U32", translate_function_name(clang_getCString(name)));
+    *code = sdscatprintf(*code, "  fun %s():U32", translate_function_name(nameString));
     *code = sdscatprintf(*code, " => 0x%llX\n", clang_getEnumConstantDeclUnsignedValue(cursor));
   }
     
@@ -629,4 +648,6 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
 	
 	return pony_code;
 }
+
+
 

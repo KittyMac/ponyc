@@ -18,11 +18,11 @@ char* translate_source(program_t* program, const char* file_name, const char* so
 
 /** Convert name into a pony compatibile class name
  */
-char* translate_class_name(const char* name);
+const char* translate_class_name(const char* name);
 
 /** Convert name into a pony compatibile function name
  */
-char* translate_function_name(const char* name);
+const char* translate_function_name(const char* name);
 
 /** Know that a new source package is being compile
  */

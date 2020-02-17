@@ -16,7 +16,7 @@ void translate_text_resource_package_begin(const char * qualified_name)
 	packageCode = sdsnew("");
 	numberOfResourcesInPackage = 0;
 	
-	char * className = translate_class_name(qualified_name);
+	const char * className = translate_class_name(qualified_name);
 	
 	packageCode = sdscatprintf(packageCode, "primitive %sTextResources\n", className);
 	packageCode = sdscatprintf(packageCode, "  fun get(string:String):String? =>\n");
@@ -40,7 +40,7 @@ char* translate_text_resource(bool print_generated_code, const char* file_name, 
 	// use the sds library to concat our pony code together, then copy it to a pony allocated buffer
 	sds code = sdsnew("");
 	
-	char * className = translate_class_name(file_name);
+	const char * className = translate_class_name(file_name);
 	
 	// resources take the form of:
 	// primitive ClassName

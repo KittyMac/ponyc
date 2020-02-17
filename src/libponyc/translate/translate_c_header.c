@@ -45,7 +45,7 @@ bool checkForDuplicatedNames(const char * name, sds * dedup) {
   return exists;
 }
 
-void addPonyTypeForCXType(CXType t, sds * code) {
+void addPonyTypeForCXType(CXType t, bool isReturnType, sds * code) {
   //CXString name = clang_getTypeKindSpelling(t.kind);
   //CXString name2 = clang_getCursorSpelling(clang_getTypeDeclaration(t));
   //fprintf(stderr, ">> CXType.kind is %d -- %s  -- %s\n", t.kind, clang_getCString(name), clang_getCString(name2));
@@ -88,11 +88,11 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     case CXType_Record:               ( *code = sdscatprintf(*code, "U32") );    break;
     
     case CXType_Enum:                 {
-                                        addPonyTypeForCXType(clang_getEnumDeclIntegerType(clang_getTypeDeclaration(t)), code);
+                                        addPonyTypeForCXType(clang_getEnumDeclIntegerType(clang_getTypeDeclaration(t)), isReturnType, code);
                                       }
                                       break;
     case CXType_Typedef:              {
-                                        addPonyTypeForCXType(clang_getTypedefDeclUnderlyingType(clang_getTypeDeclaration(t)), code);
+                                        addPonyTypeForCXType(clang_getTypedefDeclUnderlyingType(clang_getTypeDeclaration(t)), isReturnType, code);
                                       }
                                       break;
     case CXType_Elaborated:           {
@@ -103,7 +103,7 @@ void addPonyTypeForCXType(CXType t, sds * code) {
                                           *code = sdscatprintf(*code, "%s", translate_class_name(elaboratedNameString + 7));
                                         }else if(!strncmp("enum ", elaboratedNameString, 5) || elaboratedType.kind) {
                                           // We want the type of the enum, not the name...
-                                          addPonyTypeForCXType(clang_Type_getNamedType(t), code);
+                                          addPonyTypeForCXType(clang_Type_getNamedType(t), isReturnType, code);
                                         }else{
                                           *code = sdscatprintf(*code, "%s", translate_class_name(elaboratedNameString));
                                         }
@@ -120,12 +120,19 @@ void addPonyTypeForCXType(CXType t, sds * code) {
                                         // If the pointee is elaborated or typedef, we don't use Pointer
                                         CXType pointeeType = clang_getPointeeType(t);
                                         if(pointeeType.kind == CXType_Elaborated || pointeeType.kind == CXType_Typedef) {
-                                          addPonyTypeForCXType(pointeeType, code);
-                                          *code = sdscatprintf(*code, "Ref");
+                                          *code = sdscatprintf(*code, "Pointer[");
+                                          addPonyTypeForCXType(pointeeType, isReturnType, code);
+                                          *code = sdscatprintf(*code, "]");
+                                          if(isReturnType == false){
+                                            *code = sdscatprintf(*code, "tag");
+                                          }
                                         }else{
                                           *code = sdscatprintf(*code, "Pointer[");
-                                          addPonyTypeForCXType(pointeeType, code);
-                                          *code = sdscatprintf(*code, "] tag");
+                                          addPonyTypeForCXType(pointeeType, isReturnType, code);
+                                          *code = sdscatprintf(*code, "]");
+                                          if(isReturnType == false){
+                                            *code = sdscatprintf(*code, "tag");
+                                          }
                                         }
                                       }
                                       break;
@@ -134,7 +141,13 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     case CXType_DependentSizedArray:  ( *code = sdscatprintf(*code, "...") );    break;
     case CXType_VariableArray:        ( *code = sdscatprintf(*code, "...") );    break;
     
-    case CXType_FunctionProto:        ( *code = sdscatprintf(*code, "Pointer[None] tag") );    break;
+    case CXType_FunctionProto:        { 
+                                          *code = sdscatprintf(*code, "Pointer[None]");
+                                          if(isReturnType == false){
+                                            *code = sdscatprintf(*code, "tag");
+                                          }
+                                      }
+                                      break;
     
     default:                          ( *code = sdscatprintf(*code, "*** UNKNOWN TYPE %d ***", t.kind) );    break;
   }
@@ -191,12 +204,8 @@ void addPonyDefaultValueForCXType(CXType t, sds * code) {
     case CXType_ObjCObjectPointer:
     case CXType_Pointer:
     case CXType_NullPtr:              {
-                                        // Note: we don't want "tag" at the end
-                                        addPonyTypeForCXType(t, code);
-                                        if(string_ends_with(*code, " tag")) {
-                                          sdssetlen(*code, sdslen(*code)-4);
-                                        }
-                                        
+                                        // Note: we don't want "tag" at the end, isReturnType enforces that
+                                        addPonyTypeForCXType(t, true, code);                                        
                                       }
                                       break;
         
@@ -320,6 +329,7 @@ void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
       bool shouldPrint = (checkForDuplicatedNames(className, dedup) == false);
             
       if(shouldPrint) {
+        *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
         *code = sdscatprintf(*code, "primitive %s\n", className);
       }
     
@@ -347,6 +357,12 @@ void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
                 *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "String", defineValueNameString);
               }else{
                 *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "U32", defineValueNameString);
+                
+                // pony doesn't support qualifiers on its numerics
+                if(string_ends_with(defineValueNameString, "L")) {
+                  sdssetlen(*code, sdslen(*code)-2);
+                  *code = sdscatprintf(*code, "\n");
+                }
               }
             }
     
@@ -391,7 +407,7 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
     
     CXType resultType = clang_getCursorResultType(cursor);
     *code = sdscatprintf(*code, "[");
-    addPonyTypeForCXType(resultType, code);
+    addPonyTypeForCXType(resultType, true, code);
     *code = sdscatprintf(*code, "]");
     
     // run through all of the arguments
@@ -411,7 +427,7 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
           *code = sdscatprintf(*code, "%s:", clang_getCString(paramName));
         }
         
-        addPonyTypeForCXType(paramType, code);
+        addPonyTypeForCXType(paramType, false, code);
         if (i < (numParams-1)) {
           *code = sdscatprintf(*code, ", ");
         }
@@ -453,7 +469,7 @@ enum CXVisitorResult printStructFields(CXCursor cursor, CXClientData client_data
       *code = sdscatprintf(*code, "  var %s: ", clang_getCString(name));
     }
     
-    addPonyTypeForCXType(type, code);
+    addPonyTypeForCXType(type, false, code);
     *code = sdscatprintf(*code, " = ");
     addPonyDefaultValueForCXType(type, code);
     
@@ -502,7 +518,7 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
       const char * className = translate_class_name(nameString);
       if(checkForDuplicatedNames(className, dedup) == false) {
         *code = sdscatprintf(*code, "primitive %s\n", className);
-        *code = sdscatprintf(*code, "type %sRef is Pointer[%s] tag\n", className, className);
+        *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
         *code = sdscatprintf(*code, "\n");
       }
       translate_free_name(className);
@@ -516,7 +532,7 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
       const char * className = translate_class_name(nameString);
       if(checkForDuplicatedNames(className, dedup) == false) {
         *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
-        *code = sdscatprintf(*code, "type %sRef is Pointer[%s] tag\n", translate_class_name(nameString), translate_class_name(nameString));
+        *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", translate_class_name(nameString), translate_class_name(nameString));
       }
       translate_free_name(className);
     }

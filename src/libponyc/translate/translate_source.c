@@ -223,7 +223,7 @@ const char* translate_class_name(const char* name)
       uppercase_next = true;
       continue;
     }
-    class_name[idx++] = (char)tolower(*start);
+    class_name[idx++] = *start;
   }
   class_name[idx] = 0;
   

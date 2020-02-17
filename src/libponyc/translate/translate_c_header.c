@@ -472,8 +472,6 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   // typedef struct YYY { ... } XXX;
   // In the above, struct with name YYY is encountered first, then typedef with XXX encountered second.  YYY can be missing.
   // Structs don't require typedef, so struct YYY { ... }; is valid.
-  
-  
   if (kind == CXCursor_TypedefDecl) {
     // if we are a typedef and the previous entity was a struct without a name, then we need to make type declaration to it
     if(previousKind == CXCursor_StructDecl && previousType.kind == CXType_Record && previousNameString[0] == 0) {
@@ -558,12 +556,29 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
 		
 	// use the sds library to concat our pony code together, then copy it to a pony allocated buffer
 	sds code = sdsnew("");
-		
-  // TODO: Use libclang to parser the C header and then generate comparable pony FFI code
+	
+  // Ensure we have common types in our header. do this by writing code to a temp file
+  // then appending the source code content (does libclang have in memory reader? not that i found)
+  const char * tmpFileName = "/tmp/pony_c_header_transpiler.h";
+  FILE * file = fopen(tmpFileName, "w");
+  
+  fprintf(file, "typedef signed char  int8_t\n");
+  fprintf(file, "typedef unsigned char  uint8_t\n");
+  fprintf(file, "typedef signed int  int16_t\n");
+  fprintf(file, "typedef unsigned int 	uint16_t\n");
+  fprintf(file, "typedef signed long int 	int32_t\n");
+  fprintf(file, "typedef unsigned long int 	uint32_t\n");
+  fprintf(file, "typedef signed long long int 	int64_t\n");
+  fprintf(file, "typedef unsigned long long int 	uint64_t\n");
+  
+  fprintf(file, "%s\n", source_code);
+  fclose(file);
+  
+  // Use libclang to parser the C header and then generate comparable pony FFI code
   CXIndex index = clang_createIndex(0, 0);
   CXTranslationUnit unit = clang_parseTranslationUnit(
         index,
-        file_name, NULL, 0,
+        tmpFileName, NULL, 0,
         NULL, 0,
         CXTranslationUnit_SkipFunctionBodies);
   

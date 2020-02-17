@@ -24,7 +24,7 @@ llvm:
 ifneq ("$(wildcard $(llvm_config))","")
     
 else
-	@echo "Pony installation of llvm not found, building to at $llvm_installdir"
+	@echo "Pony installation of llvm not found, building and installing to $(llvm_installdir)"
 	cd ./lib/llvm-mac/ && ./build.sh $(llvm_installdir)
 endif
 	
@@ -37,7 +37,7 @@ ponyc:
 
 libponyrt:
 	export LDFLAGS="-L$(iphonesdklib)"
-	#@echo "Compiling libponyrt for armv7"
+	@echo "Compiling libponyrt for armv7"
 	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7 LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt
 	@echo "Compiling libponyrt for armv7s"
 	@IPHONESDK="$(iphonesdk_isysroot)" $(MAKE) -f Makefile-ponyc arch=armv7s LLVM_CONFIG="$(llvm_config)" CC="$(iphonesdk_clang)" CXX="$(iphonesdk_clangxx)" -j$(sysctl -n hw.ncpu) config=$(config) libponyrt

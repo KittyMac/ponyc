@@ -14,6 +14,10 @@
        __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
 
+
+
+static bool ponyTypeForStructIsPointer(CXCursor cursor);
+
 // Note: useful commands
 // clang -Xclang -ast-dump -fsyntax-only somefile.h
 
@@ -22,7 +26,9 @@ sds translate_c_header_abort(sds code, char * error) {
 }
 
 void addPonyTypeForCXType(CXType t, sds * code) {
-  //fprintf(stderr, "CXType.kind is %d\n", t.kind);
+  //CXString name = clang_getTypeKindSpelling(t.kind);
+  //CXString name2 = clang_getCursorSpelling(clang_getTypeDeclaration(t));
+  //fprintf(stderr, ">> CXType.kind is %d -- %s  -- %s\n", t.kind, clang_getCString(name), clang_getCString(name2));
   
   switch(t.kind) {
     case CXType_Void:                 ( *code = sdscatprintf(*code, "None") );    break;
@@ -35,7 +41,6 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     case CXType_Char16:               
     case CXType_UShort:               ( *code = sdscatprintf(*code, "U16") );    break;
                                     
-    case CXType_Enum:               
     case CXType_Char32:               
     case CXType_UInt:                 ( *code = sdscatprintf(*code, "U32") );    break;
     case CXType_ULong:                ( *code = sdscatprintf(*code, "U64") );    break;
@@ -59,7 +64,11 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     case CXType_Double:               ( *code = sdscatprintf(*code, "F64") );    break;
     case CXType_Float128:           
     case CXType_LongDouble:           ( *code = sdscatprintf(*code, "F128") );    break;
-  
+    
+    case CXType_Enum:                 {
+                                        addPonyTypeForCXType(clang_getEnumDeclIntegerType(clang_getTypeDeclaration(t)), code);
+                                      }
+                                      break;
     case CXType_Typedef:              {
                                         addPonyTypeForCXType(clang_getTypedefDeclUnderlyingType(clang_getTypeDeclaration(t)), code);
                                       }
@@ -68,7 +77,10 @@ void addPonyTypeForCXType(CXType t, sds * code) {
                                         CXString name = clang_getTypeSpelling(clang_Type_getNamedType(t));
                                         const char * nameString = clang_getCString(name);
                                         if(!strncmp("struct ", nameString, 7)) {
-                                          *code = sdscatprintf(*code, "%s", nameString + 7);
+                                          *code = sdscatprintf(*code, "%s", translate_class_name(nameString + 7));
+                                        }else if(!strncmp("enum ", nameString, 5)) {
+                                          // We want the type of the enum, not the name...
+                                          addPonyTypeForCXType(clang_Type_getNamedType(t), code);
                                         }else{
                                           *code = sdscatprintf(*code, "%s", nameString);
                                         }
@@ -84,10 +96,11 @@ void addPonyTypeForCXType(CXType t, sds * code) {
     case CXType_NullPtr:              {
                                         // If the pointee is elaborated or typedef, we don't use Pointer
                                         CXType pointeeType = clang_getPointeeType(t);
-                                        if(pointeeType.kind == CXType_Elaborated) {
+                                        if(pointeeType.kind == CXType_Elaborated || pointeeType.kind == CXType_Typedef) {
+                                          bool shouldBePointer = ponyTypeForStructIsPointer(clang_getTypeDeclaration(pointeeType));
+                                          if(shouldBePointer) { *code = sdscatprintf(*code, "Pointer["); }
                                           addPonyTypeForCXType(pointeeType, code);
-                                        }else if(pointeeType.kind == CXType_Typedef) {
-                                          addPonyTypeForCXType(pointeeType, code);
+                                          if(shouldBePointer) { *code = sdscatprintf(*code, "] tag"); }
                                         }else{
                                           *code = sdscatprintf(*code, "Pointer[");
                                           addPonyTypeForCXType(pointeeType, code);
@@ -105,7 +118,7 @@ void addPonyTypeForCXType(CXType t, sds * code) {
 }
 
 void addPonyDefaultValueForCXType(CXType t, sds * code) {
-  //fprintf(stderr, "CXType.kind is %d\n", t.kind);
+  //fprintf(stderr, ">> CXType.kind is %d\n", t.kind);
   
   switch(t.kind) {
     case CXType_Void:                 ( *code = sdscatprintf(*code, "None") );    break;
@@ -141,9 +154,9 @@ void addPonyDefaultValueForCXType(CXType t, sds * code) {
                                         CXString name = clang_getTypeSpelling(clang_Type_getNamedType(t));
                                         const char * nameString = clang_getCString(name);
                                         if(!strncmp("struct ", nameString, 7)) {
-                                          *code = sdscatprintf(*code, "%s", nameString + 7);
+                                          *code = sdscatprintf(*code, "%s", translate_class_name(nameString + 7));
                                         }else{
-                                          *code = sdscatprintf(*code, "%s", nameString);
+                                          *code = sdscatprintf(*code, "%s", translate_class_name(nameString));
                                         }
                                         clang_disposeString(name);
                                       }
@@ -243,7 +256,10 @@ void printNumericDefinitions(CXTranslationUnit unit, sds * code) {
             break;
           }
           primitiveRootIndex = newRootIndex;
-          primitiveName[primitiveRootIndex] = 0;
+          
+          if(primitiveRootIndex != 0) {
+            primitiveName[primitiveRootIndex] = 0;
+          }
         }
         sizeOfDefineGrouping++;
         j += 3;
@@ -324,6 +340,7 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
       CXType paramType = clang_getCursorType(paramCursor);
       
       if (clang_getCursorKind(paramCursor) == CXCursor_ParmDecl) {
+        //fprintf(stderr, ">> %s parameter\n", clang_getCString(paramName));
         *code = sdscatprintf(*code, "%s:", clang_getCString(paramName));
         addPonyTypeForCXType(paramType, code);
         if (i < (numParams-1)) {
@@ -380,6 +397,39 @@ enum CXVisitorResult printStructFields(CXCursor cursor, CXClientData client_data
   return CXVisit_Continue;
 }
 
+enum CXVisitorResult countStructFields(CXCursor cursor, CXClientData client_data) {
+  int * count = (int *)client_data;
+  if (clang_getCursorKind(cursor) == CXCursor_FieldDecl) {
+    *count += 1;
+  }
+  return CXVisit_Continue;
+}
+
+char * ponyTypeForStruct(CXCursor cursor) {
+  int kind = clang_getCursorKind(cursor);
+  CXType type = clang_getCursorType(cursor);
+  
+  int countOfFields = 0;
+  if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
+    clang_Type_visitFields(type, countStructFields, &countOfFields);
+  }
+  if(countOfFields == 0) {
+    return "primitive";
+  }
+  return "struct";
+}
+
+bool ponyTypeForStructIsPointer(CXCursor cursor) {
+  int kind = clang_getCursorKind(cursor);
+  CXType type = clang_getCursorType(cursor);
+  
+  int countOfFields = 0;
+  if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
+    clang_Type_visitFields(type, countStructFields, &countOfFields);
+  }
+  return (countOfFields == 0);
+}
+
 enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent, CXClientData client_data) {
   ((void)parent);
   int childVisit = CXChildVisit_Recurse;
@@ -393,14 +443,11 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   if (kind == CXCursor_TypedefDecl) {
     childVisit = CXChildVisit_Continue;
   }
-  
+    
   if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
-    *code = sdscatprintf(*code, "struct %s\n", clang_getCString(name));
-    
+    *code = sdscatprintf(*code, "%s %s\n", ponyTypeForStruct(cursor), translate_class_name(clang_getCString(name)));
     clang_Type_visitFields(type, printStructFields, code);
-    
     *code = sdscatprintf(*code, "\n");
-    
     childVisit = CXChildVisit_Continue;
   }
   
@@ -412,6 +459,32 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
 }
 
 
+
+enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+  ((void)parent);
+  int childVisit = CXChildVisit_Recurse;
+  
+  sds * code = (sds *)client_data;
+  
+  int kind = clang_getCursorKind(cursor);
+  CXType type = clang_getCursorType(cursor);
+  CXString name = clang_getCursorSpelling(cursor);
+  
+  if (kind == CXCursor_EnumDecl && type.kind == CXType_Enum) {
+    *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(clang_getCString(name)));
+  }
+  if (kind == CXCursor_EnumConstantDecl) {
+    *code = sdscatprintf(*code, "  fun %s():U32", translate_function_name(clang_getCString(name)));
+    //addPonyTypeForCXType(type, code);
+    *code = sdscatprintf(*code, " => 0x%llX\n", clang_getEnumConstantDeclUnsignedValue(cursor));
+  }
+    
+  //fprintf(stderr, ">> [%d][%d}] %s\n", kind, type.kind, clang_getCString(name));
+  
+  clang_disposeString(name);
+  
+  return childVisit;
+}
 
 
 char* translate_c_header(bool print_generated_code, const char* file_name, const char* source_code)
@@ -430,7 +503,7 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
         index,
         file_name, NULL, 0,
         NULL, 0,
-        CXTranslationUnit_None);
+        CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_DetailedPreprocessingRecord);
   
   
   if (unit != NULL) {
@@ -448,6 +521,9 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
     
     // 3. transpile all structures
     clang_visitChildren(cursor, printStructDeclarations, &code);
+    
+    // 3. transpile enumerations
+    clang_visitChildren(cursor, printEnumDeclarations, &code);
     
     clang_disposeTranslationUnit(unit);
     

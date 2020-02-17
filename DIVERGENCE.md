@@ -2,6 +2,12 @@
 
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
+## Transpile C headers automatically to Pony FFI code
+
+Pony is awesome in that it exposes C FFI calls so readily in the language. However if you are going to make heavy use of an existing C library, there is potentially a lot of glue code which needs to be written and maintained.  Not to mention fragile if you want to update to a newer version of said library.  
+
+While this is not a perfect solution, it is indeed a solution. You can copy any relevant C headers into your pony project as you want, and the ponyc transpiler will automatically convert them to the euivalent Pony code for you.  Use the --print-code option to see how the transpiler converted your headers.
+
 ## Link to Info.plist file
 
 If you include an Info.plist file (a special Mac/iOS resource file), the source translation feature will tell the linker to link the Info.plist file into your executable. This helps pave the way for using AppKit and other iOS or Mac OS libraries in your pony programs.

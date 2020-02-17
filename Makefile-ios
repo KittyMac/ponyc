@@ -18,7 +18,7 @@ iphonesdklib="$(iphonesdk_isysroot)/usr/lib"
 
 # Note: We're using the custom llvm in llvm-mac
 llvm_installdir = ~/.pony/llvm/
-llvm_config=$(llvm_installdir)/build/bin/llvm-config
+llvm_config=$(llvm_installdir)/bin/llvm-config
 
 llvm:
 ifneq ("$(wildcard $(llvm_config))","")

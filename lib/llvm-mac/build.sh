@@ -13,10 +13,10 @@
 # 0. When this is run, it is assumed we want to do the full monty so we clean up any left over cruft
 
 rm -rf src/
-rm -rf "$1/build/"
+rm -rf build/
 
 mkdir -p src/
-mkdir -p "$1/build/"
+mkdir -p build/
 
 # 1. Download the exact same tar.xz files the MacPorts version does
 cd src 
@@ -86,9 +86,9 @@ cd ../../
 
 # 3. Compile the sources as per the "Getting Started" guihe, with out options enabled
 LLVMMACROOT="${PWD}"
-echo "${LLVMMACROOT}"
-cd "$1/build/"
+cd ./build/
 cmake -G "Unix Makefiles" \
+  -DCMAKE_INSTALL_PREFIX="$1" \
   -DCMAKE_BUILD_TYPE=Release \
   -DLLVM_ENABLE_WARNINGS=OFF \
   -DLLVM_ENABLE_TERMINFO=OFF \
@@ -105,9 +105,11 @@ cmake -G "Unix Makefiles" \
   -DLLVM_BINDINGS_LIST=none \
   "${LLVMMACROOT}/src/llvm"
 make -j28
+make -j28 install
 
-# 4. clang-c headers are not being generated for some reason; until i figure out why, copy them over manually
-cp -R "${LLVMMACROOT}/patches/clang-c" "$1/build/include"
+# 4. make install doesn't move over libclang.a, so we'll need to do that manually
+cp "${LLVMMACROOT}/build/lib/libclang.a" "$1/lib/libclang.a"
 
 # 5. Clean up.  Remove any unnecessary files which we no longer need since we have built a functioning llvm install.
 rm -rf "${LLVMMACROOT}/src"
+rm -rf "${LLVMMACROOT}/build"

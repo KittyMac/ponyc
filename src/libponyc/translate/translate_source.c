@@ -94,6 +94,7 @@ char* translate_source(program_t* program, const char* file_name, const char* so
 
 void translate_source_package_begin(const char * qualified_name) {
   translate_text_resource_package_begin(qualified_name);
+  translate_c_header_package_begin(qualified_name);
 }
 
 char* translate_source_package_end(bool print_generated_code) {
@@ -104,6 +105,7 @@ char* translate_source_package_end(bool print_generated_code) {
   
   // the resource transpilier uses the package end call to create a class with LUT to the resources compiled in.
   code = translate_text_resource_package_end(code);
+  code = translate_c_header_package_end(code);
   
   
   // copy the code over to pony allocated memory
@@ -344,4 +346,9 @@ const char* translate_function_name(const char* name)
   }
   
   return translate_clean_function_name_conflict(class_name);
+}
+
+void translate_free_name(const char* name)
+{
+  ponyint_pool_free_size(strlen(name)+1, (void *)name);
 }

@@ -24,6 +24,10 @@ const char* translate_class_name(const char* name);
  */
 const char* translate_function_name(const char* name);
 
+/** Clean up after the two name translation functions above
+ */
+void translate_free_name(const char* name);
+
 /** Know that a new source package is being compile
  */
 void translate_source_package_begin(const char * qualified_name);

@@ -16,6 +16,7 @@
 
 typedef struct {
   sds * code;
+  sds * dedup;
   CXCursor previous;
   CXTranslationUnit unit;
 }VisitorData;
@@ -29,6 +30,19 @@ extern int string_ends_with(const char *str, const char *suffix);
 
 sds translate_c_header_abort(sds code, char * error) {
   return sdscatprintf(code, "C header parser failed: %s\n", error);
+}
+
+bool checkForDuplicatedNames(const char * name, sds * dedup) {
+  // dedup string stores \nname\n, so we do a simple string search for name conflicts
+	sds key = sdsnew("");
+  key = sdscatprintf(key, "\n%s\n", name);
+  
+  bool exists = strcasestr(*dedup, key) != 0;
+  if(exists == false) {
+    *dedup = sdscatprintf(*dedup, "%s", key);
+  }
+  sdsfree(key);
+  return exists;
 }
 
 void addPonyTypeForCXType(CXType t, sds * code) {
@@ -230,13 +244,18 @@ unsigned long identifyTokenRootName(CXTranslationUnit unit, CXToken token, char 
   return r;
 }
 
-void printNumericDefinitions(CXTranslationUnit unit, sds * code) {
+void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
   
   CXToken * allTokens = NULL;
   unsigned numTokens = 0;
   
   CXCursor unitCursor = clang_getTranslationUnitCursor(unit);
   clang_tokenize(unit, clang_getCursorExtent(unitCursor), &allTokens, &numTokens);
+  
+  
+  VisitorData * data = (VisitorData *)client_data;
+  sds * code = data->code;
+  sds * dedup = data->dedup;
   
   /*
   for(unsigned i = 0; i < numTokens-1; i++) {
@@ -296,46 +315,59 @@ void printNumericDefinitions(CXTranslationUnit unit, sds * code) {
     
     if (sizeOfDefineGrouping >= 1) {
       
-      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(primitiveName));
+      const char * className = translate_class_name(primitiveName);
       
+      bool shouldPrint = (checkForDuplicatedNames(className, dedup) == false);
+            
+      if(shouldPrint) {
+        *code = sdscatprintf(*code, "primitive %s\n", className);
+      }
+    
       for(unsigned j = i; j < numTokens; j++) {
         if (clang_getTokenKind(allTokens[j]) == CXToken_Comment){
           continue;
         }
-        
+      
         if(compareTokenName(unit, allTokens[j], "#") && compareTokenName(unit, allTokens[j+1], "define") && j+3 < numTokens) {
           CXToken defineNameToken = allTokens[j + 2];
           CXTokenKind defineNameKind = clang_getTokenKind(defineNameToken);
           CXToken defineValueToken = allTokens[j + 3];
           CXTokenKind defineValueKind = clang_getTokenKind(defineValueToken);
-  
+
           if (defineNameKind == CXToken_Identifier && defineValueKind == CXToken_Literal) {
             CXString defineNameName = clang_getTokenSpelling(unit, defineNameToken);
             const char * defineNameNameString = clang_getCString(defineNameName);
             CXString defineValueName = clang_getTokenSpelling(unit, defineValueToken);
             const char * defineValueNameString = clang_getCString(defineValueName);
-      
+    
             const char * cleanedName = translate_function_name(defineNameNameString + primitiveRootIndex);
-            
-            if(defineValueNameString[0] == '\"') {
-              *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "String", defineValueNameString);
-            }else{
-              *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "U32", defineValueNameString);
-            }
-      
-          }
           
+            if(shouldPrint) {
+              if(defineValueNameString[0] == '\"') {
+                *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "String", defineValueNameString);
+              }else{
+                *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "U32", defineValueNameString);
+              }
+            }
+    
+          }
+        
           j += 3;
           i = j;
-          
+        
           sizeOfDefineGrouping--;
           if (sizeOfDefineGrouping == 0){
             break;
           }
         }
+      } 
+      
+      if(shouldPrint) {
+        *code = sdscatprintf(*code, "\n");
       }
       
-      *code = sdscatprintf(*code, "\n");
+      translate_free_name(className);
+      
     }        
   }  
 }
@@ -446,6 +478,7 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
     
   VisitorData * data = (VisitorData *)client_data;
   sds * code = data->code;
+  sds * dedup = data->dedup;
   
   int kind = clang_getCursorKind(cursor);
   CXType type = clang_getCursorType(cursor);
@@ -466,9 +499,13 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   if (kind == CXCursor_TypedefDecl) {
     // if we are a typedef and the previous entity was a struct without a name, then we need to make type declaration to it
     if(previousKind == CXCursor_StructDecl && previousType.kind == CXType_Record && previousNameString[0] == 0) {
-      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
-      *code = sdscatprintf(*code, "type %sRef is Pointer[%s] tag\n", translate_class_name(nameString), translate_class_name(nameString));
-      *code = sdscatprintf(*code, "\n");
+      const char * className = translate_class_name(nameString);
+      if(checkForDuplicatedNames(className, dedup) == false) {
+        *code = sdscatprintf(*code, "primitive %s\n", className);
+        *code = sdscatprintf(*code, "type %sRef is Pointer[%s] tag\n", className, className);
+        *code = sdscatprintf(*code, "\n");
+      }
+      translate_free_name(className);
     }else{
       //fprintf(stderr, "++ [%d][%d}] %s\n", previousKind, previousType.kind, previousNameString);
     }
@@ -476,8 +513,12 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   }
   if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
     if(nameString[0] != 0) {
-      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
-      *code = sdscatprintf(*code, "type %sRef is Pointer[%s] tag\n", translate_class_name(nameString), translate_class_name(nameString));
+      const char * className = translate_class_name(nameString);
+      if(checkForDuplicatedNames(className, dedup) == false) {
+        *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
+        *code = sdscatprintf(*code, "type %sRef is Pointer[%s] tag\n", translate_class_name(nameString), translate_class_name(nameString));
+      }
+      translate_free_name(className);
     }
     *code = sdscatprintf(*code, "\n");
     childVisit = CXChildVisit_Continue;
@@ -502,6 +543,7 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
   
   VisitorData * data = (VisitorData *)client_data;
   sds * code = data->code;
+  sds * dedup = data->dedup;
   
   int kind = clang_getCursorKind(cursor);
   CXType type = clang_getCursorType(cursor);
@@ -520,14 +562,28 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
   
   if (kind == CXCursor_EnumDecl && type.kind == CXType_Enum) {
     if(clang_getCursorKind(parent) == CXCursor_TypedefDecl) {
-      *code = sdscatprintf(*code, "primitive %sEnum\n", translate_class_name(parentNameString));
+      const char * className = translate_class_name(parentNameString);
+      if(checkForDuplicatedNames(className, dedup) == false) {
+        *code = sdscatprintf(*code, "primitive %sEnum\n", className);
+      }else{
+        childVisit = CXChildVisit_Continue;
+      }
+      translate_free_name(className);
     }else{
       if(nameString[0] == 0) {
         clang_disposeString(parentName);
         clang_disposeString(name);
         return CXChildVisit_Continue;
       }
-      *code = sdscatprintf(*code, "primitive %sEnum\n", translate_class_name(nameString));
+      
+      const char * className = translate_class_name(nameString);
+      if(checkForDuplicatedNames(className, dedup) == false) {
+        *code = sdscatprintf(*code, "primitive %sEnum\n", className);
+      }else{
+        childVisit = CXChildVisit_Continue;
+      }
+      translate_free_name(className);
+      
     }
   }
   if (kind == CXCursor_EnumConstantDecl) {
@@ -543,6 +599,23 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
   return childVisit;
 }
 
+
+
+
+
+static sds deduplicateDefinitionsInPackage = NULL;
+
+void translate_c_header_package_begin(const char * qualified_name)
+{
+  ((void)qualified_name);
+	deduplicateDefinitionsInPackage = sdsnew("");
+}
+
+sds translate_c_header_package_end(sds code)
+{
+	sdsfree(deduplicateDefinitionsInPackage);
+	return code;
+}
 
 char* translate_c_header(bool print_generated_code, const char* file_name, const char* source_code)
 {
@@ -587,6 +660,7 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
     
     VisitorData data = {0};
     data.code = &code;
+    data.dedup = &deduplicateDefinitionsInPackage;
     data.unit = unit;
     
     // 1. print all of the function declarations ( use @foo[None]() )
@@ -595,7 +669,7 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
     code = sdscatprintf(code, "\n");
     
     // 2. print all of the stright #defines (primitive SomeDefined\n  fun x():U32 => 2)
-    printNumericDefinitions(unit, &code);
+    printNumericDefinitions(unit, &data);
     
     code = sdscatprintf(code, "\n");
     

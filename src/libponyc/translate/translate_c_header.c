@@ -17,6 +17,9 @@
 
 
 static bool ponyTypeForStructIsPointer(CXCursor cursor);
+static int unknownThingCounter = 0;
+
+extern int string_ends_with(const char *str, const char *suffix);
 
 // Note: useful commands
 // clang -Xclang -ast-dump -fsyntax-only somefile.h
@@ -168,7 +171,12 @@ void addPonyDefaultValueForCXType(CXType t, sds * code) {
     case CXType_ObjCObjectPointer:
     case CXType_Pointer:
     case CXType_NullPtr:              {
+                                        // Note: we don't want "tag" at the end
                                         addPonyTypeForCXType(t, code);
+                                        if(string_ends_with(*code, " tag")) {
+                                          sdssetlen(*code, sdslen(*code)-4);
+                                        }
+                                        
                                       }
                                       break;
         
@@ -337,11 +345,17 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
     for(int i = 0; i < numParams; i++){
       CXCursor paramCursor = clang_Cursor_getArgument(cursor, i);
       CXString paramName = clang_getCursorSpelling(paramCursor);
+      const char * paramNameString = clang_getCString(paramName);
       CXType paramType = clang_getCursorType(paramCursor);
       
       if (clang_getCursorKind(paramCursor) == CXCursor_ParmDecl) {
         //fprintf(stderr, ">> %s parameter\n", clang_getCString(paramName));
-        *code = sdscatprintf(*code, "%s:", clang_getCString(paramName));
+        if(paramNameString[0] == 0) {
+          *code = sdscatprintf(*code, "arg%d:", unknownThingCounter++);
+        }else{
+          *code = sdscatprintf(*code, "%s:", clang_getCString(paramName));
+        }
+        
         addPonyTypeForCXType(paramType, code);
         if (i < (numParams-1)) {
           *code = sdscatprintf(*code, ", ");
@@ -434,18 +448,47 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   ((void)parent);
   int childVisit = CXChildVisit_Recurse;
   
+  static CXCursor previous;
+  
   sds * code = (sds *)client_data;
   
   int kind = clang_getCursorKind(cursor);
   CXType type = clang_getCursorType(cursor);
   CXString name = clang_getCursorSpelling(cursor);
+  const char * nameString = clang_getCString(name);
+  
+  //int parentKind = clang_getCursorKind(parent);
+  //CXType parentType = clang_getCursorType(parent);
+  CXString parentName = clang_getCursorSpelling(parent);
+  //const char * parentNameString = clang_getCString(parentName);
+  
+  int previousKind = clang_getCursorKind(previous);
+  CXType previousType = clang_getCursorType(previous);
+  CXString previousName = clang_getCursorSpelling(previous);
+  const char * previousNameString = clang_getCString(previousName);
+  
+  
+  // Ok, here's the deal:
+  // typedef struct YYY { ... } XXX;
+  // In the above, struct with name YYY is encountered first, then typedef with XXX encountered second.  YYY can be missing.
+  // Structs don't require typedef, so struct YYY { ... }; is valid.
+  
   
   if (kind == CXCursor_TypedefDecl) {
+    // if we are a typedef and the previous entity was a struct without a name, then we need to make type declaration to it
+    if(previousKind == CXCursor_StructDecl && previousType.kind == CXType_Record && previousNameString[0] == 0) {
+      *code = sdscatprintf(*code, "type Struct%d is %s\n\n", unknownThingCounter-1, translate_class_name(nameString));
+    }
     childVisit = CXChildVisit_Continue;
   }
-    
+  
   if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
-    *code = sdscatprintf(*code, "%s %s\n", ponyTypeForStruct(cursor), translate_class_name(clang_getCString(name)));
+    if(nameString[0] == 0) {
+       *code = sdscatprintf(*code, "%s Struct%d\n", ponyTypeForStruct(cursor), unknownThingCounter++);
+    }else{
+      *code = sdscatprintf(*code, "%s %s\n", ponyTypeForStruct(cursor), translate_class_name(nameString));
+    }
+     
     clang_Type_visitFields(type, printStructFields, code);
     *code = sdscatprintf(*code, "\n");
     childVisit = CXChildVisit_Continue;
@@ -454,6 +497,10 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   //fprintf(stderr, ">> [%d][%d}] %s\n", kind, type.kind, clang_getCString(name));
   
   clang_disposeString(name);
+  clang_disposeString(parentName);
+  clang_disposeString(previousName);
+  
+  previous = cursor;
   
   return childVisit;
 }
@@ -469,18 +516,31 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
   int kind = clang_getCursorKind(cursor);
   CXType type = clang_getCursorType(cursor);
   CXString name = clang_getCursorSpelling(cursor);
+  const char * nameString = clang_getCString(name);
+  
+  CXString parentName = clang_getCursorSpelling(parent);
+  const char * parentNameString = clang_getCString(parentName);
   
   if (kind == CXCursor_EnumDecl && type.kind == CXType_Enum) {
-    *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(clang_getCString(name)));
+    if(clang_getCursorKind(parent) == CXCursor_TypedefDecl) {
+      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(parentNameString));
+    }else{
+      if(nameString[0] == 0) {
+        clang_disposeString(parentName);
+        clang_disposeString(name);
+        return CXChildVisit_Continue;
+      }
+      *code = sdscatprintf(*code, "primitive %s\n", translate_class_name(nameString));
+    }
   }
   if (kind == CXCursor_EnumConstantDecl) {
     *code = sdscatprintf(*code, "  fun %s():U32", translate_function_name(clang_getCString(name)));
-    //addPonyTypeForCXType(type, code);
     *code = sdscatprintf(*code, " => 0x%llX\n", clang_getEnumConstantDeclUnsignedValue(cursor));
   }
     
   //fprintf(stderr, ">> [%d][%d}] %s\n", kind, type.kind, clang_getCString(name));
   
+  clang_disposeString(parentName);
   clang_disposeString(name);
   
   return childVisit;
@@ -493,6 +553,8 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
 	
 	// it is our responsibility to free the old "source code" which was provided
 	unsigned long in_source_code_length = strlen(source_code)+1;
+  
+  unknownThingCounter = 0;
 		
 	// use the sds library to concat our pony code together, then copy it to a pony allocated buffer
 	sds code = sdsnew("");
@@ -503,7 +565,7 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
         index,
         file_name, NULL, 0,
         NULL, 0,
-        CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_DetailedPreprocessingRecord);
+        CXTranslationUnit_SkipFunctionBodies);
   
   
   if (unit != NULL) {

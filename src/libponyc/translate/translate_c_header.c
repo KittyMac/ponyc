@@ -14,11 +14,16 @@
        __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
 
+#define kEnumContentRootMax 1024
+
 typedef struct {
   sds * code;
   sds * dedup;
   CXCursor previous;
   CXTranslationUnit unit;
+  
+  CXCursor enum_last_root_cursor;
+  unsigned long enum_content_root;
 }VisitorData;
 
 static int unknownThingCounter = 0;
@@ -553,6 +558,67 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
 
 
 
+
+
+
+enum CXChildVisitResult indentifyEnumContentRoot(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+  ((void) parent);
+  
+  VisitorData * data = (VisitorData *)client_data;
+  
+  int kind = clang_getCursorKind(cursor);
+  CXString name = clang_getCursorSpelling(cursor);
+  const char * nameString = clang_getCString(name);
+  
+  if (kind == CXCursor_EnumConstantDecl) {
+    if(data->enum_content_root == kEnumContentRootMax) {
+      data->enum_content_root = strlen(nameString);
+      data->enum_last_root_cursor = cursor;
+    }else{
+      CXString rootName = clang_getCursorSpelling(data->enum_last_root_cursor);
+      const char * rootNameString = clang_getCString(rootName);
+      
+      unsigned long new_root = identifyRootName(rootNameString, nameString);
+      if(new_root < data->enum_content_root){
+        
+        // safety net. If the new root is the same size as me, then set to 0 (avoid empty enum name)
+        if(new_root == strlen(nameString) || new_root == strlen(rootNameString)) {
+          new_root = 0;
+        }
+        
+        data->enum_content_root = new_root;
+        data->enum_last_root_cursor = cursor;
+      }
+      
+      clang_disposeString(rootName);
+    }
+  }
+  
+  clang_disposeString(name);
+  
+  return CXChildVisit_Recurse;
+}
+
+enum CXChildVisitResult printEnumContents(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+  ((void) parent);
+  
+  VisitorData * data = (VisitorData *)client_data;
+  sds * code = data->code;
+  
+  int kind = clang_getCursorKind(cursor);
+  CXString name = clang_getCursorSpelling(cursor);
+  const char * nameString = clang_getCString(name);
+  
+  if (kind == CXCursor_EnumConstantDecl) {
+    *code = sdscatprintf(*code, "  fun %s():U32", translate_function_name(nameString + data->enum_content_root));
+    *code = sdscatprintf(*code, " => 0x%llX\n", clang_getEnumConstantDeclUnsignedValue(cursor));
+  }
+  
+  clang_disposeString(name);
+  
+  return CXChildVisit_Recurse;
+}
+
 enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, CXClientData client_data) {
   ((void)parent);
   int childVisit = CXChildVisit_Recurse;
@@ -581,6 +647,11 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
       const char * className = translate_class_name(parentNameString);
       if(checkForDuplicatedNames(className, dedup) == false) {
         *code = sdscatprintf(*code, "primitive %sEnum\n", className);
+        
+        data->enum_content_root = kEnumContentRootMax;
+        clang_visitChildren(cursor, indentifyEnumContentRoot, client_data);
+        clang_visitChildren(cursor, printEnumContents, client_data);
+        
       }else{
         childVisit = CXChildVisit_Continue;
       }
@@ -595,16 +666,18 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
       const char * className = translate_class_name(nameString);
       if(checkForDuplicatedNames(className, dedup) == false) {
         *code = sdscatprintf(*code, "primitive %sEnum\n", className);
+        
+        data->enum_content_root = kEnumContentRootMax;
+        clang_visitChildren(cursor, indentifyEnumContentRoot, client_data);
+        clang_visitChildren(cursor, printEnumContents, client_data);
+        
+        
       }else{
         childVisit = CXChildVisit_Continue;
       }
       translate_free_name(className);
       
     }
-  }
-  if (kind == CXCursor_EnumConstantDecl) {
-    *code = sdscatprintf(*code, "  fun %s():U32", translate_function_name(nameString));
-    *code = sdscatprintf(*code, " => 0x%llX\n", clang_getEnumConstantDeclUnsignedValue(cursor));
   }
     
   //fprintf(stderr, ">> [%d][%d}] %s\n", kind, type.kind, clang_getCString(name));

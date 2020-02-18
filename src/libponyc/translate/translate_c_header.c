@@ -170,6 +170,8 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, CXClientData client_data)
                                       }
                                       break;
     
+    
+    
     case CXType_ObjCId:
     case CXType_ObjCClass:
     case CXType_ObjCSel:
@@ -204,6 +206,14 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, CXClientData client_data)
     case CXType_DependentSizedArray:  ( *code = sdscatprintf(*code, "...") );    break;
     case CXType_VariableArray:        ( *code = sdscatprintf(*code, "...") );    break;
     
+    
+    case CXType_ConstantArray:        { 
+                                          *code = sdscatprintf(*code, "Pointer[None]");
+                                          if(isReturnType == false){
+                                            *code = sdscatprintf(*code, " tag");
+                                          }
+                                      }
+                                      break;
     case CXType_FunctionProto:        { 
                                           *code = sdscatprintf(*code, "None");
                                       }

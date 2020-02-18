@@ -974,9 +974,13 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
   
   // Use libclang to parser the C header and then generate comparable pony FFI code
   CXIndex index = clang_createIndex(0, 0);
+  
+  char *args[] = {"-c", "-nostdinc", "-nostdlibinc", "-nobuiltininc", NULL};
+
   CXTranslationUnit unit = clang_parseTranslationUnit(
         index,
-        tmpFileName, NULL, 0,
+        tmpFileName, 
+        (const char *const *)args, 4,
         NULL, 0,
         CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_Incomplete);
   

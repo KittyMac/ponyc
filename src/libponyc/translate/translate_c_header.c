@@ -19,6 +19,8 @@
 typedef struct {
   sds * code;
   sds * dedup;
+  sds * transparentStruct;
+  
   CXCursor previous;
   CXTranslationUnit unit;
   
@@ -29,6 +31,13 @@ typedef struct {
 static int unknownThingCounter = 0;
 
 extern int string_ends_with(const char *str, const char *suffix);
+
+enum CXChildVisitResult cursorContainsStruct(CXCursor cursor, CXCursor parent, CXClientData client_data);
+
+
+
+
+
 
 // Note: useful commands
 // clang -Xclang -ast-dump -fsyntax-only somefile.h
@@ -50,10 +59,55 @@ bool checkForDuplicatedNames(const char * name, sds * dedup) {
   return exists;
 }
 
-void addPonyTypeForCXType(CXType t, bool isReturnType, sds * code) {
-  //CXString name = clang_getTypeKindSpelling(t.kind);
-  //CXString name2 = clang_getCursorSpelling(clang_getTypeDeclaration(t));
-  //fprintf(stderr, ">> CXType.kind is %d -- %s  -- %s\n", t.kind, clang_getCString(name), clang_getCString(name2));
+void setTransparentStruct(CXType type, CXClientData client_data) {
+  VisitorData * data = (VisitorData *)client_data;
+  sds * transparentStruct = data->transparentStruct;
+  
+  CXString name = clang_getCursorSpelling(clang_getTypeDeclaration(type));
+  const char * nameString = clang_getCString(name);
+  
+  if (clang_visitChildren(clang_getTypeDeclaration(type), cursorContainsStruct, client_data) == 0) {
+    // the underlying type must be a struct. We need to search inside for a Struct
+    //fprintf(stderr, ">> failing transparent struct on typedef %s because it does not contain a struct\n", nameString);
+    return;
+  }
+  
+  //fprintf(stderr, ">> set transparent struct on %s [%d]\n", nameString, type.kind);
+  
+	sds key = sdsnew("");
+  key = sdscatprintf(key, "\n%s\n", nameString);
+  *transparentStruct = sdscatprintf(*transparentStruct, "%s", key);
+  sdsfree(key);
+  clang_disposeString(name);
+}
+
+bool checkTransparentStruct(CXType type, CXClientData client_data) {
+  VisitorData * data = (VisitorData *)client_data;
+  sds * transparentStruct = data->transparentStruct;
+  
+  CXString name = clang_getCursorSpelling(clang_getTypeDeclaration(type));
+  const char * nameString = clang_getCString(name);
+  
+	sds key = sdsnew("");
+  key = sdscatprintf(key, "\n%s\n", nameString);
+  bool exists = strcasestr(*transparentStruct, key) != 0;
+  sdsfree(key);
+  clang_disposeString(name);
+  
+  return exists;
+}
+
+void addPonyTypeForCXType(CXType t, bool isReturnType, CXClientData client_data) {
+  VisitorData * data = (VisitorData *)client_data;
+  sds * code = data->code;
+  
+  /*
+  CXString name = clang_getTypeKindSpelling(t.kind);
+  CXString name2 = clang_getCursorSpelling(clang_getTypeDeclaration(t));
+  CXType eType = clang_Type_getNamedType(t);
+  CXString eName = clang_getTypeSpelling(eType);
+  fprintf(stderr, ">> CXType.kind is %d -- %s  -- %s -- [%d] %s\n", t.kind, clang_getCString(name), clang_getCString(name2), eType.kind, clang_getCString(eName));
+  */
   
   switch(t.kind) {
     case CXType_Void:                 ( *code = sdscatprintf(*code, "None") );    break;
@@ -93,11 +147,11 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, sds * code) {
     case CXType_Record:               ( *code = sdscatprintf(*code, "U32") );    break;
     
     case CXType_Enum:                 {
-                                        addPonyTypeForCXType(clang_getEnumDeclIntegerType(clang_getTypeDeclaration(t)), isReturnType, code);
+                                        addPonyTypeForCXType(clang_getEnumDeclIntegerType(clang_getTypeDeclaration(t)), isReturnType, client_data);
                                       }
                                       break;
     case CXType_Typedef:              {
-                                        addPonyTypeForCXType(clang_getTypedefDeclUnderlyingType(clang_getTypeDeclaration(t)), isReturnType, code);
+                                        addPonyTypeForCXType(clang_getTypedefDeclUnderlyingType(clang_getTypeDeclaration(t)), isReturnType, client_data);
                                       }
                                       break;
     case CXType_Elaborated:           {
@@ -106,9 +160,9 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, sds * code) {
                                         const char * elaboratedNameString = clang_getCString(elaboratedName);
                                         if(!strncmp("struct ", elaboratedNameString, 7)) {
                                           *code = sdscatprintf(*code, "%s", translate_class_name(elaboratedNameString + 7));
-                                        }else if(!strncmp("enum ", elaboratedNameString, 5) || elaboratedType.kind) {
+                                        }else if(!strncmp("enum ", elaboratedNameString, 5) || elaboratedType.kind == CXType_Enum) {
                                           // We want the type of the enum, not the name...
-                                          addPonyTypeForCXType(clang_Type_getNamedType(t), isReturnType, code);
+                                          addPonyTypeForCXType(elaboratedType, isReturnType, client_data);
                                         }else{
                                           *code = sdscatprintf(*code, "%s", translate_class_name(elaboratedNameString));
                                         }
@@ -125,18 +179,22 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, sds * code) {
                                         // If the pointee is elaborated or typedef, we don't use Pointer
                                         CXType pointeeType = clang_getPointeeType(t);
                                         if(pointeeType.kind == CXType_Elaborated || pointeeType.kind == CXType_Typedef) {
-                                          *code = sdscatprintf(*code, "Pointer[");
-                                          addPonyTypeForCXType(pointeeType, isReturnType, code);
+                                          if(checkTransparentStruct(pointeeType, client_data)){
+                                            *code = sdscatprintf(*code, "NullablePointer[");
+                                          }else{
+                                            *code = sdscatprintf(*code, "Pointer[");
+                                          }
+                                          addPonyTypeForCXType(pointeeType, isReturnType, client_data);
                                           *code = sdscatprintf(*code, "]");
                                           if(isReturnType == false){
-                                            *code = sdscatprintf(*code, "tag");
+                                            *code = sdscatprintf(*code, " tag");
                                           }
                                         }else{
                                           *code = sdscatprintf(*code, "Pointer[");
-                                          addPonyTypeForCXType(pointeeType, isReturnType, code);
+                                          addPonyTypeForCXType(pointeeType, isReturnType, client_data);
                                           *code = sdscatprintf(*code, "]");
                                           if(isReturnType == false){
-                                            *code = sdscatprintf(*code, "tag");
+                                            *code = sdscatprintf(*code, " tag");
                                           }
                                         }
                                       }
@@ -147,10 +205,7 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, sds * code) {
     case CXType_VariableArray:        ( *code = sdscatprintf(*code, "...") );    break;
     
     case CXType_FunctionProto:        { 
-                                          *code = sdscatprintf(*code, "Pointer[None]");
-                                          if(isReturnType == false){
-                                            *code = sdscatprintf(*code, "tag");
-                                          }
+                                          *code = sdscatprintf(*code, "None");
                                       }
                                       break;
     
@@ -158,7 +213,10 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, sds * code) {
   }
 }
 
-void addPonyDefaultValueForCXType(CXType t, sds * code) {
+void addPonyDefaultValueForCXType(CXType t, CXClientData client_data) {
+  VisitorData * data = (VisitorData *)client_data;
+  sds * code = data->code;
+  
   //fprintf(stderr, ">> CXType.kind is %d\n", t.kind);
   
   switch(t.kind) {
@@ -209,8 +267,13 @@ void addPonyDefaultValueForCXType(CXType t, sds * code) {
     case CXType_ObjCObjectPointer:
     case CXType_Pointer:
     case CXType_NullPtr:              {
-                                        // Note: we don't want "tag" at the end, isReturnType enforces that
-                                        addPonyTypeForCXType(t, true, code);                                        
+                                        addPonyTypeForCXType(t, true, client_data);
+                                        CXType pointeeType = clang_getPointeeType(t);
+                                        if(pointeeType.kind == CXType_Elaborated || pointeeType.kind == CXType_Typedef) {
+                                          if(checkTransparentStruct(pointeeType, client_data)){
+                                            *code = sdscatprintf(*code, ".none()");
+                                          }
+                                        }
                                       }
                                       break;
         
@@ -412,7 +475,7 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
     
     CXType resultType = clang_getCursorResultType(cursor);
     *code = sdscatprintf(*code, "[");
-    addPonyTypeForCXType(resultType, true, code);
+    addPonyTypeForCXType(resultType, true, client_data);
     *code = sdscatprintf(*code, "]");
     
     // run through all of the arguments
@@ -425,14 +488,15 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
       CXType paramType = clang_getCursorType(paramCursor);
       
       if (clang_getCursorKind(paramCursor) == CXCursor_ParmDecl) {
-        //fprintf(stderr, ">> %s parameter\n", clang_getCString(paramName));
+        //fprintf(stderr, ">> [%d] %s parameter\n", paramType.kind, clang_getCString(paramName));
+        
         if(paramNameString[0] == 0) {
           *code = sdscatprintf(*code, "arg%d:", unknownThingCounter++);
         }else{
           *code = sdscatprintf(*code, "%s:", clang_getCString(paramName));
         }
         
-        addPonyTypeForCXType(paramType, false, code);
+        addPonyTypeForCXType(paramType, false, client_data);
         if (i < (numParams-1)) {
           *code = sdscatprintf(*code, ", ");
         }
@@ -458,9 +522,41 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
 }
 
 
+enum CXChildVisitResult calculateFunctionTransparency(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+  ((void)parent);
+  ((void)client_data);
+  int childVisit = CXChildVisit_Recurse;
+  
+  // Search through all functions, all parameters. If we find a function which accepts a pointer to
+  // a struct, then we flag that struct as needing to be transparent (ie it probably needs a 
+  // full struct definition and not just a Pony primitive)
+  
+  int kind = clang_getCursorKind(cursor);
+  if (kind == CXCursor_FunctionDecl) {
+    
+    int numParams = clang_Cursor_getNumArguments(cursor);
+    for(int i = 0; i < numParams; i++){
+      CXCursor paramCursor = clang_Cursor_getArgument(cursor, i);
+      CXType paramType = clang_getCursorType(paramCursor);
+      
+      if (clang_getCursorKind(paramCursor) == CXCursor_ParmDecl) {        
+        if(paramType.kind == CXType_Pointer){
+          CXType pointeeType = clang_getPointeeType(paramType);
+          if(pointeeType.kind == CXType_Elaborated || pointeeType.kind == CXType_Typedef) {
+            setTransparentStruct(pointeeType, client_data);
+          }
+        }
+      }
+    }
+    childVisit = CXChildVisit_Continue;
+  }  
+  return childVisit;
+}
+
 
 enum CXVisitorResult printStructFields(CXCursor cursor, CXClientData client_data) {
-  sds * code = (sds *) client_data;
+  VisitorData * data = (VisitorData *)client_data;
+  sds * code = data->code;
   
   int kind = clang_getCursorKind(cursor);
   CXType type = clang_getCursorType(cursor);
@@ -474,9 +570,9 @@ enum CXVisitorResult printStructFields(CXCursor cursor, CXClientData client_data
       *code = sdscatprintf(*code, "  var %s: ", clang_getCString(name));
     }
     
-    addPonyTypeForCXType(type, false, code);
+    addPonyTypeForCXType(type, false, client_data);
     *code = sdscatprintf(*code, " = ");
-    addPonyDefaultValueForCXType(type, code);
+    addPonyDefaultValueForCXType(type, client_data);
     
     
     *code = sdscatprintf(*code, "\n");
@@ -492,6 +588,37 @@ enum CXVisitorResult countStructFields(CXCursor cursor, CXClientData client_data
   }
   return CXVisit_Continue;
 }
+
+bool structShouldBeStruct(CXCursor cursor) {
+  int kind = clang_getCursorKind(cursor);
+  CXType type = clang_getCursorType(cursor);
+  
+  int countOfFields = 0;
+  if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
+    clang_Type_visitFields(type, countStructFields, &countOfFields);
+  }
+  if(countOfFields == 0) {
+    return false;
+  }
+  return true;
+}
+
+enum CXChildVisitResult cursorContainsStruct(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+  ((void)parent);
+  ((void)client_data);
+  
+  int kind = clang_getCursorKind(cursor);
+  CXType type = clang_getCursorType(cursor);
+  
+  if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
+    // but does it contain any children?
+    if(structShouldBeStruct(cursor)) {
+      return CXChildVisit_Break;
+    }
+  }
+  return CXChildVisit_Recurse;
+}
+
 
 enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent, CXClientData client_data) {
   ((void)parent);
@@ -522,8 +649,17 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
     if(previousKind == CXCursor_StructDecl && previousType.kind == CXType_Record && previousNameString[0] == 0) {
       const char * className = translate_class_name(nameString);
       if(checkForDuplicatedNames(className, dedup) == false) {
-        *code = sdscatprintf(*code, "primitive %s\n", className);
-        *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
+        
+        if(checkTransparentStruct(type, client_data)){
+          *code = sdscatprintf(*code, "type %sRef is NullablePointer[%s]\n", className, className);
+          *code = sdscatprintf(*code, "struct %s\n", className);
+          clang_Type_visitFields(previousType, printStructFields, client_data);
+          
+        }else{
+          *code = sdscatprintf(*code, "primitive %s\n", className);
+          *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
+        }
+        
         *code = sdscatprintf(*code, "\n");
       }
       translate_free_name(className);
@@ -536,8 +672,17 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
     if(nameString[0] != 0) {
       const char * className = translate_class_name(nameString);
       if(checkForDuplicatedNames(className, dedup) == false) {
-        *code = sdscatprintf(*code, "primitive %s\n", className);
-        *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
+        
+        if(checkTransparentStruct(type, client_data)){
+          *code = sdscatprintf(*code, "type %sRef is NullablePointer[%s]\n", className, className);
+          *code = sdscatprintf(*code, "struct %s\n", className);
+          clang_Type_visitFields(type, printStructFields, client_data);
+          
+        }else{
+          *code = sdscatprintf(*code, "primitive %s\n", className);
+          *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
+        }
+        
       }
       translate_free_name(className);
     }
@@ -635,13 +780,6 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
   CXString parentName = clang_getCursorSpelling(parent);
   const char * parentNameString = clang_getCString(parentName);
   
-  // TODO: strip the root name from enums (ie in this case, strip curlinfo_ )
-  // fun curlinfo_none():U32 => 0x0
-  // fun curlinfo_effective_url():U32 => 0x100001
-  // fun curlinfo_response_code():U32 => 0x200002
-  // fun curlinfo_total_time():U32 => 0x300003
-
-  
   if (kind == CXCursor_EnumDecl && type.kind == CXType_Enum) {
     if(clang_getCursorKind(parent) == CXCursor_TypedefDecl) {
       const char * className = translate_class_name(parentNameString);
@@ -693,16 +831,19 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
 
 
 static sds deduplicateDefinitionsInPackage = NULL;
+static sds transparentStruct = NULL;
 
 void translate_c_header_package_begin(const char * qualified_name)
 {
   ((void)qualified_name);
 	deduplicateDefinitionsInPackage = sdsnew("");
+  transparentStruct = sdsnew("");
 }
 
 sds translate_c_header_package_end(sds code)
 {
 	sdsfree(deduplicateDefinitionsInPackage);
+  sdsfree(transparentStruct);
 	return code;
 }
 
@@ -750,9 +891,11 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
     VisitorData data = {0};
     data.code = &code;
     data.dedup = &deduplicateDefinitionsInPackage;
+    data.transparentStruct = &transparentStruct;
     data.unit = unit;
     
     // 1. print all of the function declarations ( use @foo[None]() )
+    clang_visitChildren(cursor, calculateFunctionTransparency, &data);
     clang_visitChildren(cursor, printFunctionDeclarations, &data);
     
     code = sdscatprintf(code, "\n");

@@ -122,19 +122,19 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, CXClientData client_data)
                                     
     case CXType_Char32:               
     case CXType_UInt:                 ( *code = sdscatprintf(*code, "U32") );    break;
+    case CXType_ULongLong:            
     case CXType_ULong:                ( *code = sdscatprintf(*code, "U64") );    break;
                                     
-    case CXType_ULongLong:            
     case CXType_UInt128:              ( *code = sdscatprintf(*code, "U128") );    break;
                                     
                                     
     case CXType_SChar:                ( *code = sdscatprintf(*code, "I8") );    break;
     case CXType_WChar:                
     case CXType_Short:                ( *code = sdscatprintf(*code, "I16") );    break;
-    case CXType_Int:                  ( *code = sdscatprintf(*code, "I32") );    break;
+    case CXType_Int:                  ( *code = sdscatprintf(*code, "U32") );    break;
+    case CXType_LongLong:             
     case CXType_Long:                 ( *code = sdscatprintf(*code, "I64") );    break;
                                     
-    case CXType_LongLong:             
     case CXType_Int128:               ( *code = sdscatprintf(*code, "I128") );    break;
                                     
     case CXType_Half:               
@@ -334,25 +334,19 @@ void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
   sds * code = data->code;
   sds * dedup = data->dedup;
   
-  /*
-  for(unsigned i = 0; i < numTokens-1; i++) {
-    CXToken token = allTokens[i];
-    
-    CXString name = clang_getTokenSpelling(unit, token);
-    const char * nameString = clang_getCString(name);
-    CXTokenKind kind = clang_getTokenKind(token);
-    
-    fprintf(stderr, ">> [%d] %s\n", kind, nameString);
-    
-    clang_disposeString(name);
-  }*/
+  // Note: #defines in C don't need to be namespaced, they can just live anywhere. In Pony they need
+  // to live inside of a primitive. We also want to separate them into meaningful groups (most c 
+  // developers will group them visually).
+  sds groups = sdsnew("");
   
+  // 0. Identify all groups
   for(unsigned i = 0; i < numTokens-1; i++) {                
     // How many are in this group?  Do they have a common name root?
     int sizeOfDefineGrouping = 0;
     char primitiveName[1024] = {0};
-    unsigned long primitiveRootIndex = 0;
+    unsigned long primitiveRootIndex = 9999999;
     
+    // Look for the next group...
     for(unsigned j = i; j < numTokens; j++) {
       // skip any comments
       if (clang_getTokenKind(allTokens[j]) == CXToken_Comment){
@@ -362,21 +356,22 @@ void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
         CXTokenKind defineNameKind = clang_getTokenKind(defineNameToken);
         CXToken defineValueToken = allTokens[j + 3];
         CXTokenKind defineValueKind = clang_getTokenKind(defineValueToken);
-        
+                
         // Needs to be a define which equates to a literal
         if (defineNameKind == CXToken_Identifier && defineValueKind == CXToken_Literal) {
           // does this define share a root name with the previous one? If it doesn't, it belongs in a new group
           if (sizeOfDefineGrouping == 0) {
-            copyTokenName(unit, allTokens[j+2], primitiveName, sizeof(primitiveName));
+            copyTokenName(unit, defineNameToken, primitiveName, sizeof(primitiveName));
           }else{
-            unsigned long newRootIndex = identifyTokenRootName(unit, allTokens[j+2], primitiveName);
-            if(primitiveRootIndex != 0 && newRootIndex == 0) {
+            unsigned long newRootIndex = identifyTokenRootName(unit, defineNameToken, primitiveName);
+            if(newRootIndex == 0) {
               break;
             }
-            primitiveRootIndex = newRootIndex;
-          
-            if(primitiveRootIndex != 0) {
+            
+            if( newRootIndex < primitiveRootIndex ){
+              primitiveRootIndex = newRootIndex;
               primitiveName[primitiveRootIndex] = 0;
+              //fprintf(stderr, ">>>> new primitiveName: %s\n", primitiveName);
             }
           }
           sizeOfDefineGrouping++;
@@ -385,75 +380,148 @@ void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
         }
         
         j += 3;
+        i = j;
       }else{
         break;
       }
     }
     
     if (sizeOfDefineGrouping >= 1) {
-      
       const char * className = translate_class_name(primitiveName);
-      
-      bool shouldPrint = (checkForDuplicatedNames(className, dedup) == false);
-            
-      if(shouldPrint) {
-        *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
-        *code = sdscatprintf(*code, "primitive %s\n", className);
+      if(checkForDuplicatedNames(className, dedup) == false) {
+        // Save the name of this group
+        groups = sdscatprintf(groups, "%s\n", primitiveName);
+        //fprintf(stderr, ">> storing groupName: %s of %d items\n", primitiveName, sizeOfDefineGrouping);
       }
+      translate_free_name(className);
+    }
+  }
+  
+  
+  // 1. Go back through everything, one group at a time, and export all of the items
+  // in those groups (even if they are not "physically" close to each other).
+  int count;
+  sds * tokens = sdssplitlen(groups, sdslen(groups), "\n" , 1, &count);
+  for (int k = 0; k < count; k++) {
+    sds groupName = tokens[k];
     
+    if(sdslen(groupName) == 0) {
+      continue;
+    }
+    
+    //fprintf(stderr, ">> printing groupName: %s\n", groupName);
+    const char * className = translate_class_name(groupName);
+    
+    *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
+    *code = sdscatprintf(*code, "primitive %s\n", className);
+    
+    translate_free_name(className);
+    
+    for(unsigned i = 0; i < numTokens-1; i++) {                
+      // How many are in this group?  Do they have a common name root?
+      int sizeOfDefineGrouping = 0;
+      char primitiveName[1024] = {0};
+      unsigned long primitiveRootIndex = 0;
+    
+      // Look for the next group...
       for(unsigned j = i; j < numTokens; j++) {
+        // skip any comments
         if (clang_getTokenKind(allTokens[j]) == CXToken_Comment){
           continue;
-        }
-      
-        if(compareTokenName(unit, allTokens[j], "#") && compareTokenName(unit, allTokens[j+1], "define") && j+3 < numTokens) {
+        }else if(compareTokenName(unit, allTokens[j], "#") && compareTokenName(unit, allTokens[j+1], "define") && j+3 < numTokens) {
           CXToken defineNameToken = allTokens[j + 2];
           CXTokenKind defineNameKind = clang_getTokenKind(defineNameToken);
           CXToken defineValueToken = allTokens[j + 3];
           CXTokenKind defineValueKind = clang_getTokenKind(defineValueToken);
-
+                        
+          // Needs to be a define which equates to a literal
           if (defineNameKind == CXToken_Identifier && defineValueKind == CXToken_Literal) {
-            CXString defineNameName = clang_getTokenSpelling(unit, defineNameToken);
-            const char * defineNameNameString = clang_getCString(defineNameName);
-            CXString defineValueName = clang_getTokenSpelling(unit, defineValueToken);
-            const char * defineValueNameString = clang_getCString(defineValueName);
-    
-            const char * cleanedName = translate_function_name(defineNameNameString + primitiveRootIndex);
+            // does this define share a root name with the previous one? If it doesn't, it belongs in a new group
+            if (sizeOfDefineGrouping == 0) {
+              copyTokenName(unit, allTokens[j+2], primitiveName, sizeof(primitiveName));
+            }else{
+              unsigned long newRootIndex = identifyTokenRootName(unit, allTokens[j+2], primitiveName);
+              if(primitiveRootIndex != 0 && newRootIndex == 0) {
+                break;
+              }
+              primitiveRootIndex = newRootIndex;
           
-            if(shouldPrint) {
-              if(defineValueNameString[0] == '\"') {
-                *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "String", defineValueNameString);
-              }else{
-                *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "U32", defineValueNameString);
-                
-                // pony doesn't support qualifiers on its numerics
-                if(string_ends_with(defineValueNameString, "L")) {
-                  sdssetlen(*code, sdslen(*code)-2);
-                  *code = sdscatprintf(*code, "\n");
-                }
+              if(primitiveRootIndex != 0) {
+                primitiveName[primitiveRootIndex] = 0;
               }
             }
-    
+            sizeOfDefineGrouping++;
+          }else{
+            break;
           }
         
           j += 3;
-          i = j;
-        
-          sizeOfDefineGrouping--;
-          if (sizeOfDefineGrouping == 0){
-            break;
-          }
+        }else{
+          break;
         }
-      } 
-      
-      if(shouldPrint) {
-        *code = sdscatprintf(*code, "\n");
       }
+    
+      if (sizeOfDefineGrouping >= 1) {
       
-      translate_free_name(className);
+        if(!strcmp(groupName, primitiveName)){
+          for(unsigned j = i; j < numTokens; j++) {
+            if (clang_getTokenKind(allTokens[j]) == CXToken_Comment){
+              continue;
+            }
+    
+            if(compareTokenName(unit, allTokens[j], "#") && compareTokenName(unit, allTokens[j+1], "define") && j+3 < numTokens) {
+              CXToken defineNameToken = allTokens[j + 2];
+              CXTokenKind defineNameKind = clang_getTokenKind(defineNameToken);
+              CXToken defineValueToken = allTokens[j + 3];
+              CXTokenKind defineValueKind = clang_getTokenKind(defineValueToken);
+
+              if (defineNameKind == CXToken_Identifier && defineValueKind == CXToken_Literal) {
+                CXString defineNameName = clang_getTokenSpelling(unit, defineNameToken);
+                const char * defineNameNameString = clang_getCString(defineNameName);
+                CXString defineValueName = clang_getTokenSpelling(unit, defineValueToken);
+                const char * defineValueNameString = clang_getCString(defineValueName);
+  
+                const char * cleanedName = translate_function_name(defineNameNameString + primitiveRootIndex);
+        
+                if(defineValueNameString[0] == '\"') {
+                  *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "String", defineValueNameString);
+                }else{
+                  *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "U32", defineValueNameString);
+            
+                  // pony doesn't support qualifiers on its numerics
+                  if(string_ends_with(defineValueNameString, "L")) {
+                    sdssetlen(*code, sdslen(*code)-2);
+                    *code = sdscatprintf(*code, "\n");
+                  }
+                }
+  
+              }
       
-    }        
-  }  
+              j += 3;
+              i = j;
+      
+              sizeOfDefineGrouping--;
+              if (sizeOfDefineGrouping == 0){
+                break;
+              }
+            }
+          } 
+          
+        }
+      
+      }
+    }
+    
+    *code = sdscatprintf(*code, "\n");
+  }
+  sdsfreesplitres(tokens, count);
+  
+  
+  
+  
+  
+  
+  sdsfree(groups);
 }
 
 
@@ -464,14 +532,28 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
   VisitorData * data = (VisitorData *)client_data;
   sds * code = data->code;
   
+  if(clang_getCursorAvailability(cursor) != CXAvailability_Available){
+    return childVisit;
+  }
+  
   int kind = clang_getCursorKind(cursor);
   CXType type = clang_getCursorType(cursor);
   CXString name = clang_getCursorSpelling(cursor);
+  const char * nameString = clang_getCString(name);
   
   //fprintf(stderr, ">> [%d] %s\n", kind, clang_getCString(name));
   
   if (kind == CXCursor_FunctionDecl) {
-    *code = sdscatprintf(*code, "use @%s", clang_getCString(name));
+    if( !strcmp("__API_AVAILABLE", nameString) || 
+        !strcmp("__API_DEPRECATED", nameString) || 
+        !strcmp("__API_DEPRECATED_WITH_REPLACEMENT", nameString)
+      ){
+      clang_disposeString(name);
+      return childVisit;
+    }
+    
+    
+    *code = sdscatprintf(*code, "use @%s", nameString);
     
     CXType resultType = clang_getCursorResultType(cursor);
     *code = sdscatprintf(*code, "[");
@@ -526,6 +608,10 @@ enum CXChildVisitResult calculateFunctionTransparency(CXCursor cursor, CXCursor 
   ((void)parent);
   ((void)client_data);
   int childVisit = CXChildVisit_Recurse;
+  
+  if(clang_getCursorAvailability(cursor) != CXAvailability_Available){
+    return childVisit;
+  }
   
   // Search through all functions, all parameters. If we find a function which accepts a pointer to
   // a struct, then we flag that struct as needing to be transparent (ie it probably needs a 

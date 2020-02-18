@@ -33,7 +33,10 @@ struct Pointer[A]
     Convert from Pointer[A] to Pointer[B].
     """
     compile_intrinsic
-
+  
+  fun convert[B](): this->Pointer[B] =>
+    _convert[B]()
+  
   fun _apply(i: USize): this->A =>
     """
     Retrieve index i.

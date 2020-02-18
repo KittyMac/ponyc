@@ -197,7 +197,7 @@ const char * translate_clean_class_name_conflict(const char * name) {
 }
 
 
-const char* translate_class_name(const char* name)
+const char* translate_class_name(const char* name, bool makePrivate)
 {
   // take a file name and turn it into a pony class name
   const char * start = strrchr(name, '/');
@@ -222,6 +222,10 @@ const char* translate_class_name(const char* name)
     if(*start != '_') {
       break;
     }
+  }
+  
+  if(makePrivate) {
+    class_name[idx++] = '_';
   }
   
   for (; start < end; start++) {

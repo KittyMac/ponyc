@@ -18,7 +18,7 @@ char* translate_source(program_t* program, const char* file_name, const char* so
 
 /** Convert name into a pony compatibile class name
  */
-const char* translate_class_name(const char* name);
+const char* translate_class_name(const char* name, bool makePrivate);
 
 /** Convert name into a pony compatibile function name
  */

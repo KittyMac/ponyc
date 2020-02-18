@@ -978,7 +978,7 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
         index,
         tmpFileName, NULL, 0,
         NULL, 0,
-        CXTranslationUnit_SkipFunctionBodies);
+        CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_Incomplete);
   
   
   if (unit != NULL) {

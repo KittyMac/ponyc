@@ -585,7 +585,7 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
         if(paramNameString[0] == 0) {
           *code = sdscatprintf(*code, "arg%d:", unknownThingCounter++);
         }else{
-          *code = sdscatprintf(*code, "%s:", clang_getCString(paramName));
+          *code = sdscatprintf(*code, "%s:", translate_clean_function_name_conflict(clang_getCString(paramName)));
         }
         
         addPonyTypeForCXType(paramType, false, client_data);
@@ -968,6 +968,8 @@ char* translate_c_header(bool print_generated_code, const char* file_name, const
   fprintf(file, "#define uint32_t unsigned long int\n");
   fprintf(file, "#define int64_t signed long long int\n");
   fprintf(file, "#define uint64_t unsigned long long int\n");
+  fprintf(file, "#define size_t uint32_t\n");
+  fprintf(file, "#define ssize_t int32_t\n");
   
   fprintf(file, "%s\n", source_code);
   fclose(file);

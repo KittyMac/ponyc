@@ -10,6 +10,10 @@
 # 3. Compile the sources as per the "Getting Started" guihe, with out options enabled
 # 4. Profit?
 
+# Note: pre-downloaded, pre-patched, and lzip compressed versions of these now exist in the 
+# compressed folder. This reduces our reliance on being able to download the source outside
+# of our control.
+
 # 0. When this is run, it is assumed we want to do the full monty so we clean up any left over cruft
 
 rm -rf src/
@@ -19,70 +23,36 @@ mkdir -p src/
 mkdir -p build/
 
 # 1. Download the exact same tar.xz files the MacPorts version does
-cd src 
-curl -L -o llvm-7.1.0.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-7.1.0/llvm-7.1.0.src.tar.xz
-gunzip llvm-7.1.0.src.tar.xz
-tar xf llvm-7.1.0.src.tar
-rm -f llvm-7.1.0.src.tar
-mv llvm-7.1.0.src llvm
+# the commented code below will download the release tars directly from llvm. However, the full lzip compressed src
+# is ~70MB so we were able to just include it in the git repo.
 
-curl -L -o cfe-7.1.0.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-7.1.0/cfe-7.1.0.src.tar.xz
-gunzip cfe-7.1.0.src.tar.xz
-tar xf cfe-7.1.0.src.tar
-rm -f cfe-7.1.0.src.tar
-mv cfe-7.1.0.src clang
+echo "Generating llvm project folder from compressed sources"
 
-curl -L -o compiler-rt-7.1.0.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-7.1.0/compiler-rt-7.1.0.src.tar.xz
-gunzip compiler-rt-7.1.0.src.tar.xz
-tar xf compiler-rt-7.1.0.src.tar
-rm -f compiler-rt-7.1.0.src.tar
-mv compiler-rt-7.1.0.src compiler-rt
+plzip -c -d ./compressed/clang.tar.lz > ./src/clang.tar
+plzip -c -d ./compressed/compiler-rt.tar.lz > ./src/compiler-rt.tar
+plzip -c -d ./compressed/libcxx.tar.lz > ./src/libcxx.tar
+plzip -c -d ./compressed/lldb.tar.lz > ./src/lldb.tar
+plzip -c -d ./compressed/llvm.tar.lz > ./src/llvm.tar
+plzip -c -d ./compressed/polly.tar.lz > ./src/polly.tar
 
-curl -L -o libcxx-7.1.0.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-7.1.0/libcxx-7.1.0.src.tar.xz
-gunzip libcxx-7.1.0.src.tar.xz
-tar xf libcxx-7.1.0.src.tar
-rm -f libcxx-7.1.0.src.tar
-mv libcxx-7.1.0.src libcxx
+cd src
 
-curl -L -o clang-tools-extra-7.1.0.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-7.1.0/clang-tools-extra-7.1.0.src.tar.xz
-gunzip clang-tools-extra-7.1.0.src.tar.xz
-tar xf clang-tools-extra-7.1.0.src.tar
-rm -f clang-tools-extra-7.1.0.src.tar
-mv clang-tools-extra-7.1.0.src clang-tools-extra
+tar xf clang.tar
+tar xf compiler-rt.tar
+tar xf libcxx.tar
+tar xf lldb.tar
+tar xf llvm.tar
+tar xf polly.tar
 
-curl -L -o lldb-7.1.0.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-7.1.0/lldb-7.1.0.src.tar.xz
-gunzip lldb-7.1.0.src.tar.xz
-tar xf lldb-7.1.0.src.tar
-rm -f lldb-7.1.0.src.tar
-mv lldb-7.1.0.src lldb
-
-curl -L -o polly-7.1.0.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-7.1.0/polly-7.1.0.src.tar.xz
-gunzip polly-7.1.0.src.tar.xz
-tar xf polly-7.1.0.src.tar
-rm -f polly-7.1.0.src.tar
-mv polly-7.1.0.src polly
+rm -f clang.tar
+rm -f compiler-rt.tar
+rm -f libcxx.tar
+rm -f lldb.tar
+rm -f llvm.tar
+rm -f polly.tar
 
 cd ../
 
-# 2. Apply the exact same patchs the MacPorts patch does
-cd src/llvm
-patch -p1 < ../../patches/0001-Set-the-Mach-O-CPU-Subtype-to-ppc7400-when-targeting.patch
-patch -p1 < ../../patches/0002-Define-EXC_MASK_CRASH-and-MACH_EXCEPTION_CODES-if-th.patch
-patch -p1 < ../../patches/0003-MacPorts-Only-Don-t-embed-the-deployment-target-in-t.patch
-patch -p1 < ../../patches/0004-Fix-build-issues-pre-Lion-due-to-missing-a-strnlen-d.patch
-patch -p1 < ../../patches/0005-Threading-Only-call-pthread_setname_np-on-SnowLeopar.patch
-
-cd ../clang
-patch -p3 < ../../patches/1001-MacPorts-Only-Prepare-clang-format-for-replacement-w.patch
-patch -p3 < ../../patches/1002-MacPorts-Only-Fix-name-of-scan-view-executable-insid.patch
-patch -p3 < ../../patches/1003-Default-to-ppc7400-for-OSX-10.5.patch
-patch -p3 < ../../patches/1004-Only-call-setpriority-PRIO_DARWIN_THREAD-0-PRIO_DARW.patch
-patch -p3 < ../../patches/1005-Default-to-fragile-ObjC-runtime-when-targeting-darwi.patch
-patch -p3 < ../../patches/1006-Fixup-libstdc-header-search-paths-for-older-versions.patch
-patch -p3 < ../../patches/1007-Fix-build-issues-pre-Lion-due-to-missing-a-strnlen-d.patch
-patch -p3 < ../../patches/openmp-locations.patch
-
-cd ../../
 
 # 3. Compile the sources as per the "Getting Started" guihe, with out options enabled
 LLVMMACROOT="${PWD}"
@@ -105,6 +75,10 @@ cmake -G "Unix Makefiles" \
   -DLLVM_BINDINGS_LIST=none \
   "${LLVMMACROOT}/src/llvm"
 make -j28
+
+# remove the old installation
+rm -rf "$1"
+
 make -j28 install
 
 # 4. make install doesn't move over libclang.a, so we'll need to do that manually

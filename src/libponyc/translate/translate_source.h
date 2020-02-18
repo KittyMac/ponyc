@@ -24,6 +24,9 @@ const char* translate_class_name(const char* name, bool makePrivate);
  */
 const char* translate_function_name(const char* name);
 
+extern const char * translate_clean_function_name_conflict(const char * name);
+extern const char * translate_clean_class_name_conflict(const char * name);
+
 /** Clean up after the two name translation functions above
  */
 void translate_free_name(const char* name);

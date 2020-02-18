@@ -153,6 +153,8 @@ const char * translate_clean_class_name_conflict(const char * name) {
   if (!strcmp(name, "End")) { return "EndPony"; }
   if (!strcmp(name, "Error")) { return "ErrorPony"; }
   
+  if (!strcmp(name, "Object")) { return "ObjectPony"; }
+  
   if (!strcmp(name, "For")) { return "ForPony"; }
   if (!strcmp(name, "Fun")) { return "FunPony"; }
   if (!strcmp(name, "If")) { return "IfPony"; }
@@ -285,6 +287,8 @@ const char * translate_clean_function_name_conflict(const char * name) {
   if (!strcmp(name, "embed")) { return "embed_pony"; }
   if (!strcmp(name, "end")) { return "end_pony"; }
   if (!strcmp(name, "error")) { return "error_pony"; }
+  
+  if (!strcmp(name, "object")) { return "object_pony"; }
   
   if (!strcmp(name, "for")) { return "for_pony"; }
   if (!strcmp(name, "fun")) { return "fun_pony"; }

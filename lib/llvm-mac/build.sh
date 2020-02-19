@@ -34,6 +34,7 @@ plzip -c -d ./compressed/libcxx.tar.lz > ./src/libcxx.tar
 plzip -c -d ./compressed/lldb.tar.lz > ./src/lldb.tar
 plzip -c -d ./compressed/llvm.tar.lz > ./src/llvm.tar
 plzip -c -d ./compressed/polly.tar.lz > ./src/polly.tar
+plzip -c -d ./compressed/clang-tools-extra.tar.lz > ./src/clang-tools-extra.tar
 
 cd src
 
@@ -43,6 +44,7 @@ tar xf libcxx.tar
 tar xf lldb.tar
 tar xf llvm.tar
 tar xf polly.tar
+tar xf clang-tools-extra.tar
 
 rm -f clang.tar
 rm -f compiler-rt.tar
@@ -50,6 +52,7 @@ rm -f libcxx.tar
 rm -f lldb.tar
 rm -f llvm.tar
 rm -f polly.tar
+rm -f clang-tools-extra.tar
 
 cd ../
 

@@ -599,8 +599,12 @@ enum CXChildVisitResult printFunctionDeclarations(CXCursor cursor, CXCursor pare
     }
     
     // is this a variadic function?
-    if(clang_isFunctionTypeVariadic (type)) {
-      *code = sdscatprintf(*code, ", ...");
+    if(type.kind != CXType_FunctionNoProto && clang_isFunctionTypeVariadic (type)) {
+      if(numParams > 0) {
+        *code = sdscatprintf(*code, ", ...");
+      }else{
+        *code = sdscatprintf(*code, "...");
+      }
     }
     
     *code = sdscatprintf(*code, ")\n");
@@ -820,13 +824,7 @@ enum CXChildVisitResult indentifyEnumContentRoot(CXCursor cursor, CXCursor paren
       const char * rootNameString = clang_getCString(rootName);
       
       unsigned long new_root = identifyRootName(rootNameString, nameString);
-      if(new_root < data->enum_content_root){
-        
-        // safety net. If the new root is the same size as me, then set to 0 (avoid empty enum name)
-        if(new_root == strlen(nameString) || new_root == strlen(rootNameString)) {
-          new_root = 0;
-        }
-        
+      if(new_root < data->enum_content_root){        
         data->enum_content_root = new_root;
         data->enum_last_root_cursor = cursor;
       }
@@ -834,6 +832,16 @@ enum CXChildVisitResult indentifyEnumContentRoot(CXCursor cursor, CXCursor paren
       clang_disposeString(rootName);
     }
   }
+  
+  
+  // make sure we don't get an empty string
+  CXString rootName = clang_getCursorSpelling(data->enum_last_root_cursor);
+  const char * rootNameString = clang_getCString(rootName);
+  if(data->enum_content_root == strlen(rootNameString)) {
+    data->enum_content_root = 0;
+  }
+  clang_disposeString(rootName);
+  
   
   clang_disposeString(name);
   

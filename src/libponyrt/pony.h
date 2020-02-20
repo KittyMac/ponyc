@@ -610,7 +610,7 @@ PONY_API bool pony_try(pony_partial_fn callback, void* data);
  * If pony_error() is called and neither pony_try() nor a try block exist higher
  * in the call stack, the runtime calls the C abort() function.
  */
-PONY_API void pony_error();
+PONY_API void pony_error(void);
 
 /**
  * Raise a Pony error.
@@ -640,12 +640,12 @@ PONY_API void pony_error_int(uint32_t errcode, void * location);
  * This should only be called from inside an try-else block or any other place
  * were execution has returned to after an error has been thrown.
  */
-PONY_API uint32_t pony_error_code();
+PONY_API uint32_t pony_error_code(void);
 
 /**
  * Call this to throw the previous pony error again (with the same code and the same loc)
  */
-PONY_API void pony_error_again();
+PONY_API void pony_error_again(void);
 
 /**
  * Retrieve a string representing the location the error was raised.
@@ -653,7 +653,7 @@ PONY_API void pony_error_again();
  * This should only be called from inside an try-else block or any other place
  * were execution has returned to after an error has been thrown.
  */
-PONY_API void * pony_error_loc();
+PONY_API void * pony_error_loc(void);
 
 
 #if defined(__cplusplus)

@@ -1,5 +1,7 @@
 use "time"
 
+use @open[I32](path:Pointer[U8] tag, oflag:U32, omode:U32)
+
 use @ponyint_o_rdonly[I32]()
 use @ponyint_o_rdwr[I32]()
 use @ponyint_o_creat[I32]()
@@ -51,10 +53,10 @@ class Directory
 
     ifdef posix then
       _fd =
-        @open[I32](from.path.cstring(),
-          @ponyint_o_rdonly()
+        @open(from.path.cstring(),
+          (@ponyint_o_rdonly()
             or @ponyint_o_directory()
-            or @ponyint_o_cloexec())
+            or @ponyint_o_cloexec()).u32(), 0x1B6)
 
       if _fd == -1 then
         error

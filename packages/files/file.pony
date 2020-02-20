@@ -124,7 +124,7 @@ class File
       _fd = ifdef windows then
         @_open[I32](path.path.cstring(), flags, mode.i32())
       else
-        @open[I32](path.path.cstring(), flags, mode)
+        @open(path.path.cstring(), flags.u32(), mode.u32())
       end
 
       if _fd == -1 then
@@ -161,7 +161,7 @@ class File
       _fd = ifdef windows then
         @_open[I32](path.path.cstring(), @ponyint_o_rdonly())
       else
-        @open[I32](path.path.cstring(), @ponyint_o_rdonly())
+        @open(path.path.cstring(), @ponyint_o_rdonly().u32(), 0x1B6)
       end
 
       if _fd == -1 then

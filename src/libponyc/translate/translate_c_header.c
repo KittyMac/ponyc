@@ -804,7 +804,17 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
 
 
 
-
+void confirmEnumContentRootIsNotEmpty(CXClientData client_data) {
+  VisitorData * data = (VisitorData *)client_data;
+  
+  // make sure we don't get an empty string
+  CXString rootName = clang_getCursorSpelling(data->enum_last_root_cursor);
+  const char * rootNameString = clang_getCString(rootName);
+  if(data->enum_content_root == strlen(rootNameString)) {
+    data->enum_content_root = 0;
+  }
+  clang_disposeString(rootName);
+}
 
 enum CXChildVisitResult indentifyEnumContentRoot(CXCursor cursor, CXCursor parent, CXClientData client_data) {
   ((void) parent);
@@ -832,16 +842,6 @@ enum CXChildVisitResult indentifyEnumContentRoot(CXCursor cursor, CXCursor paren
       clang_disposeString(rootName);
     }
   }
-  
-  
-  // make sure we don't get an empty string
-  CXString rootName = clang_getCursorSpelling(data->enum_last_root_cursor);
-  const char * rootNameString = clang_getCString(rootName);
-  if(data->enum_content_root == strlen(rootNameString)) {
-    data->enum_content_root = 0;
-  }
-  clang_disposeString(rootName);
-  
   
   clang_disposeString(name);
   
@@ -892,6 +892,7 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
         
         data->enum_content_root = kEnumContentRootMax;
         clang_visitChildren(cursor, indentifyEnumContentRoot, client_data);
+        confirmEnumContentRootIsNotEmpty(client_data);
         clang_visitChildren(cursor, printEnumContents, client_data);
         
       }else{
@@ -911,6 +912,7 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
         
         data->enum_content_root = kEnumContentRootMax;
         clang_visitChildren(cursor, indentifyEnumContentRoot, client_data);
+        confirmEnumContentRootIsNotEmpty(client_data);
         clang_visitChildren(cursor, printEnumContents, client_data);
         
         

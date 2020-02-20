@@ -1228,13 +1228,13 @@ actor Main
 
     consume result
 
-  fun ref strip(s: String box = " \t\v\f\r\n") =>
+  fun ref strip(s: String box = " \t\v\f\r\n", max:USize = 0) =>
     """
     Remove all leading and trailing characters from the string that are in s.
     """
-    this .> lstrip(s) .> rstrip(s)
+    this .> lstrip(s, max) .> rstrip(s, max)
 
-  fun ref rstrip(s: String box = " \t\v\f\r\n") =>
+  fun ref rstrip(s: String box = " \t\v\f\r\n", max:USize = 0) =>
     """
     Remove all trailing characters within the string that are in s. By default,
     trailing whitespace is removed.
@@ -1242,6 +1242,7 @@ actor Main
     if _size > 0 then
       let chars = Array[U32](s.size())
       var i = _size - 1
+      var n = USize(0)
       var truncate_at = _size
 
       for rune in s.runes() do
@@ -1256,7 +1257,13 @@ actor Main
             if not chars.contains(c) then
               break
             end
-	    truncate_at = i
+	          truncate_at = i
+            if max != 0 then
+              n = n + 1
+              if n >= max then
+                break
+              end
+            end
           end
         else
           break
@@ -1266,7 +1273,7 @@ actor Main
       truncate(truncate_at)
     end
 
-  fun ref lstrip(s: String box = " \t\v\f\r\n") =>
+  fun ref lstrip(s: String box = " \t\v\f\r\n", max:USize = 0) =>
     """
     Remove all leading characters within the string that are in s. By default,
     leading whitespace is removed.
@@ -1274,6 +1281,7 @@ actor Main
     if _size > 0 then
       let chars = Array[U32](s.size())
       var i = USize(0)
+      var n = USize(0)
 
       for rune in s.runes() do
         chars.push(rune)
@@ -1286,6 +1294,12 @@ actor Main
             break
           end
           i = i + len.usize()
+          if max != 0 then
+            n = n + 1
+            if n >= max then
+              break
+            end
+          end
         else
           break
         end

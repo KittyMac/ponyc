@@ -2,6 +2,7 @@ use "collections"
 use "files"
 use "time"
 
+type ProcessRunnerFinished is {(I32)}
 
 actor ProcessRunner
   """
@@ -23,6 +24,8 @@ actor ProcessRunner
 
   var _closed: Bool = false
   
+  let _finishedCallback:ProcessRunnerFinished val
+  
   fun _tag():USize => 9002
   fun _priority():USize => 100
   fun _batch():USize => 5_000_000
@@ -30,8 +33,10 @@ actor ProcessRunner
   new create(
     programPath: String val,
     args: Array[String] val,
-    vars: Array[String] val)?
+    vars: Array[String] val,
+    finishedCallback:ProcessRunnerFinished val)?
   =>
+    _finishedCallback = finishedCallback
     _stdin = _Pipe.outgoing()?
     _stdout = _Pipe.incoming()?
     _stderr = _Pipe.incoming()?
@@ -128,18 +133,10 @@ actor ProcessRunner
       _stdin.close()
       _stdout.close()
       _stderr.close()
-      _child.wait()
+      let exit_code = _child.wait()
       
-      // TODO: Do something
-      /*
-      if exit_code < 0 then
-        // An error waiting for pid
-        _notifier.failed(this, WaitpidError)
-      else
-        // process child exit code
-        _notifier.dispose(this, exit_code)
-      end
-      */
+      _finishedCallback(exit_code)
+      
     end
 
   fun ref _try_shutdown() =>
@@ -257,42 +254,3 @@ actor ProcessRunner
       end
     end
     
-    /*
-    while (not _closed) and not _stdin.is_closed() and (_pending.size() > 0) do
-      try
-        let node = _pending.head()?
-        (let data, let offset) = node()?
-
-        // Write as much data as possible.
-        (let len, let errno) = _stdin.write(data, offset)
-
-        if len == -1 then // OS signals write error
-          if errno == _EAGAIN() then
-            // Resource temporarily unavailable, send data later.
-            return
-          else
-            // Close pipe and bail out.
-            //_notifier.failed(this, WriteError)
-            _stdin.close_near()
-            return
-          end
-        elseif (len.usize() + offset) < data.size() then
-          // Send remaining data later.
-          node()? = (data, offset + len.usize())
-        else
-          // This pending chunk has been fully sent.
-          _pending.shift()?
-          if (_pending.size() == 0) then
-            // check if the client has signaled it is done
-            if _done_writing then
-              _stdin.close_near()
-            end
-          end
-        end
-      else
-        // handle error
-        //_notifier.failed(this, WriteError)
-        return
-      end
-    end
-    */

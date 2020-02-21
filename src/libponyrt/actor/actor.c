@@ -676,6 +676,12 @@ void ponyint_actor_yield(pony_actor_t* actor)
 	actor->yield = true;
 }
 
+void ponyint_actor_flag_gc(pony_actor_t* actor)
+{
+	// setting to true will cause the actor to end its run early
+	actor->heap_is_dirty = true;
+}
+
 PONY_API pony_actor_t* pony_create(pony_ctx_t* ctx, pony_type_t* type)
 {
   pony_assert(type != NULL);

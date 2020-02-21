@@ -78,7 +78,7 @@ void errors_set_output_stream(errors_t* errors, FILE* fp)
   errors->output_stream = fp;
 }
 
-static void error_print_msg(errormsg_t* e, FILE* fp, const char* indent)
+static void error_print_msg(errormsg_t* e, FILE* fp, const char* label, const char* indent)
 {
   if(e->file != NULL)
   {
@@ -86,7 +86,7 @@ static void error_print_msg(errormsg_t* e, FILE* fp, const char* indent)
 
     if(e->line != 0)
     {
-      fprintf(fp, __zu ":" __zu ": ", e->line, e->pos);
+      fprintf(fp, __zu ":" __zu ": %s: ", e->line, e->pos, label);
     }
     else {
       fprintf(fp, " ");
@@ -115,14 +115,14 @@ static void error_print_msg(errormsg_t* e, FILE* fp, const char* indent)
 static void error_print(errormsg_t* e, FILE* fp)
 {
   fprintf(fp, "Error:\n");
-  error_print_msg(e, fp, "");
+  error_print_msg(e, fp, "error", "");
 
   if(e->frame != NULL)
   {
     fprintf(fp, "    Info:\n");
 
     for(errormsg_t* ef = e->frame; ef != NULL; ef = ef->frame)
-      error_print_msg(ef, fp, "    ");
+      error_print_msg(ef, fp, "info", "    ");
   }
 }
 

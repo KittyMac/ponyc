@@ -326,19 +326,17 @@ void ponyint_cpu_core_pause(uint64_t tsc, uint64_t tsc2, bool yield)
 #endif
 	
 #if defined(PLATFORM_IS_IOS) || defined(PLATFORM_IS_MACOSX)
-	// on apple the numbers here are nanoseconds, not cycles.
-	// If we just use a ratio to determine how long to sleep
-  	// then it seems like we use less cpu while idle but still
-    // allow lots of cpu while busy.
-	// 10m cycles is about 3ms
-#if !defined(PLATFORM_IS_IOS)
-	if((tsc2 - tsc) < 10000000)
-		return;
-#endif
-    if(yield)
-    {
+  // on apple the numbers here are nanoseconds, not cycles.
+  // If we just use a ratio to determine how long to sleep
+  // then it seems like we use less cpu while idle but still
+  // allow lots of cpu while busy.
+  // 10m cycles is about 3ms
+  if(yield)
+  {
 		ts.tv_nsec = (long)((tsc2 - tsc) / cpu_throttle_value);
-		nanosleep(&ts, NULL);
+    if(ts.tv_nsec > 10000000) {
+      nanosleep(&ts, NULL);
+    }
 	}
 	
 	return;

@@ -42,6 +42,12 @@ struct Pointer[A]
     Retrieve index i.
     """
     compile_intrinsic
+  
+  fun pointee(): this->A =>
+    """
+    Dereference the pointer
+    """
+    _apply(0)
 
   fun ref _update(i: USize, value: A!): A^ =>
     """

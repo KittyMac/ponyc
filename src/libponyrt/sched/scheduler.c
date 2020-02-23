@@ -797,8 +797,6 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
 
   while(true)
   {
-	uint64_t tsc2 = ponyint_cpu_tick();
-	
     victim = choose_victim(sched);
   
     if(sched->main_thread) {
@@ -810,7 +808,7 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
     actor = pop_global(victim);
     if(actor != NULL)
       break;
-
+    
     if(read_msg(sched))
     {
       // An actor was unmuted and added to our run queue. Pop it and return.
@@ -822,7 +820,9 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
       if(actor != NULL)
         break;
     }
-
+    
+    uint64_t tsc2 = ponyint_cpu_tick();
+    
     if(quiescent(sched, tsc, tsc2))
     {
       DTRACE2(WORK_STEAL_FAILURE, (uintptr_t)sched, (uintptr_t)victim);

@@ -292,7 +292,12 @@ actor Main
     Returns the space available for data, not including the null terminator.
     """
     if is_null_terminated() then _alloc - 1 else _alloc end
-
+  
+  fun tag next_growth_size(s:USize):USize =>
+    //s * 2
+    s.next_pow2()
+    //(s + s.next_pow2()) / 2
+  
   fun ref reserve(len: USize) =>
     """
     Reserve space for len bytes. An additional byte will be reserved for the
@@ -302,7 +307,7 @@ actor Main
       let max = len.max_value() - 1
       let min_alloc = len.min(max) + 1
       if min_alloc <= (max / 2) then
-        _alloc = min_alloc.next_pow2()
+        _alloc = next_growth_size(min_alloc)
       else
         _alloc = min_alloc.min(max)
       end
@@ -315,8 +320,8 @@ actor Main
     request may be ignored. The string is returned to allow call chaining.
     """
     if (_size + 1) <= 512 then
-      if (_size + 1).next_pow2() != _alloc.next_pow2() then
-        _alloc = (_size + 1).next_pow2()
+      if next_growth_size(_size + 1) != next_growth_size(_alloc) then
+        _alloc = next_growth_size(_size + 1)
         let old_ptr = _ptr = Pointer[U8]._alloc(_alloc)
         old_ptr._copy_to(_ptr, _size)
         _set(_size, 0)

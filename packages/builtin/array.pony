@@ -85,6 +85,11 @@ class Array[A] is Seq[A]
   var _size: USize
   var _alloc: USize
   var _ptr: Pointer[A]
+  
+  fun tag next_growth_size(s:USize):USize =>
+    //s * 2
+    s.next_pow2()
+    //(s + s.next_pow2()) / 2
 
   new create(len: USize = 0) =>
     """
@@ -93,7 +98,7 @@ class Array[A] is Seq[A]
     _size = 0
 
     if len > 0 then
-      _alloc = len.next_pow2().max(len).max(8)
+      _alloc = next_growth_size(len).max(len).max(8)
       _ptr = Pointer[A]._alloc(_alloc)
     else
       _alloc = 0
@@ -107,7 +112,7 @@ class Array[A] is Seq[A]
     _size = len
 
     if len > 0 then
-      _alloc = len.next_pow2().max(len).max(8)
+      _alloc = next_growth_size(len).max(len).max(8)
       _ptr = Pointer[A]._alloc(_alloc)
 
       var i: USize = 0
@@ -177,7 +182,7 @@ class Array[A] is Seq[A]
     the array. Array space grows geometrically.
     """
     if _alloc < len then
-      _alloc = len.next_pow2().max(len).max(8)
+      _alloc = next_growth_size(len).max(len).max(8)
       _ptr = _ptr._realloc(_alloc)
     end
 
@@ -193,8 +198,8 @@ class Array[A] is Seq[A]
     request may be ignored.
     """
     if _size <= (512 / _ptr._element_size()) then
-      if _size.next_pow2() != _alloc.next_pow2() then
-        _alloc = _size.next_pow2()
+      if next_growth_size(_size) != next_growth_size(_alloc) then
+        _alloc = next_growth_size(_size)
         let old_ptr = _ptr = Pointer[A]._alloc(_alloc)
         old_ptr._copy_to(_ptr._convert[A!](), _size)
       end

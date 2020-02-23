@@ -334,7 +334,7 @@ void ponyint_cpu_core_pause(uint64_t tsc, uint64_t tsc2, bool yield)
   if(yield)
   {
 		ts.tv_nsec = (long)((tsc2 - tsc) / cpu_throttle_value);
-    if(ts.tv_nsec > 10000000) {
+    if(ts.tv_nsec > 10000) {
       nanosleep(&ts, NULL);
     }
 	}

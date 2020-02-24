@@ -483,36 +483,7 @@ static bool quiescent(scheduler_t* sched, uint64_t tsc, uint64_t tsc2)
 
 static scheduler_t* choose_victim(scheduler_t* sched)
 {
-  // we have work to do, why are we bothering to steal?
-  if(sched->q.num_messages > 0) {
-    return sched;
-  }
-  // did the last one we steal from have more work?
-  if(sched->last_victim->q.num_messages > 0) {
-    return sched->last_victim;
-  }
-  // If the inject queue has work, we can end very quickly
-  if(inject.num_messages > 0) {
-    return sched->last_victim;
-  }
-  
-  // Start with a quick scan of all schedulers to check their num_messages and see if any
-  // have waiting work.  If they do we can end quickly with a better guess as a victim.
   uint32_t current_active_scheduler_count = get_active_scheduler_count();
-  scheduler_t* scan_victim = scheduler;
-  scheduler_t* max_victim = scheduler;
-  uint32_t i = 0;
-  while (i++ < current_active_scheduler_count) {
-    // find the victim with the most work in their queue
-    if(scan_victim->q.num_messages > max_victim->q.num_messages) {
-	  max_victim = scan_victim;
-    }
-    scan_victim += 1;
-  }
-  if(max_victim != sched) {
-    sched->last_victim = max_victim;
-    return max_victim;
-  }
   
   scheduler_t* victim = sched->last_victim;
   

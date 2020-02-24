@@ -256,18 +256,19 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
     };
   
   // print out our analysis to the console
-  // 1. overloaded actors
-  if (has_overloaded || has_muted || has_pressure) {
     
-    // determine if we have any untagged actors
-    bool hasUntaggedActors = false;
-    for(unsigned int i = 0; i < kMaxActors; i++) {
-      if ( actor_tags[i] == 0 && (pressure_total[i] > 0 || muted_total[i] > 0 || overload_counts[i] > 0)) {
-        hasUntaggedActors = true;
-        break;
-      }
+  // determine if we have any untagged actors
+  bool hasUntaggedActors = false;
+  for(unsigned int i = 0; i < kMaxActors; i++) {
+    if ( actor_tags[i] == 0 && (pressure_total[i] > 0 || muted_total[i] > 0 || overload_counts[i] > 0)) {
+      hasUntaggedActors = true;
+      break;
     }
-        
+  }
+    
+    
+  // 1. overloaded actors
+  if (has_overloaded || has_muted || has_pressure) {    
     fprintf(stderr, "\n\n%s**** Pony Runtime Analysis: ISSUES FOUND%s\n\n", redColor, resetColor);
     if (has_overloaded) {
       uint64_t max_actors[kMaxActorsPerReport] = {0};
@@ -350,64 +351,6 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
       fprintf(stderr, "As this is a opt-in system, this is just to inform you that backpressure is being\n");
       fprintf(stderr, "applied and the amount of time your actors are stopped due to it.%s\n\n", resetColor);
     }
-    
-    // Note: it appears the runtime doesn't bother calling actor destroy when the program finished normally
-    // (i don't blame it), so this report should only be useful for someone who SIGINT'd the program
-    if (analysisThreadWasKilledUnexpectedly) {
-      // In the case of us force quitting the app (because its not ending correctly?) it would be nice
-      // to see a list of actors still running (haven't been destroyed)
-      for(uint64_t i = 0; i < kMaxActors; i++) {
-        if (destroyed_flags[i] == 1) { // all actors still alive...
-          if (actor_tags[i] == 0) {
-            fprintf(stderr, "%sactor [untagged] was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, i, last_msg_count[i], resetColor);
-          } else {
-            if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
-              fprintf(stderr, "%sactor %s was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], i, last_msg_count[i], resetColor);
-            } else {
-              fprintf(stderr, "%sactor tag %llu was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, actor_tags[i], i, last_msg_count[i], resetColor);
-            }
-          }
-        }
-      }
-      
-      fprintf(stderr, "\n");
-      
-      fprintf(stderr, "%sPony programs end when all actors have been destroyed and all schedulers have been shut down.\n", darkGreyColor);
-      fprintf(stderr, "If you are reading this message then most likely you had to terminate the program manually.\n");
-      fprintf(stderr, "You can use this list of actors to help narrow down why the actors didn't finish processing.%s\n", resetColor);
-      
-      fprintf(stderr, "\n");
-      
-      // Report on the active schedulers...
-      uint32_t active_scheduler_count = get_active_scheduler_count();
-      
-      fprintf(stderr, "There are %d active schedulers\n\n", active_scheduler_count);
-      for(uint32_t i = 0; i < active_scheduler_count; i++) {
-        scheduler_t * sched = ponyint_sched_by_index(i);
-        
-                                        fprintf(stderr, "  Scheduler #%d: \n", sched->index);
-        if((int32_t)sched->cpu >= 0) {  fprintf(stderr, "     cpu / node: %d / %d \n", sched->cpu, sched->node); }
-        if(sched->terminate) {          fprintf(stderr, "     is terminate\n"); }
-        if(sched->asio_stoppable) {     fprintf(stderr, "     is asio stoppable \n"); }
-        if(sched->asio_noisy) {         fprintf(stderr, "     is asio noisy \n"); }
-        if(sched->main_thread) {        fprintf(stderr, "     is main thread \n");  }
-        if(sched->block_count) {        fprintf(stderr, "     block_count: %d \n", sched->block_count); }
-        if(sched->ack_token) {          fprintf(stderr, "     ack_token: %d \n", sched->ack_token); }
-        if(sched->ack_count) {          fprintf(stderr, "     ack_count: %d \n", sched->ack_count); }
-                                        fprintf(stderr, "     waiting actors: %lld \n", sched->q.num_messages);
-        if(sched->mq.num_messages) {    fprintf(stderr, "     mq num msgs: %lld\n", sched->mq.num_messages);  }
-      }
-      fprintf(stderr, "\n\n");
-      fprintf(stderr, "There are %lld actors waiting in inject queue\n", ponyint_size_of_inject_queue());
-      fprintf(stderr, "There are %lld actors waiting in inject main queue\n\n", ponyint_size_of_inject_main_queue());
-    }
-    
-    if (hasUntaggedActors) {
-      fprintf(stderr, "\n\n%sNote: You can tag actors to associate results with specific types of actors.\n", darkGreyColor);
-      fprintf(stderr, "actor Foo\n");
-      fprintf(stderr, "  fun _tag():USize => 2%s\n\n", resetColor);
-    }
-    
   }else{
     fprintf(stderr, "\n\n%s**** Pony Runtime Analysis: PASS%s\n\n", greenColor, resetColor);
   }
@@ -441,6 +384,65 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
     fprintf(stderr, "in performance gains%s\n\n", resetColor);
     
     fprintf(stderr, "\n");
+  }
+  
+  
+  
+  // Note: it appears the runtime doesn't bother calling actor destroy when the program finished normally
+  // (i don't blame it), so this report should only be useful for someone who SIGINT'd the program
+  if (analysisThreadWasKilledUnexpectedly) {
+    // In the case of us force quitting the app (because its not ending correctly?) it would be nice
+    // to see a list of actors still running (haven't been destroyed)
+    for(uint64_t i = 0; i < kMaxActors; i++) {
+      if (destroyed_flags[i] == 1) { // all actors still alive...
+        if (actor_tags[i] == 0) {
+          fprintf(stderr, "%sactor [untagged] was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, i, last_msg_count[i], resetColor);
+        } else {
+          if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+            fprintf(stderr, "%sactor %s was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], i, last_msg_count[i], resetColor);
+          } else {
+            fprintf(stderr, "%sactor tag %llu was never destroyed [UID: %llu, NumMsgs: %llu]%s\n", orangeColor, actor_tags[i], i, last_msg_count[i], resetColor);
+          }
+        }
+      }
+    }
+    
+    fprintf(stderr, "\n");
+    
+    fprintf(stderr, "%sPony programs end when all actors have been destroyed and all schedulers have been shut down.\n", darkGreyColor);
+    fprintf(stderr, "If you are reading this message then most likely you had to terminate the program manually.\n");
+    fprintf(stderr, "You can use this list of actors to help narrow down why the actors didn't finish processing.%s\n", resetColor);
+    
+    fprintf(stderr, "\n");
+    
+    // Report on the active schedulers...
+    uint32_t active_scheduler_count = get_active_scheduler_count();
+    
+    fprintf(stderr, "There are %d active schedulers\n\n", active_scheduler_count);
+    for(uint32_t i = 0; i < active_scheduler_count; i++) {
+      scheduler_t * sched = ponyint_sched_by_index(i);
+      
+                                      fprintf(stderr, "  Scheduler #%d: \n", sched->index);
+      if((int32_t)sched->cpu >= 0) {  fprintf(stderr, "     cpu / node: %d / %d \n", sched->cpu, sched->node); }
+      if(sched->terminate) {          fprintf(stderr, "     is terminate\n"); }
+      if(sched->asio_stoppable) {     fprintf(stderr, "     is asio stoppable \n"); }
+      if(sched->asio_noisy) {         fprintf(stderr, "     is asio noisy \n"); }
+      if(sched->main_thread) {        fprintf(stderr, "     is main thread \n");  }
+      if(sched->block_count) {        fprintf(stderr, "     block_count: %d \n", sched->block_count); }
+      if(sched->ack_token) {          fprintf(stderr, "     ack_token: %d \n", sched->ack_token); }
+      if(sched->ack_count) {          fprintf(stderr, "     ack_count: %d \n", sched->ack_count); }
+                                      fprintf(stderr, "     waiting actors: %lld \n", sched->q.num_messages);
+      if(sched->mq.num_messages) {    fprintf(stderr, "     mq num msgs: %lld\n", sched->mq.num_messages);  }
+    }
+    fprintf(stderr, "\n\n");
+    fprintf(stderr, "There are %lld actors waiting in inject queue\n", ponyint_size_of_inject_queue());
+    fprintf(stderr, "There are %lld actors waiting in inject main queue\n\n", ponyint_size_of_inject_main_queue());
+  }
+  
+  if (hasUntaggedActors) {
+    fprintf(stderr, "\n\n%sNote: You can tag actors to associate results with specific types of actors.\n", darkGreyColor);
+    fprintf(stderr, "actor Foo\n");
+    fprintf(stderr, "  fun _tag():USize => 2%s\n\n", resetColor);
   }
   
   return NULL;

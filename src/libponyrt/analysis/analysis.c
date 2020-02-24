@@ -118,7 +118,6 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
   bool has_muted = false;
   bool has_pressure = false;
   bool has_gc = false;
-  bool has_destroyed = true;
   
   memset(overload_counts, 0, kMaxActors * sizeof(uint64_t));
   memset(gc_counts, 0, kMaxActors * sizeof(uint64_t));
@@ -238,6 +237,8 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
   char * darkGreyColor =  "\x1B[90m";
   char * orangeColor =  "\x1B[31m";
   
+  const int kMaxActorsPerReport = 10;
+  
   const int kActorNameStart = 9000;
   const int kActorNameEnd = 9010;
   char * builtinActorNames[] = {
@@ -256,8 +257,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
   
   // print out our analysis to the console
   // 1. overloaded actors
-  if (has_overloaded || has_muted || has_pressure || has_gc || has_destroyed) {
-    const int kMaxActorsPerReport = 10;
+  if (has_overloaded || has_muted || has_pressure) {
     
     // determine if we have any untagged actors
     bool hasUntaggedActors = false;
@@ -351,37 +351,6 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
       fprintf(stderr, "applied and the amount of time your actors are stopped due to it.%s\n\n", resetColor);
     }
     
-    if (has_gc) {
-      uint64_t max_actors[kMaxActorsPerReport] = {0};
-      uint64_t total_reported = 0;
-      uint64_t max_reported = findTopActorsInValues(memory_max, kMaxActors, max_actors, kMaxActorsPerReport, &total_reported);
-      float to_mb = (1024 * 1024);
-      for(uint64_t v = 0; v < max_reported; v++) {
-        uint64_t i = max_actors[v];
-        if (actor_tags[i] == 0) {
-          fprintf(stderr, "%sactor [untagged] garbage collected %llu times and had a max heap size was %0.2f MB%s\n", orangeColor, gc_counts[i], memory_max[i] / to_mb, resetColor);
-        } else {
-          if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
-            fprintf(stderr, "%sactor %s garbage collected %llu times and had a max heap size was %0.2f MB%s\n", orangeColor, builtinActorNames[actor_tags[i] - kActorNameStart], gc_counts[i], memory_max[i] / to_mb, resetColor);
-          } else {
-            fprintf(stderr, "%sactor tag %llu garbage collected %llu times and had a max heap size was %0.2f MB%s\n", orangeColor, actor_tags[i], gc_counts[i], memory_max[i] / to_mb, resetColor);
-          }
-        }
-      }
-      if (total_reported > max_reported) {
-        fprintf(stderr, "%s... %llu other actors also garbage collected%s\n", darkGreyColor, total_reported-max_reported, resetColor);
-      }
-      fprintf(stderr, "\n");
-      
-      fprintf(stderr, "%sLarge amounts of garbage collection in Pony can mean two things\n", darkGreyColor);
-      fprintf(stderr, "1. Time spent garbage collecting when it could be spent elsewhere\n");
-      fprintf(stderr, "2. Garbage collection of data shared between actors requires messaging between actors to resolve\n");
-      fprintf(stderr, "Reducing the amount of transitory memory allocations in critical paths can result\n");
-      fprintf(stderr, "in performance gains%s\n\n", resetColor);
-      
-      fprintf(stderr, "\n");
-    }
-    
     // Note: it appears the runtime doesn't bother calling actor destroy when the program finished normally
     // (i don't blame it), so this report should only be useful for someone who SIGINT'd the program
     if (analysisThreadWasKilledUnexpectedly) {
@@ -441,6 +410,37 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
     
   }else{
     fprintf(stderr, "\n\n%s**** Pony Runtime Analysis: PASS%s\n\n", greenColor, resetColor);
+  }
+  
+  if (has_gc) {
+    uint64_t max_actors[kMaxActorsPerReport] = {0};
+    uint64_t total_reported = 0;
+    uint64_t max_reported = findTopActorsInValues(memory_max, kMaxActors, max_actors, kMaxActorsPerReport, &total_reported);
+    float to_mb = (1024 * 1024);
+    for(uint64_t v = 0; v < max_reported; v++) {
+      uint64_t i = max_actors[v];
+      if (actor_tags[i] == 0) {
+        fprintf(stderr, "%sactor [untagged] garbage collected %llu times and had a max heap size was %0.2f MB%s\n", darkGreyColor, gc_counts[i], memory_max[i] / to_mb, resetColor);
+      } else {
+        if (actor_tags[i] >= kActorNameStart && actor_tags[i] <= kActorNameEnd) {
+          fprintf(stderr, "%sactor %s garbage collected %llu times and had a max heap size was %0.2f MB%s\n", darkGreyColor, builtinActorNames[actor_tags[i] - kActorNameStart], gc_counts[i], memory_max[i] / to_mb, resetColor);
+        } else {
+          fprintf(stderr, "%sactor tag %llu garbage collected %llu times and had a max heap size was %0.2f MB%s\n", darkGreyColor, actor_tags[i], gc_counts[i], memory_max[i] / to_mb, resetColor);
+        }
+      }
+    }
+    if (total_reported > max_reported) {
+      fprintf(stderr, "%s... %llu other actors also garbage collected%s\n", darkGreyColor, total_reported-max_reported, resetColor);
+    }
+    fprintf(stderr, "\n");
+    
+    fprintf(stderr, "%sLarge amounts of garbage collection in Pony can mean two things\n", darkGreyColor);
+    fprintf(stderr, "1. Time spent garbage collecting when it could be spent elsewhere\n");
+    fprintf(stderr, "2. Garbage collection of data shared between actors requires messaging between actors to resolve\n");
+    fprintf(stderr, "Reducing the amount of transitory memory allocations in critical paths can result\n");
+    fprintf(stderr, "in performance gains%s\n\n", resetColor);
+    
+    fprintf(stderr, "\n");
   }
   
   return NULL;

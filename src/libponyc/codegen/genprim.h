@@ -7,6 +7,8 @@
 
 PONY_EXTERN_C_BEGIN
 
+void genprim_unsafe_pointer_methods(compile_t* c, reach_type_t* t);
+
 void genprim_pointer_methods(compile_t* c, reach_type_t* t);
 
 void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t);

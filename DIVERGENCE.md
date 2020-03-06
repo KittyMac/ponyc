@@ -2,6 +2,12 @@
 
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
+## UnsafePointer
+
+Pony is great at providing seamless FFI support. However, full access to Pointer is restricted to the builtin classes only. This makes it impossible(?) to implement your own full-featured Array class, unless you also include that in the builtins.  I needed to write an AlignedArray class which allocates memory not using the Pony memory system (the aligned array is then sent to over FFI and control relinquished at that point).  This is now possible with the addition of the UnsafePointer class.
+
+Small Rant: Pony seems a bit torn between wanting to keep developers safe by disallowing them access to harmful tools. For example, we have this wonderful and powerful full FFI system which bipasses all safeguards, but we can only have a severely restricted Pointer class. I can understand the reasoning, but I am not a big fan of "golden handcuffs" that keep me safe but make it impossible to implement the things I need.  Hence, my fork now has an UnsafePointer class and if you misuse it that's on you.
+
 ## Transpile C headers automatically to Pony FFI code
 
 Pony is awesome in that it exposes C FFI calls so readily in the language. However if you are going to make heavy use of an existing C library, there is potentially a lot of glue code which needs to be written and maintained.  Not to mention fragile if you want to update to a newer version of said library.  

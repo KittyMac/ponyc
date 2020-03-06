@@ -378,9 +378,9 @@ class Array[A] is Seq[A]
     """
     Find and delete the first item matching item
     """
-	try
-		delete(find(item)?)?
-	end
+  	try
+  		delete(find(item)?)?
+  	end
 
   fun ref deleteAll(item: A) =>
     """

@@ -26,6 +26,7 @@ static bool void_star_param(ast_t* param_type, ast_t* arg_type)
     arg_type = ast_childidx(arg_type, 1);
 
   if(is_pointer(arg_type) ||
+    is_unsafe_pointer(arg_type) ||
     is_nullable_pointer(arg_type) ||
     is_literal(arg_type, "USize"))
     return true;

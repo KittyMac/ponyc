@@ -407,6 +407,10 @@ bool genserialise(compile_t* c, reach_type_t* t)
         // Don't serialise Pointer[A]
         if(name == c->str_Pointer)
           return true;
+        
+        // Don't serialise UnsafePointer[A]
+        if(name == c->str_UnsafePointer)
+          return true;
       }
       break;
     }

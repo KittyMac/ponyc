@@ -79,8 +79,11 @@ bool use_package(ast_t* ast, const char* path, ast_t* name,
 {
   pony_assert(ast != NULL);
   pony_assert(path != NULL);
+  
+  // TODO: tie this in!
+  time_t most_recent_modified_date = 0;
 
-  ast_t* package = package_load(ast, path, options);
+  ast_t* package = package_load(ast, path, options, &most_recent_modified_date);
 
   if(package == NULL)
   {

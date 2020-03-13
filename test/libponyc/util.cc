@@ -502,6 +502,8 @@ void PassTest::build_package(const char* pass, const char* src,
   bool resume)
 {
   ASSERT_NE((void*)NULL, pass);
+  
+  time_t most_recent_modified_date = 0;
 
   if(!resume)
   {
@@ -536,7 +538,7 @@ void PassTest::build_package(const char* pass, const char* src,
     package_add_magic_src(package_name, src, &opt);
 
     limit_passes(&opt, pass);
-    program = program_load(stringtab(package_name), &opt);
+    program = program_load(stringtab(package_name), &opt, &most_recent_modified_date);
 
     if((program != NULL) && (opt.limit >= PASS_REACH))
     {

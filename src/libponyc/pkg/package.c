@@ -222,12 +222,21 @@ static int string_compare(const void* a, const void* b)
   return strcmp(*(const char**)a, *(const char**)b);
 }
 
+static void get_most_recent_file_modification_date(const char * file_path, time_t * other_time)
+{
+  struct stat attr;
+  if(stat(file_path, &attr) == 0){
+    if (attr.st_mtime > *other_time) {
+      *other_time = attr.st_mtime;
+    }
+  }
+}
 
 // Attempt to parse the source files in the specified directory and add them to
 // the given package AST
 // @return true on success, false on error
 static bool parse_files_in_dir(ast_t* package, const char * qualified_name, const char* dir_path,
-  pass_opt_t* opt, bool silent)
+  pass_opt_t* opt, bool silent, time_t * most_recent_modified_date)
 {
   PONY_ERRNO err = 0;
   PONY_DIR* dir = pony_opendir(dir_path, &err);
@@ -269,7 +278,7 @@ static bool parse_files_in_dir(ast_t* package, const char * qualified_name, cons
       char additionalDirectory[FILENAME_MAX];
       path_cat(dir_path, name, additionalDirectory);
       //fprintf(stderr, "recursive add to package: %s\n", additionalDirectory);
-      parse_files_in_dir(package, qualified_name, additionalDirectory, opt, true);
+      parse_files_in_dir(package, qualified_name, additionalDirectory, opt, true, most_recent_modified_date);
       continue;
     }
     
@@ -299,8 +308,10 @@ static bool parse_files_in_dir(ast_t* package, const char * qualified_name, cons
     char fullpath[FILENAME_MAX];
     path_cat(dir_path, entries[i], fullpath);
     r &= parse_source_file(package, fullpath, opt);
+    
+    get_most_recent_file_modification_date(fullpath, most_recent_modified_date);
   }
-  
+    
   ponyint_pool_free_size(buf_size, entries);
   return r;
 }
@@ -894,7 +905,7 @@ void package_clear_magic(pass_opt_t* opt)
 }
 
 
-ast_t* program_load(const char* path, pass_opt_t* opt)
+ast_t* program_load(const char* path, pass_opt_t* opt, time_t * most_recent_modified_date)
 {
   ast_t* program = ast_blank(TK_PROGRAM);
   ast_scope(program);
@@ -902,8 +913,8 @@ ast_t* program_load(const char* path, pass_opt_t* opt)
   opt->program_pass = PASS_PARSE;
 
   // Always load builtin package first, then the specified one.
-  if(package_load(program, stringtab("builtin"), opt) == NULL ||
-    package_load(program, path, opt) == NULL)
+  if(package_load(program, stringtab("builtin"), opt, most_recent_modified_date) == NULL ||
+    package_load(program, path, opt, most_recent_modified_date) == NULL)
   {
     ast_free(program);
     return NULL;
@@ -923,7 +934,7 @@ ast_t* program_load(const char* path, pass_opt_t* opt)
 }
 
 
-ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
+ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt, time_t * most_recent_modified_date)
 {
   pony_assert(from != NULL);
 
@@ -931,7 +942,7 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
   const char* full_path = path;
   const char* qualified_name = path;
   ast_t* program = ast_nearest(from, TK_PROGRAM);
-
+  
   if(magic == NULL)
   {
     // Lookup (and hence normalise) path
@@ -1006,7 +1017,7 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
       if(!parse_source_code(package, magic->src, opt))
         return NULL;
     } else if(magic->mapped_path != NULL) {
-      if(!parse_files_in_dir(package, qualified_name, magic->mapped_path, opt, false))
+      if(!parse_files_in_dir(package, qualified_name, magic->mapped_path, opt, false, most_recent_modified_date))
         return NULL;
     } else {
       return NULL;
@@ -1014,7 +1025,7 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
   }
   else
   {
-    if(!parse_files_in_dir(package, qualified_name, full_path, opt, false))
+    if(!parse_files_in_dir(package, qualified_name, full_path, opt, false, most_recent_modified_date))
       return NULL;
   }
 

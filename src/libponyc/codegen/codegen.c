@@ -1421,7 +1421,9 @@ const char* suffix_filename(compile_t* c, const char* dir, const char* prefix,
 
   if(suffix >= 100)
   {
-    errorf(c->opt->check.errors, NULL, "couldn't pick an unused file name");
+    if(c != NULL) {
+      errorf(c->opt->check.errors, NULL, "couldn't pick an unused file name");
+    }
     ponyint_pool_free_size(len, filename);
     return NULL;
   }

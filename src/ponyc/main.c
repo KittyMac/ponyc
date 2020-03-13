@@ -9,6 +9,8 @@
 #include "../libponyc/ast/treecheck.h"
 #include <platform.h>
 #include "../libponyrt/mem/pool.h"
+#include "../libponyc/codegen/genobj.h"
+#include "../libponyc/codegen/genexe.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,19 +52,48 @@ static size_t get_width()
   return width;
 }
 
+static bool should_abort_compile_due_to_modification_dates(const char * file_path, time_t most_recent_modified_date) {
+  struct stat attr;
+  fprintf(stderr, "Comparing %s\n", file_path);
+  if(stat(file_path, &attr) == 0){
+    if (attr.st_mtime > most_recent_modified_date) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool compile_package(const char* path, pass_opt_t* opt,
   bool print_program_ast, bool print_package_ast)
 {
-  ast_t* program = program_load(path, opt);
+  time_t most_recent_modified_date = 0;
+    
+  ast_t* program = program_load(path, opt, &most_recent_modified_date);
 
   if(program == NULL)
-    return false;
-
+    return false;  
+  
   if(print_program_ast)
     ast_fprint(stderr, program, opt->ast_print_width);
 
   if(print_package_ast)
     ast_fprint(stderr, ast_child(program), opt->ast_print_width);
+  
+  //////// Check if we even need to compile (compare target mod date to source mod date) //////////
+  ast_t* package = ast_child(program);
+  const char * filename = package_filename(package);
+  if((opt->bin_name != NULL) && (strlen(opt->bin_name) > 0))
+    filename = opt->bin_name;
+  
+  if(should_abort_compile_due_to_modification_dates(target_exe(filename, opt), most_recent_modified_date)) {
+    fprintf(stderr, "No compilation required, all source files are older than existing target\n");
+    return true;
+  }
+  if(should_abort_compile_due_to_modification_dates(target_obj(filename, opt), most_recent_modified_date)) {
+    fprintf(stderr, "No compilation required, all source files are older than existing target\n");
+    return true;
+  }
+  ////////////////////////////////////////////////////////////////////////////////////////////////
 
   bool ok = generate_passes(program, opt);
   ast_free(program);

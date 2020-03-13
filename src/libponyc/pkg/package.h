@@ -78,12 +78,12 @@ void package_clear_magic(pass_opt_t* opt);
 /**
  * Load a program. The path specifies the package that represents the program.
  */
-ast_t* program_load(const char* path, pass_opt_t* opt);
+ast_t* program_load(const char* path, pass_opt_t* opt, time_t * most_recent_modified_date);
 
 /**
  * Load a package. Used by program_load() and when handling 'use' statements.
  */
-ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt);
+ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt, time_t * most_recent_modified_date);
 
 /**
  * Create a package AST, set up its state and add it to the given program.

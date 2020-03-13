@@ -175,8 +175,7 @@ bool genlib(compile_t* c, ast_t* program)
 {
   if(	!reachable_actors(c, program) ||
      	!genheader(c))
-    return false;
-
+    return false;  
 
   errors_t* errors = c->opt->check.errors;
 

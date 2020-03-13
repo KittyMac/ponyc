@@ -6,6 +6,8 @@
 
 PONY_EXTERN_C_BEGIN
 
+const char * target_obj(const char * filename, pass_opt_t* opt);
+
 const char* genobj(compile_t* c);
 
 PONY_EXTERN_C_END

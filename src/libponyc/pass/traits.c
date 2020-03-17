@@ -475,12 +475,7 @@ static ast_t* add_field(ast_t* entity, ast_t* trait_ref, ast_t* basis_field, pas
   ast_t* existing = ast_get(entity, name, NULL);
   if(existing != NULL)
   {
-    // Should already have checked for field of the same name.
-    ast_error(opt->check.errors, trait_ref,
-      "provided field '%s' clashes with existing construct", name);
-    ast_error_continue(opt->check.errors, basis_field,
-      "existing name is here");
-    return NULL;
+    return existing;
   }
   
   // Check for clash with existing field.
@@ -589,14 +584,43 @@ static bool add_default_initializers_from_trait(ast_t* entity, ast_t* trait, pas
       }
       member = ast_sibling(member);
     }
-    /*
-    fprintf(stderr, "-----------------\n");
-    ast_print(entity, 200);
-    fprintf(stderr, "-----------------\n");
-    */
   }
   
   return true;
+}
+
+
+static ast_t * get_provide_id(ast_t* entity)
+{
+  // We want the "(id Hideable)", and we receive either:
+  // (nominal (id $1) (id Viewable) x ref x x)
+  // or 
+  // (trait:scope (id Hideable) x...
+  if(ast_id(entity) == TK_NOMINAL) {
+    return ast_childidx(entity, 1);
+  }
+  return ast_childidx(entity, 0);
+}
+
+// return true if the entity has the supplied provider (Entity is Provider)
+static bool has_provider(ast_t* entity, ast_t* provider)
+{
+  pony_assert(entity != NULL);
+  
+  AST_GET_CHILDREN(entity, id, typeparams, cap, provides, members);
+
+  ast_t* provide = ast_child(provides);
+  while(provide != NULL)
+  {
+    ast_t* provide_id = get_provide_id(provide);
+    ast_t* provider_id = get_provide_id(provider);
+    if(!strcmp(ast_name(provide_id), ast_name(provider_id)))
+    {
+      return true;
+    }
+    provide = ast_sibling(provide);
+  }
+  return false;
 }
 
 // Combine the given inherited method with the existing one, if any, in the
@@ -675,11 +699,41 @@ static bool add_method_from_trait(ast_t* entity, ast_t* method,
     (info->body_donor != NULL) &&
     (ast_id(method_body) != TK_NONE) &&
     (info->body_donor != (ast_t*)ast_data(method));
-
+  
+  // For whatever reason, we seem to have multiple method bodies for one
+  // defined method. Is there anything we can do?
+  if(multiple_bodies) {
+    ast_t * bodyA = info->body_donor;
+    ast_t * bodyB = (ast_t*)ast_data(method);
+    
+    // if bodyA inherits from bodyB, then we can ignore bodyB and choose bodyA
+    if(has_provider(bodyA, bodyB)) {
+      multiple_bodies = false;
+      info->body_donor = bodyA;
+    } else if(has_provider(bodyB, bodyA)) {
+      multiple_bodies = false;
+      info->body_donor = bodyB;
+    }
+    /*
+    if(multiple_bodies == false) {
+      fprintf(stderr, "--------------- %s ---------------\n", "bodyA");
+      ast_print(bodyA, 200);
+      fprintf(stderr, "--------------- %s ---------------\n", "bodyB");
+      ast_print(bodyB, 200);
+      fprintf(stderr, "--------------- %s ---------------\n", "info->body_donor");
+      ast_print(info->body_donor, 200);
+    }*/
+  }
+  
   if(multiple_bodies ||
     ast_checkflag(existing_method, AST_FLAG_AMBIGUOUS) ||
     ast_checkflag(method, AST_FLAG_AMBIGUOUS))
   {
+    /*
+    fprintf(stderr, "multiple_bodies: %d\n", multiple_bodies);
+    fprintf(stderr, "ast_checkflag(existing_method, AST_FLAG_AMBIGUOUS): %d\n", ast_checkflag(existing_method, AST_FLAG_AMBIGUOUS));
+    fprintf(stderr, "ast_checkflag(method, AST_FLAG_AMBIGUOUS): %d\n", ast_checkflag(method, AST_FLAG_AMBIGUOUS));
+    */
     // This method body ambiguous, which is not necessarily an error.
     ast_setflag(existing_method, AST_FLAG_AMBIGUOUS);
 
@@ -696,9 +750,10 @@ static bool add_method_from_trait(ast_t* entity, ast_t* method,
     return true;
 
   // Trait provides default body. Use it and patch up symbol tables.
-  pony_assert(ast_id(existing_body) == TK_NONE);
-  ast_replace(&existing_body, method_body);
-  ast_visit(&method_body, rescope, NULL, opt, PASS_ALL);
+  if(ast_id(existing_body) != TK_NONE) {
+    ast_replace(&existing_body, method_body);
+    ast_visit(&method_body, rescope, NULL, opt, PASS_ALL);
+  }
 
   info->body_donor = (ast_t*)ast_data(method);
   info->trait_ref = trait_ref;
@@ -856,7 +911,6 @@ static bool trait_entity(ast_t* entity, pass_opt_t* opt)
 
   return r;
 }
-
 
 // Check that embed fields are not recursive.
 static bool embed_fields(ast_t* entity, pass_opt_t* opt)

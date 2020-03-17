@@ -39,7 +39,7 @@ static ast_t* make_runtime_override_defaults(ast_t* ast)
   return runtime_override_defaults;
 }
 
-static ast_t* make_create(ast_t* ast)
+static ast_t* make_create(ast_t* ast, const char * name)
 {
   pony_assert(ast != NULL);
 
@@ -59,7 +59,7 @@ static ast_t* make_create(ast_t* ast)
   BUILD(create, ast,
     NODE(TK_NEW, AST_SCOPE
       NODE(cap)
-      ID("create")  // name
+      ID(name)  // name
       NONE          // typeparams
       NONE          // params
       NONE          // return type
@@ -142,7 +142,35 @@ static void add_default_constructor(ast_t* ast)
     member = ast_sibling(member);
   }
 
-  ast_append(members, make_create(ast));
+  ast_append(members, make_create(ast, "create"));
+}
+
+static void add_hidden_constructor(ast_t* ast)
+{
+  pony_assert(ast != NULL);
+  ast_t* members = ast_childidx(ast, 4);
+
+  // If we have no constructors and no "create" member, add a "create"
+  // constructor.
+  if(has_member(members, "_traitHiddenCreateForInitializers"))
+    return;
+
+  ast_t* member = ast_child(members);
+
+  while(member != NULL)
+  {
+    switch(ast_id(member))
+    {
+      case TK_NEW:
+        return;
+
+      default: {}
+    }
+
+    member = ast_sibling(member);
+  }
+
+  ast_append(members, make_create(ast, "_traitHiddenCreateForInitializers"));
 }
 
 
@@ -210,7 +238,7 @@ static void sugar_docstring(ast_t* ast)
 }
 
 
-static ast_result_t sugar_entity(pass_opt_t* opt, ast_t* ast, bool add_create,
+ast_result_t sugar_entity(pass_opt_t* opt, ast_t* ast, bool add_create, bool add_hidden_create,
   token_id def_def_cap)
 {
   (void)opt;
@@ -222,6 +250,9 @@ static ast_result_t sugar_entity(pass_opt_t* opt, ast_t* ast, bool add_create,
 
   if(add_create)
     add_default_constructor(ast);
+  
+  if(add_hidden_create)
+    add_hidden_constructor(ast);
 
   if(ast_id(defcap) == TK_NONE)
     ast_setid(defcap, def_def_cap);
@@ -1299,12 +1330,12 @@ ast_result_t pass_sugar(ast_t** astp, pass_opt_t* options)
   switch(ast_id(ast))
   {
     case TK_MODULE:              return sugar_module(options, ast);
-    case TK_PRIMITIVE:           return sugar_entity(options, ast, true, TK_VAL);
-    case TK_STRUCT:              return sugar_entity(options, ast, true, TK_REF);
-    case TK_CLASS:               return sugar_entity(options, ast, true, TK_REF);
-    case TK_ACTOR:               return sugar_entity(options, ast, true, TK_TAG);
-    case TK_TRAIT:
-    case TK_INTERFACE:           return sugar_entity(options, ast, false, TK_REF);
+    case TK_PRIMITIVE:           return sugar_entity(options, ast, true, false, TK_VAL);
+    case TK_STRUCT:              return sugar_entity(options, ast, true, false, TK_REF);
+    case TK_CLASS:               return sugar_entity(options, ast, true, false, TK_REF);
+    case TK_ACTOR:               return sugar_entity(options, ast, true, false, TK_TAG);
+    case TK_TRAIT:               return sugar_entity(options, ast, false, true, TK_REF);
+    case TK_INTERFACE:           return sugar_entity(options, ast, false, false, TK_REF);
     case TK_TYPEPARAM:           return sugar_typeparam(ast);
     case TK_NEW:                 return sugar_new(options, ast);
     case TK_BE:                  return sugar_be(options, ast);

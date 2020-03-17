@@ -122,9 +122,9 @@ bool symtab_mark_used(symtab_t* symtab, const char* name)
 
   if(s2 != NULL)
   {
-	if(s2->status == SYM_DEFINED) {
-    	s2->used_count = 1;
-	}
+  if(s2->status == SYM_DEFINED) {
+      s2->used_count = 1;
+  }
     return (s2->used_count > 0);
   }
     
@@ -323,29 +323,29 @@ bool symtab_check_all_defined(symtab_t* symtab, errors_t* errors, bool allowUnus
     // this scope
     if(sym->def != NULL)
     {
-		if (sym->status == SYM_UNDEFINED) {
-	        ast_error(errors, sym->def,
-	          "Local variable %s is not assigned a value in all code paths", sym->name);
-	        r = false;
-		}
-      	if (allowUnusedVars == false && sym->status == SYM_DEFINED && sym->used_count == 0) {
-			token_id token = ast_id(sym->def);
-			
-			// Note: future things we could add to the "unused" listing.  Such as
-			// behaviours and functions which no one calls.
-			if (	token != TK_FUN && 
-					token != TK_PARAM && 
-					token != TK_NEW && 
-					token != TK_FVAR && 
-					token != TK_FLET && 
-					token != TK_BE && 
-					token != TK_TYPEPARAM) {
-		        ast_error(errors, sym->def,
-		          //"Local variable %s is unused in all code paths (token: %d)", sym->name, token);
-				"Local variable %s is unused in all code paths", sym->name);
-		        r = false;
-			}
-      	}
+      if (sym->status == SYM_UNDEFINED) {
+            ast_error(errors, sym->def,
+              "Local variable %s is not assigned a value in all code paths", sym->name);
+            r = false;
+      }
+      if (allowUnusedVars == false && sym->status == SYM_DEFINED && sym->used_count == 0) {
+        token_id token = ast_id(sym->def);
+      
+        // Note: future things we could add to the "unused" listing.  Such as
+        // behaviours and functions which no one calls.
+        if (  token != TK_FUN && 
+              token != TK_PARAM && 
+              token != TK_NEW && 
+              token != TK_FVAR && 
+              token != TK_FLET && 
+              token != TK_BE && 
+              token != TK_TYPEPARAM) 
+        {
+            ast_error(errors, sym->def,
+            "Local variable %s is unused in all code paths", sym->name);
+            r = false;
+        }
+      }
     }
   }
 

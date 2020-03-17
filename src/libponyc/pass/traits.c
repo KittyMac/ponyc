@@ -9,7 +9,7 @@
 #include "../type/reify.h"
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
-
+#include "string.h"
 
 /** The following defines how we determine the signature and body to use for
  * some method M in type T.
@@ -72,6 +72,13 @@ static bool is_method(ast_t* ast)
   return (variety == TK_BE) || (variety == TK_FUN) || (variety == TK_NEW);
 }
 
+static bool is_field(ast_t* ast)
+{
+  pony_assert(ast != NULL);
+
+  token_id variety = ast_id(ast);
+  return (variety == TK_FLET) || (variety == TK_FVAR) || (variety == TK_EMBED);
+}
 
 // Attach a new method_t structure to the given method.
 static method_t* attach_method_t(ast_t* method)
@@ -447,6 +454,151 @@ static ast_result_t rescope(ast_t** astp, pass_opt_t* options)
 }
 
 
+
+
+
+// Add a new field to the given entity, based on the specified method from
+// the specified type.
+// The trait_ref is the entry in the provides list that causes this
+// field inclusion. Needed for error reporting.
+// The basis_field is the field in the trait to add.
+// Return the newly added method or NULL on error.
+static ast_t* add_field(ast_t* entity, ast_t* trait_ref, ast_t* basis_field, pass_opt_t* opt)
+{
+  pony_assert(entity != NULL);
+  pony_assert(trait_ref != NULL);
+  pony_assert(basis_field != NULL);
+
+  const char* name = ast_name(ast_childidx(basis_field, 0));
+
+  // Check for existing field of the same name.
+  ast_t* existing = ast_get(entity, name, NULL);
+  if(existing != NULL)
+  {
+    // Should already have checked for field of the same name.
+    ast_error(opt->check.errors, trait_ref,
+      "provided field '%s' clashes with existing construct", name);
+    ast_error_continue(opt->check.errors, basis_field,
+      "existing name is here");
+    return NULL;
+  }
+  
+  // Check for clash with existing field.
+  ast_t* case_clash = ast_get_case(entity, name, NULL);
+  if(case_clash != NULL)
+  {
+    const char* clash_name = "";
+
+    switch(ast_id(case_clash))
+    {
+      case TK_FUN:
+      case TK_BE:
+      case TK_NEW:
+        clash_name = ast_name(ast_childidx(case_clash, 1));
+        break;
+
+      case TK_LET:
+      case TK_VAR:
+      case TK_EMBED:
+        clash_name = ast_name(ast_child(case_clash));
+        break;
+
+      default:
+        pony_assert(0);
+        break;
+    }
+
+    ast_error(opt->check.errors, trait_ref,
+      "provided field '%s' differs only in case from '%s'",
+      name, clash_name);
+    ast_error_continue(opt->check.errors, basis_field,
+      "clashing name is defined here");
+    return NULL;
+  }
+  
+  AST_GET_CHILDREN(basis_field, id, type, init, doc);
+  
+  // Ignore docstring.
+  if(ast_id(doc) == TK_STRING)
+  {
+    ast_set_name(doc, "");
+    ast_setid(doc, TK_NONE);
+    ast_settype(doc, NULL);
+  }
+    
+  ast_t* local = ast_add(ast_childidx(entity, 4), basis_field);
+  ast_set(entity, name, local, SYM_DEFINED, false);
+  
+  return local;
+}
+
+static bool add_field_from_trait(ast_t* entity, ast_t* field,
+  ast_t* trait_ref, pass_opt_t* opt)
+{
+  ((void) opt);
+  
+  pony_assert(entity != NULL);
+  pony_assert(field != NULL);
+  pony_assert(trait_ref != NULL);
+  
+  AST_GET_CHILDREN(field, id, type, init, doc);
+    
+  ast_t* m = add_field(entity, trait_ref, field, opt);  
+  return (m != NULL);
+}
+
+static bool add_default_initializers_from_trait(ast_t* entity, ast_t* trait, pass_opt_t* opt)
+{
+  ((void)entity);
+  ((void)opt);
+  
+  // 1. Find the default constructor in our trait
+  ast_t* trait_nbody = NULL;
+    
+  ast_t* member = ast_child(ast_childidx(trait, 4));
+  while(member != NULL)
+  {
+    if(ast_id(member) == TK_NEW)
+    {
+      AST_GET_CHILDREN(member, n_cap, n_id, n_typeparam, n_params, n_result, n_partial, n_body);
+      if(ast_id(n_body) == TK_SEQ) {
+        trait_nbody = n_body;
+        break;
+      }
+    }
+    member = ast_sibling(member);
+  }
+  
+  if(trait_nbody != NULL) {
+    // 2. Run through all constructors in our entity, add the initializers from
+    // the trait's constructor to the top of each
+    member = ast_child(ast_childidx(entity, 4));
+    while(member != NULL)
+    {
+      if(ast_id(member) == TK_NEW)
+      {
+        AST_GET_CHILDREN(member, n_cap, n_id, n_typeparam, n_params, n_result, n_partial, n_body);
+        if(ast_id(n_body) == TK_SEQ) {
+          ast_t* init = ast_child(trait_nbody);
+          while(init != NULL)
+          {
+            ast_add(n_body, init);
+            init = ast_sibling(init);
+          }
+        }
+      }
+      member = ast_sibling(member);
+    }
+    /*
+    fprintf(stderr, "-----------------\n");
+    ast_print(entity, 200);
+    fprintf(stderr, "-----------------\n");
+    */
+  }
+  
+  return true;
+}
+
 // Combine the given inherited method with the existing one, if any, in the
 // given entity.
 // The provided method must already be reified.
@@ -466,6 +618,10 @@ static bool add_method_from_trait(ast_t* entity, ast_t* method,
 
   const char* method_name = ast_name(id);
   ast_t* existing_method = find_method(entity, method_name);
+  
+  if(!strcmp("_traitHiddenCreateForInitializers", method_name)) {
+    return true;
+  }
 
   if(existing_method == NULL)
   {
@@ -555,7 +711,7 @@ static bool add_method_from_trait(ast_t* entity, ast_t* method,
 static bool provided_methods(ast_t* entity, pass_opt_t* opt)
 {
   pony_assert(entity != NULL);
-
+  
   ast_t* provides = ast_childidx(entity, 3);
   bool r = true;
 
@@ -572,26 +728,35 @@ static bool provided_methods(ast_t* entity, pass_opt_t* opt)
     ast_t* members = ast_childidx(trait, 4);
 
     // Run through the methods of each provided type.
-    for(ast_t* method = ast_child(members); method != NULL;
-      method = ast_sibling(method))
+    for(ast_t* thing = ast_child(members); thing != NULL;
+      thing = ast_sibling(thing))
     {
-      pony_assert(is_method(method));
+      // traits can now have fields and methods
+      if(is_method(thing)) {
+        ast_t* reified = reify_provides_type(thing, trait_ref, opt);
 
-      ast_t* reified = reify_provides_type(method, trait_ref, opt);
-
-      if(reified == NULL)
-      {
-        // Reification error, already reported.
-        r = false;
-      }
-      else
-      {
-        if(!add_method_from_trait(entity, reified, trait_ref, opt))
+        if(reified == NULL)
+        {
+          // Reification error, already reported.
           r = false;
+        }
+        else
+        {
+          if(!add_method_from_trait(entity, reified, trait_ref, opt))
+            r = false;
 
-        ast_free_unattached(reified);
+          ast_free_unattached(reified);
+        }
       }
+      
+      if(is_field(thing)) {
+        if(!add_field_from_trait(entity, thing, trait_ref, opt))
+          r = false;
+      }
+      
     }
+    
+    add_default_initializers_from_trait(entity, trait, opt);
   }
 
   return r;
@@ -602,7 +767,6 @@ static bool provided_methods(ast_t* entity, pass_opt_t* opt)
 static bool check_concrete_bodies(ast_t* entity, pass_opt_t* opt)
 {
   pony_assert(entity != NULL);
-
   token_id variety = ast_id(entity);
   if((variety != TK_PRIMITIVE) && (variety != TK_STRUCT) &&
     (variety != TK_CLASS) && (variety != TK_ACTOR))

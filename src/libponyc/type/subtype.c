@@ -830,7 +830,7 @@ static bool is_nominal_sub_structural(ast_t* sub, ast_t* super,
   // implements(N, I)
   // k <: k'
   // ---
-  // N k <: I k
+  // N k <: I k  
   ast_t* sub_def = (ast_t*)ast_data(sub);
   ast_t* super_def = (ast_t*)ast_data(super);
 
@@ -878,9 +878,20 @@ static bool is_nominal_sub_structural(ast_t* sub, ast_t* super,
 
   while(super_member != NULL)
   {
+    token_id variety = ast_id(super_member);
+    if ((variety == TK_FLET) || (variety == TK_FVAR) || (variety == TK_EMBED)) {
+      super_member = ast_sibling(super_member);
+      continue;
+    }
+    
     ast_t* super_member_id = ast_childidx(super_member, 1);
+    if(!strcmp("_traitHiddenCreateForInitializers", ast_name(super_member_id))) {
+      super_member = ast_sibling(super_member);
+      continue;
+    }
+    
     ast_t* sub_member = ast_get(sub_def, ast_name(super_member_id), NULL);
-
+    
     // If we don't provide a method, we aren't a subtype.
     if((sub_member == NULL) || (ast_id(sub_member) != TK_FUN &&
       ast_id(sub_member) != TK_BE && ast_id(sub_member) != TK_NEW))

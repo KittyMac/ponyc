@@ -790,7 +790,7 @@ PONY_API void pony_sendv(pony_ctx_t* ctx, pony_actor_t* to, pony_msg_t* first,
   }
 
   if(has_app_msg) {
-	ponyint_maybe_mute(ctx, to);
+	  ponyint_maybe_mute(ctx, to);
   }
   
 #ifdef RUNTIME_ANALYSIS

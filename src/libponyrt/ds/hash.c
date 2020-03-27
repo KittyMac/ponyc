@@ -108,7 +108,7 @@ static void resize(hashmap_t* map, cmp_fn cmp)
       (s * sizeof(hashmap_entry_t)), old_item_bitmap);
   }
 
-  pony_assert(map->count == c);
+  //pony_assert(map->count == c);
 }
 
 static size_t optimize_item(hashmap_t* map, cmp_fn cmp, size_t old_index)

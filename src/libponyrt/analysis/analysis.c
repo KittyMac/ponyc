@@ -113,6 +113,9 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
   
   uint64_t * muted_total = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
   uint64_t * muted_start = ponyint_pool_alloc_size(kMaxActors * sizeof(uint64_t));
+  
+  uint64_t total_app_messages = 0;
+  uint64_t total_system_messages = 0;
     
   bool has_overloaded = false;
   bool has_muted = false;
@@ -165,6 +168,14 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
           );
       }
 #endif
+      
+      if (msg->eventID == ANALYTIC_MESSAGE_SENT) {
+        total_system_messages++;
+      }
+      if (msg->eventID == ANALYTIC_APP_MESSAGE_SENT) {
+        total_app_messages++;
+      }
+      
       
       if (msg->fromUID < kMaxActors) {
         actor_tags[msg->fromUID] = msg->fromTag;
@@ -384,6 +395,14 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
     fprintf(stderr, "in performance gains%s\n\n", resetColor);
     
     fprintf(stderr, "\n");
+    
+    if (total_app_messages > 0 || total_system_messages > 0) {
+      fprintf(stderr, "\n\n\n");
+      fprintf(stderr, "%sTotal app messages sent: %llu\n", darkGreyColor, total_app_messages);
+      fprintf(stderr, "Total system messages sent: %llu%s\n", total_system_messages, resetColor);
+      fprintf(stderr, "\n\n\n");
+    }
+    
   }
   
   

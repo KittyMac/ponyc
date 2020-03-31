@@ -6,6 +6,7 @@
 #include "gentype.h"
 #include "../pkg/platformfuns.h"
 #include "../type/subtype.h"
+#include "../type/lookup.h"
 #include "ponyassert.h"
 
 typedef LLVMValueRef (*const_binop)(LLVMValueRef left, LLVMValueRef right);
@@ -912,9 +913,16 @@ LLVMValueRef gen_assign(compile_t* c, ast_t* ast)
   // Must generate the right hand side before the left hand side.
   AST_GET_CHILDREN(ast, left, right);
   LLVMValueRef r_value = gen_expr(c, right);
-
+  
   if(r_value == NULL)
     return NULL;
+
+  // We are not allowed to assign to a variable with narrowed scope, so throw an error...
+  if (get_uniontypeidx_from_node(left, left) > 0)
+  {
+    ast_error(c->opt->check.errors, right, "assigning a new value to a variable with narrowed scope is not allowed");
+    return NULL;
+  }
 
   codegen_debugloc(c, ast);
   ast_t* type = deferred_reify(c->frame->reify, ast_type(right), c->opt);

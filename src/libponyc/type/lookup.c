@@ -310,6 +310,7 @@ static int private_get_uniontypeidx_from_node(ast_t* ast) {
       ast_t* id_node = ast_childidx(ast, 1);
       return ast_uniontypeidx(id_node);
     }
+    case TK_PARAMREF:
     case TK_VARREF:
     case TK_LETREF:{
       ast_t* id_node = ast_childidx(ast, 0);

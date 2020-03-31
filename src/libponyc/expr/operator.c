@@ -546,19 +546,6 @@ static bool set_uniontypeid_on_all_instances(ast_t* ast, const char* match_name,
     return false;
   }
   
-  // If at any point we assign the id, then we bail out of narrowed scope for this id
-  /*
-  if (ast_id(ast) == TK_ASSIGN) {
-    AST_GET_CHILDREN(ast, left, right);
-    if (ast_id(left) == TK_DOT) {
-      ast_t * id_node = ast_childidx(left, 1);
-      const char * name = ast_name(id_node);
-      if(name != NULL && !strcmp(name, match_name)) {
-        return false;
-      }
-    }
-  }*/
-  
   if (ast_id(ast) == TK_DOT) {
     ast_t * id_node = ast_childidx(ast, 1);
     const char * name = ast_name(id_node);
@@ -569,7 +556,7 @@ static bool set_uniontypeid_on_all_instances(ast_t* ast, const char* match_name,
     }
   }
   
-  if (ast_id(ast) == TK_LETREF || ast_id(ast) == TK_VARREF) {
+  if (ast_id(ast) == TK_LETREF || ast_id(ast) == TK_VARREF || ast_id(ast) == TK_PARAMREF) {
     ast_t * id_node = ast_childidx(ast, 0);
     const char * name = ast_name(id_node);
     
@@ -635,9 +622,9 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
   bool asInConditional = (  
         ast_id(parent_seq) == TK_SEQ && 
         ast_id(parent_if) == TK_IF && 
-        (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF)
+        (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF || ast_id(expr) == TK_PARAMREF)
       );
-  //fprintf(stderr, "%d & %d & %d\n", (ast_id(parent_seq) == TK_SEQ), (ast_id(parent_if) == TK_IF), (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF));
+  //fprintf(stderr, "%d & %d & %d\n", (ast_id(parent_seq) == TK_SEQ), (ast_id(parent_if) == TK_IF), (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF || ast_id(expr) == TK_PARAMREF));
   
   
   ast_t* pattern_root = ast_from(type, TK_LEX_ERROR);
@@ -678,7 +665,7 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
       id_node = ast_childidx(expr, 1);
       id_node_type = ast_type(id_node);
     }
-    if(ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF) {
+    if(ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF || ast_id(expr) == TK_PARAMREF) {
       id_node = ast_childidx(expr, 0);
       id_node_type = ast_type(expr);
     }
@@ -688,9 +675,7 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
       // matches our type            
       if(id_node_type != NULL && ast_id(id_node_type) == TK_UNIONTYPE) {
         size_t n = ast_childcount(id_node_type);
-        
-        //ast_print(id_node_type, 80);
-        
+                
         const char * type_name = ast_name(ast_childidx(type, 1));
         for (size_t i = 0; i < n; i++) {
           ast_t* id_node_of_union_child = ast_childidx(id_node_type, i);
@@ -712,11 +697,10 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
           NODE(TK_CASE, AST_SCOPE
             TREE(pattern)
             NONE
-            NODE(TK_TRUE, NONE)))
-        NODE(TK_SEQ, AST_SCOPE NODE(TK_FALSE, NONE))));    
-    
-    //ast_print(parent_if, 80);
-    
+            NODE(TK_SEQ, TREE(body) NODE(TK_TRUE, NONE))))
+        NODE(TK_SEQ, AST_SCOPE NODE(TK_FALSE, NONE))));
+      
+      ast_print(parent_if, 80);
   }else{
     
     REPLACE(astp,

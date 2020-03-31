@@ -71,6 +71,7 @@ struct ast_t
   token_t* t;
   symtab_t* symtab;
   void* data;
+  int uniontypeidx;
   ast_t* parent;
   ast_t* child;
   ast_t* sibling;
@@ -182,6 +183,9 @@ static void print_compact(FILE* fp, ast_t* ast, size_t indent,
   if(parens)
     fputc(special_char[kind * 2], fp);
 
+  if(ast_uniontypeidx(ast) > 0) {
+    fprintf(fp, "{%d}", ast_uniontypeidx(ast));
+  }
   print_token(fp, ast->t);
 
   if(ast->symtab != NULL)
@@ -222,7 +226,11 @@ static void print_extended(FILE* fp, ast_t* ast, size_t indent,
 
   if(parens)
     fputc(special_char[kind * 2], fp);
-
+  
+  if(ast_uniontypeidx(ast) > 0) {
+    fprintf(fp, "{%d}", ast_uniontypeidx(ast));
+  }
+  
   print_token(fp, ast->t);
 
   if(ast->symtab != NULL)
@@ -364,6 +372,7 @@ static ast_t* duplicate(ast_t* parent, ast_t* ast)
 
   ast_t* n = ast_token(token_dup(ast->t));
   n->data = ast->data;
+  n->uniontypeidx = ast->uniontypeidx;
   n->flags = ast->flags & AST_ALL_FLAGS;
   // We don't actually want to copy the orphan flag, but the following if
   // always explicitly sets or clears it.
@@ -500,6 +509,7 @@ ast_t* ast_dup_partial(ast_t* ast, bool* dup_child, bool dup_type,
 
   ast_t* n = ast_token(token_dup(ast->t));
   n->data = ast->data;
+  n->uniontypeidx = ast->uniontypeidx;
   n->flags = ast->flags & AST_ALL_FLAGS;
   set_scope_no_parent(n, ast->parent);
 
@@ -629,6 +639,22 @@ ast_t* ast_setdata(ast_t* ast, void* data)
   pony_assert(ast != NULL);
   pony_assert(!ast->frozen);
   ast->data = data;
+  return ast;
+}
+
+int ast_uniontypeidx(ast_t* ast)
+{
+  if(ast == NULL)
+    return 0;
+
+  return ast->uniontypeidx;
+}
+
+ast_t* ast_setuniontypeidx(ast_t* ast, int uniontypeidx)
+{
+  pony_assert(ast != NULL);
+  pony_assert(!ast->frozen);
+  ast->uniontypeidx = uniontypeidx;
   return ast;
 }
 

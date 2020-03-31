@@ -79,6 +79,8 @@ source_t* ast_source(ast_t* ast);
 
 void* ast_data(ast_t* ast);
 ast_t* ast_setdata(ast_t* ast, void* data);
+int ast_uniontypeidx(ast_t* ast);
+ast_t* ast_setuniontypeidx(ast_t* ast, int uniontypeidx);
 bool ast_canerror(ast_t* ast);
 void ast_seterror(ast_t* ast);
 bool ast_cansend(ast_t* ast);

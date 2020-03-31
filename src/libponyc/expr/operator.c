@@ -15,6 +15,7 @@
 #include "../type/safeto.h"
 #include "../type/subtype.h"
 #include "ponyassert.h"
+#include <string.h>
 
 bool expr_identity(pass_opt_t* opt, ast_t* ast)
 {
@@ -497,8 +498,6 @@ static bool add_as_type(pass_opt_t* opt, ast_t* ast, ast_t* expr,
 
     default:
     {
-      const char* name = package_hygienic_id(&opt->check);
-
       ast_t* expr_type = ast_type(expr);
       errorframe_t info = NULL;
       if(is_matchtype(expr_type, type, &info, opt) == MATCHTYPE_DENY)
@@ -515,7 +514,9 @@ static bool add_as_type(pass_opt_t* opt, ast_t* ast, ast_t* expr,
 
         return false;
       }
-
+      
+      const char* name = package_hygienic_id(&opt->check);
+      
       ast_t* a_type = alias(type);
 
       BUILD(pattern_elem, pattern,
@@ -532,6 +533,59 @@ static bool add_as_type(pass_opt_t* opt, ast_t* ast, ast_t* expr,
     }
   }
 
+  return true;
+}
+
+
+
+
+
+static bool set_uniontypeid_on_all_instances(ast_t* ast, const char* match_name, int uniontypeidx)
+{
+  if(ast == NULL) {
+    return false;
+  }
+  
+  // If at any point we assign the id, then we bail out of narrowed scope for this id
+  /*
+  if (ast_id(ast) == TK_ASSIGN) {
+    AST_GET_CHILDREN(ast, left, right);
+    if (ast_id(left) == TK_DOT) {
+      ast_t * id_node = ast_childidx(left, 1);
+      const char * name = ast_name(id_node);
+      if(name != NULL && !strcmp(name, match_name)) {
+        return false;
+      }
+    }
+  }*/
+  
+  if (ast_id(ast) == TK_DOT) {
+    ast_t * id_node = ast_childidx(ast, 1);
+    const char * name = ast_name(id_node);
+    
+    if(name != NULL && !strcmp(name, match_name)) {
+      ast_setuniontypeidx(id_node, uniontypeidx);
+      return true;
+    }
+  }
+  
+  if (ast_id(ast) == TK_LETREF || ast_id(ast) == TK_VARREF) {
+    ast_t * id_node = ast_childidx(ast, 0);
+    const char * name = ast_name(id_node);
+    
+    if(name != NULL && !strcmp(name, match_name)) {
+      ast_setuniontypeidx(id_node, uniontypeidx);
+      return true;
+    }
+  }
+  
+  size_t n = ast_childcount(ast);
+  for (size_t i = 0; i < n; i++) {
+    if(!set_uniontypeid_on_all_instances(ast_childidx(ast, i), match_name, uniontypeidx)){
+      return false;
+    }
+  }
+  
   return true;
 }
 
@@ -570,12 +624,27 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
     }
     return false;
   }
-
+  
+  ast_t* parent_seq = ast_parent(ast);
+  ast_t* parent_if = ast_parent(parent_seq);
+  while(parent_if != NULL && ast_id(parent_if) != TK_IF && 
+        (ast_id(parent_if) == TK_SEQ || ast_id(parent_if) == TK_DOT || ast_id(parent_if) == TK_CALL || ast_id(parent_if) == TK_POSITIONALARGS)) {
+    parent_if = ast_parent(parent_if);
+  }
+    
+  bool asInConditional = (  
+        ast_id(parent_seq) == TK_SEQ && 
+        ast_id(parent_if) == TK_IF && 
+        (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF)
+      );
+  //fprintf(stderr, "%d & %d & %d\n", (ast_id(parent_seq) == TK_SEQ), (ast_id(parent_if) == TK_IF), (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF));
+  
+  
   ast_t* pattern_root = ast_from(type, TK_LEX_ERROR);
   ast_t* body_root = ast_from(type, TK_LEX_ERROR);
   if(!add_as_type(opt, ast, expr, type, pattern_root, body_root))
     return false;
-
+  
   ast_t* body = ast_pop(body_root);
   ast_free(body_root);
 
@@ -592,15 +661,74 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
   ast_t* pattern = ast_pop(ast_child(pattern_root));
   ast_free(pattern_root);
 
-  REPLACE(astp,
-    NODE(TK_MATCH, AST_SCOPE
-      NODE(TK_SEQ, TREE(expr))
-      NODE(TK_CASES, AST_SCOPE
-        NODE(TK_CASE, AST_SCOPE
-          TREE(pattern)
-          NONE
-          TREE(body)))
-      NODE(TK_SEQ, AST_SCOPE NODE(TK_ERROR, NONE))));
+  // If we are the sole expression in an if statement (ie "if x as Int64 then" ) then we
+  // attempt to do the following:
+  // 1. Set ast_setuniontypeidx() for all instances of x in the if body
+  // 2. Replace the "x as Int64" in the conditional with "match let true else false"
+  //
+  // Problems with this approach?  The else error is a problem, and else None is a problem.
+  if (asInConditional) {
+        
+    // 1. Set ast_setuniontypeidx() for all instances of x in the if body
+    ast_t * if_body = ast_childidx(parent_if, 1);
+    ast_t * id_node = NULL;
+    ast_t* id_node_type = NULL;
+    
+    if(ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF) {
+      id_node = ast_childidx(expr, 1);
+      id_node_type = ast_type(id_node);
+    }
+    if(ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF) {
+      id_node = ast_childidx(expr, 0);
+      id_node_type = ast_type(expr);
+    }
+
+    if(ast_id(id_node) == TK_ID) {
+      // Find the index of the subtype in the uniontype which
+      // matches our type            
+      if(id_node_type != NULL && ast_id(id_node_type) == TK_UNIONTYPE) {
+        size_t n = ast_childcount(id_node_type);
+        
+        //ast_print(id_node_type, 80);
+        
+        const char * type_name = ast_name(ast_childidx(type, 1));
+        for (size_t i = 0; i < n; i++) {
+          ast_t* id_node_of_union_child = ast_childidx(id_node_type, i);
+          const char * union_child_type_name = ast_name(ast_childidx(id_node_of_union_child, 1));
+          
+          if(!strcmp(type_name, union_child_type_name)){
+            set_uniontypeid_on_all_instances(if_body, ast_name(id_node), (int)(i+1));
+            break;
+          }
+        }
+      }
+    }
+    
+    // 2. Replace the "x as Int64" in the conditional with "match let true else false"
+    REPLACE(astp,
+      NODE(TK_MATCH, AST_SCOPE
+        NODE(TK_SEQ, TREE(expr))
+        NODE(TK_CASES, AST_SCOPE
+          NODE(TK_CASE, AST_SCOPE
+            TREE(pattern)
+            NONE
+            NODE(TK_TRUE, NONE)))
+        NODE(TK_SEQ, AST_SCOPE NODE(TK_FALSE, NONE))));    
+    
+    //ast_print(parent_if, 80);
+    
+  }else{
+    
+    REPLACE(astp,
+      NODE(TK_MATCH, AST_SCOPE
+        NODE(TK_SEQ, TREE(expr))
+        NODE(TK_CASES, AST_SCOPE
+          NODE(TK_CASE, AST_SCOPE
+            TREE(pattern)
+            NONE
+            TREE(body)))
+        NODE(TK_SEQ, AST_SCOPE NODE(TK_ERROR, NONE))));
+  }
 
   if(!ast_passes_subtree(astp, opt, PASS_EXPR))
     return false;

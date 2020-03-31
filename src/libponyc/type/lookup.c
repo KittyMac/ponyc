@@ -79,7 +79,7 @@ static deferred_reification_t* lookup_nominal(pass_opt_t* opt, ast_t* from,
   }
 
   ast_t* find = ast_get(def, name, NULL);
-
+    
   if(find != NULL)
   {
     switch(ast_id(find))
@@ -127,6 +127,7 @@ static deferred_reification_t* lookup_nominal(pass_opt_t* opt, ast_t* from,
       }
 
       default:
+        fprintf(stderr, "setting find to NULL, id is %d\n", ast_id(find));
         find = NULL;
     }
   }
@@ -300,6 +301,55 @@ static bool param_names_match(ast_t* from, ast_t* prev_fun, ast_t* cur_fun,
   return true;
 }
 
+
+static int private_get_uniontypeidx_from_node(ast_t* ast) {
+  
+  switch(ast_id(ast)) {
+    case TK_FVARREF:
+    case TK_FLETREF:{
+      ast_t* id_node = ast_childidx(ast, 1);
+      return ast_uniontypeidx(id_node);
+    }
+    case TK_VARREF:
+    case TK_LETREF:{
+      ast_t* id_node = ast_childidx(ast, 0);
+      return ast_uniontypeidx(id_node);
+    }
+    case TK_UNIONTYPE:
+    case TK_ISECTTYPE:
+      return 0;
+    default:
+      //fprintf(stderr, "unhandled token in private_get_uniontypeidx_from_node(): %d\n", ast_id(ast));
+      //ast_print(ast, 80);
+      return 0;
+  }
+  
+  return 0;
+}
+
+int get_uniontypeidx_from_node(ast_t* type, ast_t* from) {
+  int uniontypeidx = 0;
+  
+  uniontypeidx = private_get_uniontypeidx_from_node(type);
+  if(uniontypeidx > 0) {
+    return uniontypeidx;
+  }
+  
+  if(ast_parent(type) != NULL) {
+    uniontypeidx = private_get_uniontypeidx_from_node(ast_parent(type));
+    if(uniontypeidx > 0) {
+      return uniontypeidx;
+    }
+  }
+  
+  uniontypeidx = private_get_uniontypeidx_from_node(from);
+  if(uniontypeidx > 0) {
+    return uniontypeidx;
+  }
+  
+  return uniontypeidx;
+}
+
 static deferred_reification_t* lookup_union(pass_opt_t* opt, ast_t* from,
   ast_t* type, const char* name, bool errors, bool allow_private)
 {
@@ -307,12 +357,17 @@ static deferred_reification_t* lookup_union(pass_opt_t* opt, ast_t* from,
   deferred_reification_t* result = NULL;
   ast_t* reified_result = NULL;
   bool ok = true;
+  
+  int uniontypeidx = get_uniontypeidx_from_node(type, from);  
+  if(uniontypeidx > 0) {
+    child = ast_childidx(type, uniontypeidx-1);
+  }
 
   while(child != NULL)
-  {
+  {    
     deferred_reification_t* r = lookup_base(opt, from, child, child, name,
       errors, allow_private);
-
+      
     if(r == NULL)
     {
       // All possible types in the union must have this.
@@ -405,7 +460,11 @@ static deferred_reification_t* lookup_union(pass_opt_t* opt, ast_t* from,
         }
       }
     }
-
+    
+    if(uniontypeidx > 0) {
+      break;
+    }
+    
     child = ast_sibling(child);
   }
 

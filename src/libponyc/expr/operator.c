@@ -700,7 +700,7 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
             NODE(TK_SEQ, TREE(body) NODE(TK_TRUE, NONE))))
         NODE(TK_SEQ, AST_SCOPE NODE(TK_FALSE, NONE))));
       
-      ast_print(parent_if, 80);
+    //ast_print(parent_if, 80);
   }else{
     
     REPLACE(astp,

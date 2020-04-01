@@ -160,6 +160,14 @@ static reach_method_name_t* add_method_name(reach_type_t* t, ast_t* type_from, c
       n->internal = true;
     } else {
       deferred_reification_t* fun = lookup(NULL, type_from, t->ast, name);
+      
+      if(fun == NULL) {
+        fprintf(stderr, "=========\n");
+        ast_print(type_from, 80);
+        ast_print(t->ast, 80);
+        fprintf(stderr, "=========\n");
+      }
+      
       ast_t* fun_ast = fun->ast;
       n->id = ast_id(fun_ast);
       n->cap = ast_id(ast_child(fun_ast));
@@ -296,15 +304,20 @@ static void add_rmethod_to_subtypes(reach_t* r, reach_type_t* t, ast_t* type_fro
       size_t i = HASHMAP_BEGIN;
       reach_type_t* t2;
       int uniontypeidx = get_uniontypeidx_from_node(type_from, type_from);
-      int childIdx = 0;
-            
+      const char * narrowed_name = NULL;
+      if(uniontypeidx > 0) {
+        ast_t * type = get_uniontype_from_node(type_from, type_from);
+        type = ast_childidx(type, uniontypeidx-1);
+        narrowed_name = ast_name(ast_childidx(type, 1));
+      }      
+      
       while((t2 = reach_type_cache_next(&t->subtypes, &i)) != NULL) {
-        if(uniontypeidx == 0 || ((uniontypeidx-1) == childIdx)){
+        const char * type_name = ast_name(ast_childidx(t2->ast, 1));
+        if(narrowed_name == NULL || (!strcmp(narrowed_name, type_name))){
           add_rmethod_to_subtype(r, t2, n, m, opt);
         }else{
-          //fprintf(stderr, "skipping adding method to %s...\n", ast_name(ast_childidx(t2->ast, 1)));
+          //fprintf(stderr, "skipping adding method to %s...\n", type_name);
         }
-        childIdx++;
       }
 
       break;
@@ -886,11 +899,11 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
       add_traits_to_type(r, t, opt);
       add_special(r, t, type, "_event_notify", opt);
       add_special(r, t, type, "_final", opt);
-	  add_special(r, t, type, "_tag", opt);
-	  add_special(r, t, type, "_freed", opt);
+    add_special(r, t, type, "_tag", opt);
+    add_special(r, t, type, "_freed", opt);
       add_special(r, t, type, "_priority", opt);
       add_special(r, t, type, "_batch", opt);
-	  add_special(r, t, type, "_use_main_thread", opt);
+    add_special(r, t, type, "_use_main_thread", opt);
       add_fields(r, t, opt);
       break;
 
@@ -1351,12 +1364,12 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
       pony_assert(n->cap == TK_BOX);
       return;
     }
-		
-	if(name == stringtab("_tag") ||
-       name == stringtab("_freed") ||
-       name == stringtab("_priority") ||
-	   name == stringtab("_use_main_thread") ||
-       name == stringtab("_batch"))
+    
+  if(name == stringtab("_tag") ||
+     name == stringtab("_freed") ||
+     name == stringtab("_priority") ||
+     name == stringtab("_use_main_thread") ||
+     name == stringtab("_batch"))
     {
       pony_assert(n->cap == TK_BOX);
       return;

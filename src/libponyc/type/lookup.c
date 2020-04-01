@@ -58,6 +58,10 @@ static deferred_reification_t* lookup_nominal(pass_opt_t* opt, ast_t* from,
 {
   pony_assert(ast_id(type) == TK_NOMINAL);
   typecheck_t* t = &opt->check;
+  
+  if(opt == NULL) {
+    errors = false;
+  }
 
   ast_t* def = (ast_t*)ast_data(type);
   AST_GET_CHILDREN(def, type_id, typeparams);
@@ -134,9 +138,10 @@ static deferred_reification_t* lookup_nominal(pass_opt_t* opt, ast_t* from,
 
   if(find == NULL)
   {
-    if(errors)
+    if(errors){
       ast_error(opt->check.errors, from, "couldn't find '%s' in '%s'", name,
         type_name);
+    }
 
     return NULL;
   }
@@ -343,7 +348,7 @@ int get_uniontypeidx_from_node(ast_t* type, ast_t* from) {
     }
   }
 
-  if(ast_parent(type) != NULL) {
+  if(ast_child(type) != NULL) {
     uniontypeidx = private_get_uniontypeidx_from_node(ast_child(type));
     if(uniontypeidx > 0) {
       return uniontypeidx;
@@ -358,6 +363,30 @@ int get_uniontypeidx_from_node(ast_t* type, ast_t* from) {
   return uniontypeidx;
 }
 
+
+ast_t* get_uniontype_from_node(ast_t* type, ast_t* from) {
+  ast_t* r = NULL;
+  
+  r = ast_type(type);
+  if(r != NULL){
+    return r;
+  }
+  if(ast_parent(type) != NULL) {
+    r = ast_type(ast_parent(type));
+    if(r != NULL){
+      return r;
+    }
+  }
+  if(ast_child(type) != NULL) {
+    r = ast_type(ast_child(type));
+    if(r != NULL){
+      return r;
+    }
+  }
+  
+  return ast_type(from);
+}
+
 static deferred_reification_t* lookup_union(pass_opt_t* opt, ast_t* from,
   ast_t* type, const char* name, bool errors, bool allow_private)
 {
@@ -365,7 +394,7 @@ static deferred_reification_t* lookup_union(pass_opt_t* opt, ast_t* from,
   deferred_reification_t* result = NULL;
   ast_t* reified_result = NULL;
   bool ok = true;
-  
+    
   int uniontypeidx = get_uniontypeidx_from_node(type, from);  
   if(uniontypeidx > 0) {
     child = ast_childidx(type, uniontypeidx-1);

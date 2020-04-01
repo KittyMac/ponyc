@@ -342,6 +342,13 @@ int get_uniontypeidx_from_node(ast_t* type, ast_t* from) {
       return uniontypeidx;
     }
   }
+
+  if(ast_parent(type) != NULL) {
+    uniontypeidx = private_get_uniontypeidx_from_node(ast_child(type));
+    if(uniontypeidx > 0) {
+      return uniontypeidx;
+    }
+  }
   
   uniontypeidx = private_get_uniontypeidx_from_node(from);
   if(uniontypeidx > 0) {

@@ -235,6 +235,13 @@ static bool check_arg_types(pass_opt_t* opt, ast_t* params, ast_t* positional,
 
     ast_t* a_type = alias(arg_type);
     errorframe_t info = NULL;
+    
+    if(ast_id(arg_type) == TK_UNIONTYPE) {
+      int uniontypeidx = get_uniontypeidx_from_node(arg, arg);
+      if (uniontypeidx > 0) {
+        a_type = ast_childidx(a_type, uniontypeidx-1);
+      }
+    }
 
     if(!is_subtype(a_type, p_type, &info, opt))
     {

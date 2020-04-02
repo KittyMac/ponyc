@@ -308,7 +308,9 @@ static bool param_names_match(ast_t* from, ast_t* prev_fun, ast_t* cur_fun,
 
 
 static int private_get_uniontypeidx_from_node(ast_t* ast) {
-  
+  if(ast == NULL) {
+    return 0;
+  }
   switch(ast_id(ast)) {
     case TK_FVARREF:
     case TK_FLETREF:{
@@ -336,28 +338,32 @@ static int private_get_uniontypeidx_from_node(ast_t* ast) {
 int get_uniontypeidx_from_node(ast_t* type, ast_t* from) {
   int uniontypeidx = 0;
   
-  uniontypeidx = private_get_uniontypeidx_from_node(type);
-  if(uniontypeidx > 0) {
-    return uniontypeidx;
-  }
-  
-  if(ast_parent(type) != NULL) {
-    uniontypeidx = private_get_uniontypeidx_from_node(ast_parent(type));
+  if(type != NULL) {
+    uniontypeidx = private_get_uniontypeidx_from_node(type);
     if(uniontypeidx > 0) {
       return uniontypeidx;
     }
-  }
+  
+    if(ast_parent(type) != NULL) {
+      uniontypeidx = private_get_uniontypeidx_from_node(ast_parent(type));
+      if(uniontypeidx > 0) {
+        return uniontypeidx;
+      }
+    }
 
-  if(ast_child(type) != NULL) {
-    uniontypeidx = private_get_uniontypeidx_from_node(ast_child(type));
-    if(uniontypeidx > 0) {
-      return uniontypeidx;
+    if(ast_child(type) != NULL) {
+      uniontypeidx = private_get_uniontypeidx_from_node(ast_child(type));
+      if(uniontypeidx > 0) {
+        return uniontypeidx;
+      }
     }
   }
   
-  uniontypeidx = private_get_uniontypeidx_from_node(from);
-  if(uniontypeidx > 0) {
-    return uniontypeidx;
+  if(from != NULL) {
+    uniontypeidx = private_get_uniontypeidx_from_node(from);
+    if(uniontypeidx > 0) {
+      return uniontypeidx;
+    }
   }
   
   return uniontypeidx;

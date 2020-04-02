@@ -615,7 +615,8 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
   ast_t* parent_seq = ast_parent(ast);
   ast_t* parent_if = ast_parent(parent_seq);
   while(parent_if != NULL && ast_id(parent_if) != TK_IF && 
-        (ast_id(parent_if) == TK_SEQ || ast_id(parent_if) == TK_DOT || ast_id(parent_if) == TK_CALL || ast_id(parent_if) == TK_POSITIONALARGS)) {
+        (ast_id(parent_if) == TK_SEQ || ast_id(parent_if) == TK_DOT || ast_id(parent_if) == TK_POSITIONALARGS)) {
+          //  || ast_id(parent_if) == TK_CALL
     parent_if = ast_parent(parent_if);
   }
     
@@ -624,8 +625,11 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
         ast_id(parent_if) == TK_IF && 
         (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF || ast_id(expr) == TK_PARAMREF)
       );
-  //fprintf(stderr, "%d & %d & %d\n", (ast_id(parent_seq) == TK_SEQ), (ast_id(parent_if) == TK_IF), (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF || ast_id(expr) == TK_PARAMREF));
-  
+  /*
+  fprintf(stderr, "%d & %d & %d\n", (ast_id(parent_seq) == TK_SEQ), 
+                                    (ast_id(parent_if) == TK_IF), 
+                                    (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF || ast_id(expr) == TK_PARAMREF));
+  */
   
   ast_t* pattern_root = ast_from(type, TK_LEX_ERROR);
   ast_t* body_root = ast_from(type, TK_LEX_ERROR);
@@ -655,6 +659,7 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
   //
   // Problems with this approach?  The else error is a problem, and else None is a problem.
   if (asInConditional) {
+    //ast_print(parent_if, 80);
         
     // 1. Set ast_setuniontypeidx() for all instances of x in the if body
     ast_t * if_body = ast_childidx(parent_if, 1);

@@ -154,8 +154,6 @@ size_t ponyint_sched_total_alloc_size(pony_ctx_t* ctx);
 #ifdef RUNTIME_ANALYSIS
 uint32_t get_active_scheduler_count();
 scheduler_t* ponyint_sched_by_index(uint32_t index);
-int64_t ponyint_size_of_inject_queue();
-int64_t ponyint_size_of_inject_main_queue();
 #endif
 
 PONY_EXTERN_C_END

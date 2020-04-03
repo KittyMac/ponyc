@@ -111,20 +111,6 @@ scheduler_t* ponyint_sched_by_index(uint32_t index)
 	return NULL;
 }
 
-/** Used by Pony analysis at SIGTERM time to report information regarding the state of the schedulers
- */
-int64_t ponyint_size_of_inject_queue()
-{
-	return inject.num_messages;
-}
-
-/** Used by Pony analysis at SIGTERM time to report information regarding the state of the schedulers
- */
-int64_t ponyint_size_of_inject_main_queue()
-{
-	return inject_main.num_messages;
-}
-
 #endif
 
 /**
@@ -775,6 +761,7 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
       if(actor != NULL)
         break;
     }
+
 
     actor = pop_global(victim);
     if(actor != NULL)

@@ -24,7 +24,6 @@ typedef struct mpmcq_t
   // LoadLinked/StoreConditional instructions.
   PONY_ATOMIC(mpmcq_node_t*) tail;
 #endif
-  PONY_ATOMIC(int64_t) num_messages;
 } mpmcq_t;
 
 void ponyint_mpmcq_init(mpmcq_t* q);

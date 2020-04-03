@@ -149,12 +149,15 @@ void* ponyint_mpmcq_pop(mpmcq_t* q)
 #endif
     // Get the next node rather than the tail. The tail is either a stub or has
     // already been consumed.
-    if(tail == NULL)
+    if(!tail)
       return NULL;
 	
-    next = atomic_load_explicit(&tail->next, memory_order_relaxed);
+    // Note: given all of the extra protection surrounding this, is the atomic load even necessary? In practice
+    // it doesn't appear to be, and this is more performant.
+    //next = atomic_load_explicit(&tail->next, memory_order_relaxed);
+    next = tail->next;
 
-    if(next == NULL)
+    if(!next)
       return NULL;
 
 #if defined(PLATFORM_IS_X86) || defined(PLATFORM_IS_IOS)

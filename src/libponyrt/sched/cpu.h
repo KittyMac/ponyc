@@ -17,8 +17,6 @@ uint32_t ponyint_cpu_assign(uint32_t count, scheduler_t* scheduler,
 
 void ponyint_cpu_affinity(uint32_t cpu);
 
-void ponyint_cpu_core_pause(uint64_t tsc, uint64_t tsc2, bool yield);
-
 void ponyint_cpu_sleep(int ns);
 
 void ponyint_cpu_relax();

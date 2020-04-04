@@ -3,6 +3,7 @@
 #include "mpmcq.h"
 #include "../mem/pool.h"
 #include "../sched/cpu.h"
+#include <stdio.h>
 
 #ifdef USE_VALGRIND
 #include <valgrind/helgrind.h>

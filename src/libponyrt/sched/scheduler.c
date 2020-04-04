@@ -428,7 +428,7 @@ static bool read_msg(scheduler_t* sched)
  * terminate.
  */
 
-static bool quiescent(scheduler_t* sched, uint64_t tsc, uint64_t tsc2)
+static bool quiescent(scheduler_t* sched)
 {
   if(sched->terminate)
     return true;
@@ -474,50 +474,38 @@ static bool quiescent(scheduler_t* sched, uint64_t tsc, uint64_t tsc2)
       last_cd_tsc = saved_last_cd_tsc;
     }
   }
-
-  ponyint_cpu_core_pause(tsc, tsc2, use_yield);
+  
   return false;
 }
 
 
 
+
 static scheduler_t* choose_victim(scheduler_t* sched)
 {
-  uint32_t current_active_scheduler_count = get_active_scheduler_count();
-  
-  scheduler_t* victim = sched->last_victim;
-  
-  while(true)
-  {
-    // Schedulers are laid out sequentially in memory
-
-    // Back up one.
-    victim--;
-  
-    if(victim < scheduler)
-      // victim is before the first scheduler location
-      // wrap around to the end.
-      victim = &scheduler[current_active_scheduler_count - 1];
-
-    if((victim == sched->last_victim) || (current_active_scheduler_count == 1))
-    {
-      // If we have tried all possible victims, return no victim. Set our last
-      // victim to ourself to indicate we've started over.
-      sched->last_victim = sched;
-      break;
-    }
-
-    // Don't try to steal from ourself.
-    if(victim == sched) {
-      continue;
-    }
-  
-    // Record that this is our victim and return it.
-    sched->last_victim = victim;
-    return victim;
+  // we have work to do or the global inject does, we can return right away
+  if(sched->terminate || sched->q.num_messages > 0 || inject.num_messages > 0) {
+    return sched;
   }
+  
+  // Start with a quick scan of all schedulers to check their num_messages and see if any
+  // have waiting work.  If they do we can end quickly with a better guess as a victim.
+  uint32_t current_active_scheduler_count = get_active_scheduler_count();
+  scheduler_t* scan_victim = scheduler;
+  scheduler_t* max_victim = scheduler;
 
-  return NULL;
+  int64_t total_messages_waiting = 0;
+  uint32_t i = 0;
+  while (i++ < current_active_scheduler_count) {
+    // find the victim with the most work in their queue
+    total_messages_waiting += scan_victim->q.num_messages;
+    if(scan_victim->q.num_messages > max_victim->q.num_messages) {
+	    max_victim = scan_victim;
+    }
+    scan_victim += 1;
+  }
+  
+  return max_victim;
 }
 
 /**
@@ -765,20 +753,26 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
   uint64_t tsc = ponyint_cpu_tick();
   pony_actor_t* actor;
   scheduler_t* victim = NULL;
-
+  
+  int scaling_sleep = 0;
+  int scaling_sleep_delta = 50;
+  int scaling_sleep_min = 100;      // The minimum value we start actually sleeping at
+  int scaling_sleep_max = 5000;     // The maximimum amount of time we are allowed to sleep at any single call
+  
   while(true)
   {
+    // Choose the victim with the most work to do
     victim = choose_victim(sched);
-  
+    
+    actor = pop_global(victim);
+    if(actor != NULL)
+      break;
+    
     if(sched->main_thread) {
       actor = pop_global_main(victim);
       if(actor != NULL)
         break;
     }
-
-    actor = pop_global(victim);
-    if(actor != NULL)
-      break;
     
     if(read_msg(sched))
     {
@@ -792,9 +786,7 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
         break;
     }
     
-    uint64_t tsc2 = ponyint_cpu_tick();
-    
-    if(quiescent(sched, tsc, tsc2))
+    if(quiescent(sched))
     {
       DTRACE2(WORK_STEAL_FAILURE, (uintptr_t)sched, (uintptr_t)victim);
       return NULL;
@@ -832,6 +824,9 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
     //    By waiting 1 millisecond before sending a block message, we are going to
     //    delay quiescence by a small amount of time but also optimize work
     //    stealing for generating far fewer block/unblock messages.
+    
+    uint64_t tsc2 = ponyint_cpu_tick();
+    
     uint32_t current_active_scheduler_count = get_active_scheduler_count();
     uint64_t clocks_elapsed = tsc2 - tsc;
 
@@ -906,6 +901,18 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
         actor = pop_global(sched);
         if(actor != NULL)
           break;
+      }
+    }
+    
+    
+    if(use_yield) {
+      // if we get down here, we had no work to do. increasingly sleep while we wait for work.
+      scaling_sleep += scaling_sleep_delta;
+      if (scaling_sleep > scaling_sleep_max) {
+        scaling_sleep = scaling_sleep_max;
+      }
+      if(scaling_sleep >= scaling_sleep_min) {
+        ponyint_cpu_sleep(scaling_sleep);
       }
     }
   }
@@ -1162,7 +1169,6 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
 
   // convert to cycles for use with ponyint_cpu_tick()
   // 1 second = 2000000000 cycles (approx.)
-  // based on same scale as ponyint_cpu_core_pause() uses
   scheduler_suspend_threshold = thread_suspend_threshold * 1000000;
 
   scheduler_count = threads;
@@ -1216,7 +1222,6 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
 
     scheduler[i].ctx.scheduler = &scheduler[i];
     scheduler[i].ctx.analysis_enabled = thread_analysis_enabled;
-    scheduler[i].last_victim = &scheduler[i];
     scheduler[i].index = i;
     scheduler[i].asio_noisy = false;
     ponyint_messageq_init(&scheduler[i].mq);

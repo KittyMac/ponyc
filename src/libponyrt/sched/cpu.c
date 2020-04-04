@@ -28,10 +28,6 @@ static uint32_t* avail_cpu_list;
 static uint32_t avail_cpu_size;
 #endif
 
-#if defined(PLATFORM_IS_MACOSX) || defined(PLATFORM_IS_IOS)
-static uint64_t cpu_throttle_value = 2000;
-#endif
-
 #if defined(PLATFORM_IS_MACOSX) || (defined(PLATFORM_IS_BSD) && !defined(PLATFORM_IS_OPENBSD))
 
 #include <sys/types.h>
@@ -303,93 +299,6 @@ void ponyint_cpu_affinity(uint32_t cpu)
   affinity.Group = (cpu % 64);
 
   SetThreadGroupAffinity(ponyint_thread_self(), &affinity, NULL);
-#endif
-}
-
-
-void ponyint_cpu_throttle(uint64_t v) {
-	cpu_throttle_value = v;
-	if (cpu_throttle_value == 0) {
-		cpu_throttle_value = 1;
-	}
-}
-
-/**
- * Only nanosleep if sufficient cycles have elapsed.
- */
-void ponyint_cpu_core_pause(uint64_t tsc, uint64_t tsc2, bool yield)
-{
-#ifdef PLATFORM_IS_WINDOWS
-  DWORD ts = 0;
-#else
-  struct timespec ts = {0, 0};
-#endif
-	
-#if defined(PLATFORM_IS_IOS) || defined(PLATFORM_IS_MACOSX)
-  // on apple the numbers here are nanoseconds, not cycles.
-  // If we just use a ratio to determine how long to sleep
-  // then it seems like we use less cpu while idle but still
-  // allow lots of cpu while busy.
-  // 10m cycles is about 3ms
-  if(yield)
-  {
-		ts.tv_nsec = (long)((tsc2 - tsc) / cpu_throttle_value);
-    if(ts.tv_nsec > 10000) {
-      nanosleep(&ts, NULL);
-    }
-	}
-	
-	return;
-#endif
-	
-	
-  // 10m cycles is about 3ms
-  if((tsc2 - tsc) < 10000000)
-    return;
-
-  if(yield)
-  {
-    // A billion cycles is roughly half a second, depending on clock speed.
-    if((tsc2 - tsc) > 10000000000)
-    {
-      // If it has been 10 billion cycles, pause 30 ms.
-#ifdef PLATFORM_IS_WINDOWS
-      ts = 30;
-#else
-      ts.tv_nsec = 30000000;
-#endif
-    } else if((tsc2 - tsc) > 3000000000) {
-      // If it has been 3 billion cycles, pause 10 ms.
-#ifdef PLATFORM_IS_WINDOWS
-      ts = 10;
-#else
-      ts.tv_nsec = 10000000;
-#endif
-    } else if((tsc2 - tsc) > 1000000000) {
-      // If it has been 1 billion cycles, pause 1 ms.
-#ifdef PLATFORM_IS_WINDOWS
-      ts = 1;
-#else
-      ts.tv_nsec = 1000000;
-#endif
-    }
-    else
-    {
-#ifdef PLATFORM_IS_WINDOWS
-      // Otherwise, pause for 1 ms (minimum on windows)
-      ts = 1;
-#else
-      // Otherwise, pause for 100 microseconds
-      ts.tv_nsec = 100000;
-#endif
-    }
-  }
-
-#ifdef PLATFORM_IS_WINDOWS
-  Sleep(ts);
-#else
-  DTRACE1(CPU_NANOSLEEP, ts.tv_nsec);
-  nanosleep(&ts, NULL);
 #endif
 }
 

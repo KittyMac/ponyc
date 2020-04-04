@@ -87,9 +87,6 @@ struct scheduler_t
   bool main_thread;
   pony_signal_event_t sleep_object;
 
-  // These are changed primarily by the owning scheduler thread.
-  alignas(64) struct scheduler_t* last_victim;
-
   pony_ctx_t ctx;
   uint32_t block_count;
   int32_t ack_token;

@@ -450,9 +450,12 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
       if(sched->block_count) {        fprintf(stderr, "     block_count: %d \n", sched->block_count); }
       if(sched->ack_token) {          fprintf(stderr, "     ack_token: %d \n", sched->ack_token); }
       if(sched->ack_count) {          fprintf(stderr, "     ack_count: %d \n", sched->ack_count); }
+                                      fprintf(stderr, "     waiting actors: %lld \n", sched->q.num_messages);
       if(sched->mq.num_messages) {    fprintf(stderr, "     mq num msgs: %lld\n", sched->mq.num_messages);  }
     }
     fprintf(stderr, "\n\n");
+    fprintf(stderr, "There are %lld actors waiting in inject queue\n", ponyint_size_of_inject_queue());
+    fprintf(stderr, "There are %lld actors waiting in inject main queue\n\n", ponyint_size_of_inject_main_queue());
   }
   
   if (hasUntaggedActors) {

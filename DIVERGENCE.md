@@ -2,6 +2,76 @@
 
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
+
+## Narrowed scope inside if statements for union types
+
+In stock Pony, the official mechanism for accessing one kind of a union type is to use match, like this:
+
+```
+primitive RenderEngine
+
+class App
+	let renderEngine:(RenderEngine|None)
+	
+	fun foo() =>
+		match renderEngine
+		| let engine:RenderEngine => engine.doSomething()
+		end
+```
+
+While on the surface this seems ok, the situation gets more complex the more you want to use the (Something|None) pattern
+
+```
+primitive RenderEngine
+primitive TextureEngine
+primitive GeometryEngine
+
+class App
+	let renderEngine:(RenderEngine|None)
+	let textureEngine:(TextureEngine |None)
+	let geometryEngine:(GeometryEngine |None)
+	
+	fun foo() =>
+		match renderEngine
+		| let rEngine:RenderEngine =>
+			match textureEngine
+			| let tEngine:RenderEngine =>
+				match geometryEngine
+				| let gEngine: GeometryEngine =>
+					
+					// Do something in here which requires a valid RenderEngine, TextureEngine, and GeometryEngine
+					rEngine.render(tEngine, gEngine)
+					
+				end
+			end
+		end
+```
+
+This pattern is simply too onerous for me.  It would be much cleaner and easer if we could instead do the following:
+
+```
+primitive RenderEngine
+primitive TextureEngine
+primitive GeometryEngine
+
+class App
+	let renderEngine:(RenderEngine|None)
+	let textureEngine:(TextureEngine |None)
+	let geometryEngine:(GeometryEngine |None)
+	
+	fun foo() =>
+		if (renderEngine as RenderEngine) and (textureEngine as TextureEngine) and (geometryEngine as GeometryEngine) then
+			renderEngine.render(textureEngine, geometryEngine)
+		end
+```
+
+Any calls to renderEngine/textureEngine/geometryEngine inside of the if have "narrowed scope", meaning they can only be a RenderEngine and can never be None. Nate that you are restricted from changing alias with narrows scope (ie doing ```renderEngine = None``` inside of the if will result in a compiler error.
+
+
+
+## Less wasted CPU while schedulers wait for work
+The runtime in stock Pony has a large amount of overhead when schedulers are waiting for work, in theory trading off CPU usage for decrease in latency. This fork of Pony uses a different scheme for sleeping when no work is available, reducing the amount of CPU waste considerably. The difference can be staggering. In one practical example the old scheduling method would use 1700% CPU (17 full cores) whereas the new scheduling uses 125% CPU (1.25 cores). Actual performance while there is work to do has not suffered due to this change.
+
 ## UnsafePointer
 
 Pony is great at providing seamless FFI support. However, full access to Pointer is restricted to the builtin classes only. This makes it impossible(?) to implement your own full-featured Array class, unless you also include that in the builtins.  I needed to write an AlignedArray class which allocates memory not using the Pony memory system (the aligned array is then sent to over FFI and control relinquished at that point).  This is now possible with the addition of the UnsafePointer class.
@@ -138,7 +208,7 @@ On Mac OS some libraries you link to as frameworks (with the -framework argument
 
 ```use "framework:GLUT"```
 
-## Hint actor should run on its own thread
+## Hint actor should run on the "main" thread
 
 This feature is necessary when working with external APIs which require that their callers only execute from the main thread (such as OpenGL). Previously the only mechanism to do this was to create a C shell and compile your pony code as a library, and have the C code instantiate an FFI actor. Now all you need to do is include the following hint in your actor class, and instances of that class will only execute on the main thread.
 

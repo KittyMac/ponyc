@@ -5,6 +5,8 @@ Welcome to my fork of Pony!  Pony is pretty amazing.
 My fork has several major additions you might find intersting.  
 [Check out the Divergence documentation for full list of differences.](https://github.com/KittyMac/ponyc/blob/roc_master/DIVERGENCE.md).
 
+* **Less wasted CPU**  
+The runtime in stock Pony has a large amount of overhead when schedulers are waiting for work, in theory trading off CPU usage for decrease in latency. This fork of Pony uses a different scheme for sleeping when no work is available, reducing the amount of CPU waste considerably. The difference can be staggering. In one practical example the old scheduling method would use 1700% CPU (17 full cores) whereas the new scheduling uses 125% CPU (1.25 cores).
 * **Built-in code transpiler**  
 Generate Pony code automatically from C headers, Json Schema, and text-based resources.  
 * **Additional error handling**  

@@ -481,28 +481,27 @@ static bool quiescent(scheduler_t* sched)
 
 
 
-static scheduler_t* choose_victim(scheduler_t* sched)
+static scheduler_t* choose_victim(scheduler_t* sched, int64_t* total_messages)
 {
   // we have work to do or the global inject does, we can return right away
-  if(sched->terminate || sched->q.num_messages > 0 || inject.num_messages > 0) {
+  if(sched->terminate) {
     return sched;
   }
-  
+
   // Start with a quick scan of all schedulers to check their num_messages and see if any
   // have waiting work.  If they do we can end quickly with a better guess as a victim.
   uint32_t current_active_scheduler_count = get_active_scheduler_count();
-  scheduler_t* scan_victim = scheduler;
   scheduler_t* max_victim = scheduler;
+  scheduler_t* last_victim = scheduler + current_active_scheduler_count;
+  scheduler_t* scan_victim = scheduler + 1;
 
-  int64_t total_messages_waiting = 0;
-  uint32_t i = 0;
-  while (i++ < current_active_scheduler_count) {
-    // find the victim with the most work in their queue
-    total_messages_waiting += scan_victim->q.num_messages;
+  *total_messages = 0;
+  while (scan_victim < last_victim) {
+    *total_messages += scan_victim->q.num_messages;
     if(scan_victim->q.num_messages > max_victim->q.num_messages) {
 	    max_victim = scan_victim;
     }
-    scan_victim += 1;
+    scan_victim++;
   }
   
   return max_victim;
@@ -756,13 +755,14 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
   
   int scaling_sleep = 0;
   int scaling_sleep_delta = 50;
-  int scaling_sleep_min = 100;      // The minimum value we start actually sleeping at
+  int scaling_sleep_min = 200;      // The minimum value we start actually sleeping at
   int scaling_sleep_max = 5000;     // The maximimum amount of time we are allowed to sleep at any single call
+  int64_t total_actors_waiting = 0;
   
   while(true)
   {
     // Choose the victim with the most work to do
-    victim = choose_victim(sched);
+    victim = choose_victim(sched, &total_actors_waiting);
     
     actor = pop_global(victim);
     if(actor != NULL)
@@ -904,15 +904,22 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
       }
     }
     
-    
     if(use_yield) {
-      // if we get down here, we had no work to do. increasingly sleep while we wait for work.
-      scaling_sleep += scaling_sleep_delta;
-      if (scaling_sleep > scaling_sleep_max) {
-        scaling_sleep = scaling_sleep_max;
-      }
-      if(scaling_sleep >= scaling_sleep_min) {
-        ponyint_cpu_sleep(scaling_sleep);
+      // We yield the CPU if:
+      // 1. we even get down here, which means we failed to get an actor to run with
+      // 2. all other actors at the time I chose a victim have no waiting actors
+      // 3. 1+2 have happened enough times in a row scaling_sleep >= scaling_sleep_min
+      // 4. we reset if there is ever an indication there is work waiting to be done
+      if(total_actors_waiting == 0) {
+        scaling_sleep += scaling_sleep_delta;
+        if (scaling_sleep > scaling_sleep_max) {
+          scaling_sleep = scaling_sleep_max;
+        }
+        if(scaling_sleep >= scaling_sleep_min) {
+          ponyint_cpu_sleep(scaling_sleep);
+        }
+      } else {
+        scaling_sleep = 0;
       }
     }
   }

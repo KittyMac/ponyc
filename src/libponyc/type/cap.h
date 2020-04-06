@@ -75,7 +75,7 @@ bool cap_sendable(token_id cap);
 
 bool cap_immutable_or_opaque(token_id cap);
 
-bool cap_safetowrite(token_id into, token_id cap);
+bool cap_safetowrite(token_id into, token_id cap, bool isLetInPrimitive);
 
 PONY_EXTERN_C_END
 

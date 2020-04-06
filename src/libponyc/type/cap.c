@@ -913,8 +913,12 @@ bool cap_immutable_or_opaque(token_id cap)
   return false;
 }
 
-bool cap_safetowrite(token_id into, token_id cap)
+bool cap_safetowrite(token_id into, token_id cap, bool isLetInPrimitive)
 {
+  if(isLetInPrimitive && into == TK_VAL && cap == TK_VAL) {
+    return true;
+  }
+  
   switch(into)
   {
     case TK_ISO:

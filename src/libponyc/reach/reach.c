@@ -883,6 +883,7 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
       add_traits_to_type(r, t, opt);
       add_special(r, t, type, "_init", opt);
       add_special(r, t, type, "_final", opt);
+      add_fields(r, t, opt);
       break;
 
     case TK_STRUCT:

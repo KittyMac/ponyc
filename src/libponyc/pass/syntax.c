@@ -55,7 +55,7 @@ static const permission_def_t _entity_def[DEF_ENTITY_COUNT] =
   { "actor",                  "X X N X" },
   { "class",                  "N X X N" },
   { "struct",                 "N X X N" },
-  { "primitive",              "N N N N" },
+  { "primitive",              "N X N N" },
   { "trait",                  "N X X N" },
   { "interface",              "N N X N" },
   { "type alias",             "N N N N" }

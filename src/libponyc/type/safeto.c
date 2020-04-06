@@ -3,7 +3,7 @@
 #include "viewpoint.h"
 #include "ponyassert.h"
 
-static bool safe_field_write(token_id cap, ast_t* type)
+static bool safe_field_write(token_id cap, ast_t* type, bool isLetInPrimitive)
 {
   switch(ast_id(type))
   {
@@ -16,7 +16,7 @@ static bool safe_field_write(token_id cap, ast_t* type)
 
       while(child != NULL)
       {
-        if(!safe_field_write(cap, child))
+        if(!safe_field_write(cap, child, isLetInPrimitive))
           return false;
 
         child = ast_sibling(child);
@@ -33,7 +33,7 @@ static bool safe_field_write(token_id cap, ast_t* type)
       if(upper == NULL)
         return false;
 
-      bool ok = safe_field_write(cap, upper);
+      bool ok = safe_field_write(cap, upper, isLetInPrimitive);
 
       if(upper != type)
         ast_free_unattached(upper);
@@ -43,7 +43,7 @@ static bool safe_field_write(token_id cap, ast_t* type)
 
     case TK_NOMINAL:
     case TK_TYPEPARAMREF:
-      return cap_safetowrite(cap, cap_single(type));
+      return cap_safetowrite(cap, cap_single(type), isLetInPrimitive);
 
     default: {}
   }
@@ -54,6 +54,21 @@ static bool safe_field_write(token_id cap, ast_t* type)
 
 bool safe_to_write(ast_t* ast, ast_t* type)
 {
+  bool isLetInPrimitive = false;
+  
+  // If this is a TK_FLETREF for a TK_PRIMITIVE, then it should be allowed. Note that this is ok
+  // because of the following:
+  // 1. the compiler only allows you to set a let once
+  // 2. the compiler forces the let to be assigned in a constructor
+  if(ast_id(ast) == TK_FLETREF) {
+    AST_GET_CHILDREN(ast, left, right);
+    ast_t* l_type = ast_type(left);
+    ast_t* l_type_data = ast_data(l_type);
+    if(ast_id(l_type_data) == TK_PRIMITIVE) {
+      isLetInPrimitive = true;
+    }
+  }
+  
   switch(ast_id(ast))
   {
     case TK_VAR:
@@ -74,7 +89,7 @@ bool safe_to_write(ast_t* ast, ast_t* type)
       // type or an arrow type, since we were able to lookup a field on it.
       AST_GET_CHILDREN(ast, left, right);
       ast_t* l_type = ast_type(left);
-
+            
       // Any viewpoint adapted type will not be safe to write to.
       if(ast_id(l_type) != TK_NOMINAL)
         return false;
@@ -82,13 +97,13 @@ bool safe_to_write(ast_t* ast, ast_t* type)
       token_id l_cap = cap_single(l_type);
 
       // If the RHS is safe to write, we're done.
-      if(safe_field_write(l_cap, type))
+      if(safe_field_write(l_cap, type, isLetInPrimitive))
         return true;
 
       // If the field type (without adaptation) is safe, then it's ok as
       // well. So iso.tag = ref should be allowed.
       ast_t* r_type = ast_type(right);
-      return safe_field_write(l_cap, r_type);
+      return safe_field_write(l_cap, r_type, isLetInPrimitive);
     }
 
     case TK_TUPLE:
@@ -165,7 +180,7 @@ bool safe_to_autorecover(ast_t* receiver_type, ast_t* type)
     {
       // An argument or result is safe for autorecover if it would be safe to
       // write into the receiver.
-      return safe_field_write(cap_single(receiver_type), type);
+      return safe_field_write(cap_single(receiver_type), type, false);
     }
 
     case TK_ARROW:

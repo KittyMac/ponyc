@@ -164,6 +164,37 @@ static bool method_access(pass_opt_t* opt, ast_t* ast, ast_t* method)
   return is_method_called(opt, ast);
 }
 
+ast_t* get_primitive_field_initializer(pass_opt_t* opt, ast_t* ast, ast_t* match_field) {
+  ((void)opt);
+  
+  if(ast_id(ast) != TK_PRIMITIVE) {
+    return NULL;
+  }
+  AST_GET_CHILDREN(ast, id, typeparams, defcap, provides, members, c_api);
+  
+  for(size_t i = 0; i < ast_childcount(members); i++) {
+    ast_t * child = ast_childidx(members, i);
+    if(ast_id(child) == TK_NEW) {
+      AST_GET_CHILDREN(child, cap, id, typeparams, params, result, can_error, body);
+      
+      // the default initializers will be TK_ASSIGN to fletref in that start of the body
+      for(size_t i = 0; i < ast_childcount(body); i++) {
+        ast_t * assign = ast_childidx(body, i);
+        if(ast_id(assign) == TK_ASSIGN) {
+          AST_GET_CHILDREN(assign, left, right);
+          
+          AST_GET_CHILDREN(left, this, field);
+
+          if(!strcmp(ast_name(field), ast_name(match_field))) {
+            return right;
+          }
+        }
+      }
+    }
+  }
+  return NULL;
+}
+
 static bool type_access(pass_opt_t* opt, ast_t** astp)
 {
   ast_t* ast = *astp;
@@ -172,6 +203,7 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
   ast_t* left = ast_child(ast);
   ast_t* right = ast_sibling(left);
   ast_t* type = ast_type(left);
+  ast_t* type_data = (ast_t*)ast_data(left);
 
   if(is_typecheck_error(type))
     return false;
@@ -234,6 +266,16 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
         ast_error(opt->check.errors, right,
           "create is not a constructor on this type");
         return false;
+      }
+      
+      // If this is a primitive and we are accessing a field, skip the create()
+      if (ast_id(r_find) == TK_FLET && ast_id(type_data) == TK_PRIMITIVE) {
+        // find the initializer in the primitive's constructor and replace me with its right side
+        ast_t * initializer = get_primitive_field_initializer(opt, type_data, ast_child(r_find));
+        if(initializer != NULL && ast_id(ast_type(initializer)) == TK_NOMINAL) {
+          ast_replace(astp, initializer);
+          break;
+        }
       }
 
       ast_t* dot = ast_from(ast, TK_DOT);

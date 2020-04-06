@@ -408,7 +408,7 @@ bool expr_assign(pass_opt_t* opt, ast_t* ast)
     return false;
   }
 
-  bool ok_safe = safe_to_write(left, a_type);
+  bool ok_safe = safe_to_write(opt, left, a_type, right);
 
   if(!ok_safe)
   {

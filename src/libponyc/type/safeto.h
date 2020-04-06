@@ -3,10 +3,11 @@
 
 #include <platform.h>
 #include "../ast/ast.h"
+#include "../pass/pass.h"
 
 PONY_EXTERN_C_BEGIN
 
-bool safe_to_write(ast_t* ast, ast_t* type);
+bool safe_to_write(pass_opt_t* opt, ast_t* ast, ast_t* type, ast_t* right);
 
 bool safe_to_autorecover(ast_t* receiver, ast_t* type);
 

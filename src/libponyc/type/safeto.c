@@ -52,7 +52,30 @@ static bool safe_field_write(token_id cap, ast_t* type, bool isLetInPrimitive)
   return false;
 }
 
-bool safe_to_write(ast_t* ast, ast_t* type)
+static bool check_right_side_of_primitive_initializer(ast_t* ast)
+{
+  if(ast == NULL) {
+    return false;
+  }
+  
+  switch(ast_id(ast)) {
+    case TK_CALL:
+    case TK_FFICALL:
+      return true;
+    default:
+      break;
+  }
+
+  size_t n = ast_childcount(ast);
+  for (size_t i = 0; i < n; i++) {
+    if(check_right_side_of_primitive_initializer(ast_childidx(ast, i))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool safe_to_write(pass_opt_t* opt, ast_t* ast, ast_t* type, ast_t* assign_right)
 {
   bool isLetInPrimitive = false;
   
@@ -60,12 +83,21 @@ bool safe_to_write(ast_t* ast, ast_t* type)
   // because of the following:
   // 1. the compiler only allows you to set a let once
   // 2. we don't allow field in primitives which are not initialized when they are defined
+  // 3. we restrict the tokens allowed in the initializer, such as TK_CALL
   if(ast_id(ast) == TK_FLETREF) {
     AST_GET_CHILDREN(ast, left, right);
     ast_t* l_type = ast_type(left);
     ast_t* l_type_data = ast_data(l_type);
     if(ast_id(l_type_data) == TK_PRIMITIVE) {
       isLetInPrimitive = true;
+      if(assign_right != NULL) {
+        if(check_right_side_of_primitive_initializer(assign_right)){
+          ast_print(assign_right, 80);
+          ast_error(opt->check.errors, assign_right,
+            "can't call methods in a field initializer of a primitive");
+          return false;
+        }
+      }
     }
   }
   
@@ -115,7 +147,7 @@ bool safe_to_write(ast_t* ast, ast_t* type)
 
       while(child != NULL)
       {
-        if(!safe_to_write(child, type_child))
+        if(!safe_to_write(opt, child, type_child, NULL))
           return false;
 
         child = ast_sibling(child);
@@ -131,7 +163,7 @@ bool safe_to_write(ast_t* ast, ast_t* type)
       // Occurs when there is a tuple on the left. Each child of the tuple will
       // be a sequence, but only sequences with a single writeable child are
       // valid. Other types won't appear here.
-      return safe_to_write(ast_child(ast), type);
+      return safe_to_write(opt, ast_child(ast), type, NULL);
     }
 
     default: {}

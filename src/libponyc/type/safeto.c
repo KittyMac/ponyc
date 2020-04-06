@@ -59,7 +59,7 @@ bool safe_to_write(ast_t* ast, ast_t* type)
   // If this is a TK_FLETREF for a TK_PRIMITIVE, then it should be allowed. Note that this is ok
   // because of the following:
   // 1. the compiler only allows you to set a let once
-  // 2. the compiler forces the let to be assigned in a constructor
+  // 2. we don't allow field in primitives which are not initialized when they are defined
   if(ast_id(ast) == TK_FLETREF) {
     AST_GET_CHILDREN(ast, left, right);
     ast_t* l_type = ast_type(left);

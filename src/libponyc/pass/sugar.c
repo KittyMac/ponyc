@@ -260,6 +260,8 @@ ast_result_t sugar_entity(pass_opt_t* opt, ast_t* ast, bool add_create, bool add
   // Build a reverse sequence of all field initialisers.
   BUILD(init_seq, members, NODE(TK_SEQ));
   ast_t* member = ast_child(members);
+  
+  bool is_primitive = (ast_id(ast) == TK_PRIMITIVE);
 
   while(member != NULL)
   {
@@ -269,6 +271,12 @@ ast_result_t sugar_entity(pass_opt_t* opt, ast_t* ast, bool add_create, bool add
       case TK_FVAR:
       case TK_EMBED:
       {
+        if(is_primitive && ast_id(member) != TK_FLET) {
+          ast_error(opt->check.errors, member,
+            "only let fields are allowed in primitives");
+          return false;
+        }
+        
         AST_GET_CHILDREN(member, f_id, f_type, f_init);
 
         if(ast_id(f_init) != TK_NONE)
@@ -283,6 +291,13 @@ ast_result_t sugar_entity(pass_opt_t* opt, ast_t* ast, bool add_create, bool add
               TREE(f_init)));
 
           ast_add(init_seq, init);
+        }else{
+          // fields in primitives MUST have field initializers
+          if(is_primitive) {
+            ast_error(opt->check.errors, member,
+              "all fields in primitives must have initialisers");
+            return false;
+          }
         }
         break;
       }

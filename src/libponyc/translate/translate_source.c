@@ -246,9 +246,11 @@ const char* translate_class_name(const char* name, bool makePrivate)
     
     if(isupper(*start)) {
       uppercase_count++;
+    }else{
+      uppercase_count = -1;
     }
     
-    if(uppercase_count > 1 && isupper(*start)) {
+    if(uppercase_count == -1 && isupper(*start)) {
       class_name[idx++] = (char)tolower(*start);
     }else{
       uppercase_count = 0;

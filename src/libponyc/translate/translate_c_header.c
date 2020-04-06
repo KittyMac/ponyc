@@ -159,12 +159,12 @@ void addPonyTypeForCXType(CXType t, bool isReturnType, CXClientData client_data)
                                         CXString elaboratedName = clang_getTypeSpelling(elaboratedType);
                                         const char * elaboratedNameString = clang_getCString(elaboratedName);
                                         if(!strncmp("struct ", elaboratedNameString, 7)) {
-                                          *code = sdscatprintf(*code, "%s", translate_class_name(elaboratedNameString + 7, true));
+                                          *code = sdscatprintf(*code, "%s", translate_class_name(elaboratedNameString + 7, false));
                                         }else if(!strncmp("enum ", elaboratedNameString, 5) || elaboratedType.kind == CXType_Enum) {
                                           // We want the type of the enum, not the name...
                                           addPonyTypeForCXType(elaboratedType, isReturnType, client_data);
                                         }else{
-                                          *code = sdscatprintf(*code, "%s", translate_class_name(elaboratedNameString, true));
+                                          *code = sdscatprintf(*code, "%s", translate_class_name(elaboratedNameString, false));
                                         }
                                         clang_disposeString(elaboratedName);
                                       }
@@ -263,9 +263,9 @@ void addPonyDefaultValueForCXType(CXType t, CXClientData client_data) {
                                         CXString name = clang_getTypeSpelling(clang_Type_getNamedType(t));
                                         const char * nameString = clang_getCString(name);
                                         if(!strncmp("struct ", nameString, 7)) {
-                                          *code = sdscatprintf(*code, "%s", translate_class_name(nameString + 7, true));
+                                          *code = sdscatprintf(*code, "%s", translate_class_name(nameString + 7, false));
                                         }else{
-                                          *code = sdscatprintf(*code, "%s", translate_class_name(nameString, true));
+                                          *code = sdscatprintf(*code, "%s", translate_class_name(nameString, false));
                                         }
                                         clang_disposeString(name);
                                       }
@@ -397,7 +397,7 @@ void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
     }
     
     if (sizeOfDefineGrouping >= 1) {
-      const char * className = translate_class_name(primitiveName, true);
+      const char * className = translate_class_name(primitiveName, false);
       if(checkForDuplicatedNames(className, dedup) == false) {
         // Save the name of this group
         groups = sdscatprintf(groups, "%s\n", primitiveName);
@@ -420,7 +420,7 @@ void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
     }
     
     //fprintf(stderr, ">> printing groupName: %s\n", groupName);
-    const char * className = translate_class_name(groupName, true);
+    const char * className = translate_class_name(groupName, false);
     
     *code = sdscatprintf(*code, "type %sRef is Pointer[%s]\n", className, className);
     *code = sdscatprintf(*code, "primitive %s\n", className);
@@ -494,9 +494,9 @@ void printNumericDefinitions(CXTranslationUnit unit, CXClientData client_data) {
                 const char * cleanedName = translate_function_name(defineNameNameString + primitiveRootIndex);
         
                 if(defineValueNameString[0] == '\"') {
-                  *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "String", defineValueNameString);
+                  *code = sdscatprintf(*code, "  let %s:%s = %s\n", cleanedName, "String", defineValueNameString);
                 }else{
-                  *code = sdscatprintf(*code, "  fun %s():%s => %s\n", cleanedName, "U32", defineValueNameString);
+                  *code = sdscatprintf(*code, "  let %s:%s = %s\n", cleanedName, "U32", defineValueNameString);
             
                   // pony doesn't support qualifiers on its numerics
                   if(string_ends_with(defineValueNameString, "L")) {
@@ -747,7 +747,7 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   if (kind == CXCursor_TypedefDecl) {
     // if we are a typedef and the previous entity was a struct without a name, then we need to make type declaration to it
     if(previousKind == CXCursor_StructDecl && previousType.kind == CXType_Record && previousNameString[0] == 0) {
-      const char * className = translate_class_name(nameString, true);
+      const char * className = translate_class_name(nameString, false);
       if(checkForDuplicatedNames(className, dedup) == false) {
         
         if(checkTransparentStruct(type, client_data)){
@@ -770,7 +770,7 @@ enum CXChildVisitResult printStructDeclarations(CXCursor cursor, CXCursor parent
   }
   if (kind == CXCursor_StructDecl && type.kind == CXType_Record) {
     if(nameString[0] != 0) {
-      const char * className = translate_class_name(nameString, true);
+      const char * className = translate_class_name(nameString, false);
       if(checkForDuplicatedNames(className, dedup) == false) {
         
         if(checkTransparentStruct(type, client_data)){
@@ -859,8 +859,8 @@ enum CXChildVisitResult printEnumContents(CXCursor cursor, CXCursor parent, CXCl
   const char * nameString = clang_getCString(name);
   
   if (kind == CXCursor_EnumConstantDecl) {
-    *code = sdscatprintf(*code, "  fun %s():U32", translate_function_name(nameString + data->enum_content_root));
-    *code = sdscatprintf(*code, " => 0x%llX\n", clang_getEnumConstantDeclUnsignedValue(cursor));
+    *code = sdscatprintf(*code, "  let %s:U32", translate_function_name(nameString + data->enum_content_root));
+    *code = sdscatprintf(*code, " = 0x%llX\n", clang_getEnumConstantDeclUnsignedValue(cursor));
   }
   
   clang_disposeString(name);
@@ -886,9 +886,9 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
   
   if (kind == CXCursor_EnumDecl && type.kind == CXType_Enum) {
     if(clang_getCursorKind(parent) == CXCursor_TypedefDecl) {
-      const char * className = translate_class_name(parentNameString, true);
+      const char * className = translate_class_name(parentNameString, false);
       if(checkForDuplicatedNames(className, dedup) == false) {
-        *code = sdscatprintf(*code, "primitive %sEnum\n", className);
+        *code = sdscatprintf(*code, "primitive %s\n", className);
         
         data->enum_content_root = kEnumContentRootMax;
         clang_visitChildren(cursor, indentifyEnumContentRoot, client_data);
@@ -906,9 +906,9 @@ enum CXChildVisitResult printEnumDeclarations(CXCursor cursor, CXCursor parent, 
         return CXChildVisit_Continue;
       }
       
-      const char * className = translate_class_name(nameString, true);
+      const char * className = translate_class_name(nameString, false);
       if(checkForDuplicatedNames(className, dedup) == false) {
-        *code = sdscatprintf(*code, "primitive %sEnum\n", className);
+        *code = sdscatprintf(*code, "primitive %s\n", className);
         
         data->enum_content_root = kEnumContentRootMax;
         clang_visitChildren(cursor, indentifyEnumContentRoot, client_data);

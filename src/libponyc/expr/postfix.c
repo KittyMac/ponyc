@@ -186,6 +186,16 @@ ast_t* get_primitive_field_initializer(pass_opt_t* opt, ast_t* ast, ast_t* match
           AST_GET_CHILDREN(left, this, field);
 
           if(!strcmp(ast_name(field), ast_name(match_field))) {
+            
+            // For primitives defined in other packages, the initializer has no type
+            // associated with it.  We need to detect this and assign the right type
+            if(ast_type(right) == NULL && ast_data(right) == NULL) {
+              ast_t* left_type = (ast_t*)ast_data(left);
+              if(ast_id(left_type) == TK_FLET) {
+                ast_settype(right, ast_childidx(left_type, 1));
+              }
+            }
+            
             return right;
           }
         }
@@ -272,9 +282,15 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
       if (ast_id(r_find) == TK_FLET && ast_id(type_data) == TK_PRIMITIVE) {
         // find the initializer in the primitive's constructor and replace me with its right side
         ast_t * initializer = get_primitive_field_initializer(opt, type_data, ast_child(r_find));
-        if(initializer != NULL && ast_id(ast_type(initializer)) == TK_NOMINAL) {
-          ast_replace(astp, initializer);
-          break;
+        if(initializer != NULL) {          
+          ast_t * initializer_type = ast_type(initializer);
+          if(initializer_type == NULL) {
+            initializer_type = (ast_t*)ast_data(initializer);
+          }
+          if(initializer_type != NULL && ast_id(initializer_type) == TK_NOMINAL) {
+            ast_replace(astp, initializer);
+            break;
+          }
         }
       }
 

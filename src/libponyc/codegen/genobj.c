@@ -1,6 +1,33 @@
 #include "genobj.h"
 #include <llvm-c/BitWriter.h>
 
+
+const char * target_obj(const char * filename, pass_opt_t* opt)
+{
+  if(opt->limit == PASS_LLVM_IR)
+  {
+    return suffix_filename(NULL, opt->output, "", filename, ".ll");
+  }
+
+  if(opt->limit == PASS_BITCODE)
+  {
+    return suffix_filename(NULL, opt->output, "", filename, ".bc");
+  }
+
+  if(opt->limit == PASS_ASM)
+  {
+    return suffix_filename(NULL, opt->output, "", filename, ".s");
+  } else {
+#ifdef PLATFORM_IS_WINDOWS
+    return suffix_filename(NULL, opt->output, "", filename, ".obj");
+#else
+    return suffix_filename(NULL, opt->output, "", filename, ".o");
+#endif
+  }
+  return NULL;
+}
+
+
 const char* genobj(compile_t* c)
 {
   errors_t* errors = c->opt->check.errors;

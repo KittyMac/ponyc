@@ -11,6 +11,7 @@
 #include "../../libponyrt/gc/serialise.h"
 #include "../../libponyrt/mem/pool.h"
 #include "../../libponyrt/sched/scheduler.h"
+#include "../pass/scope.h"
 #include "ponyassert.h"
 #include <blake2.h>
 #include <stdlib.h>
@@ -222,6 +223,15 @@ static int string_compare(const void* a, const void* b)
   return strcmp(*(const char**)a, *(const char**)b);
 }
 
+static void get_most_recent_file_modification_date(const char * file_path, time_t * other_time)
+{
+  struct stat attr;
+  if(stat(file_path, &attr) == 0){
+    if (attr.st_mtime > *other_time) {
+      *other_time = attr.st_mtime;
+    }
+  }
+}
 
 // Attempt to parse the source files in the specified directory and add them to
 // the given package AST
@@ -299,6 +309,10 @@ static bool parse_files_in_dir(ast_t* package, const char * qualified_name, cons
     char fullpath[FILENAME_MAX];
     path_cat(dir_path, entries[i], fullpath);
     r &= parse_source_file(package, fullpath, opt);
+    
+    if(opt->most_recent_modified_date != NULL){
+      get_most_recent_file_modification_date(fullpath, opt->most_recent_modified_date);
+    }
   }
   
   ponyint_pool_free_size(buf_size, entries);
@@ -908,7 +922,7 @@ ast_t* program_load(const char* path, pass_opt_t* opt)
     ast_free(program);
     return NULL;
   }
-
+  
   // Reorder packages so specified package is first.
   ast_t* builtin = ast_pop(program);
   ast_append(program, builtin);
@@ -994,7 +1008,7 @@ ast_t* package_load(ast_t* from, const char* path, pass_opt_t* opt)
 
   package = create_package(program, full_path, qualified_name, opt);
 
-  if(opt->verbosity >= VERBOSITY_INFO)
+  if(opt->verbosity >= VERBOSITY_INFO && opt->most_recent_modified_date == NULL)
     fprintf(stderr, "Building %s -> %s\n", path, full_path);
   
   translate_source_package_begin(qualified_name);

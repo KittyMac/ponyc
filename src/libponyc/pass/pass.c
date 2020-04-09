@@ -230,6 +230,10 @@ static bool ast_passes(ast_t** astp, pass_opt_t* options, pass_id last)
 
   if(!visit_pass(astp, options, last, &r, PASS_IMPORT, pass_import, NULL))
     return r;
+  
+  if(options->most_recent_modified_date != NULL) {
+    return true;
+  }
 
   if(is_program)
     plugin_visit_ast(*astp, options, PASS_IMPORT);

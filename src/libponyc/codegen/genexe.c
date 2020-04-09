@@ -256,6 +256,18 @@ static const char* env_cc_or_pony_compiler(bool* out_fallback_linker)
 }
 #endif
 
+const char * target_exe(const char * filename, pass_opt_t* opt) {
+#if defined(PLATFORM_IS_MACOSX)
+  return suffix_filename(NULL, opt->output, "", filename, "");
+#endif
+#if defined(PLATFORM_IS_LINUX) || defined(PLATFORM_IS_BSD)
+  return suffix_filename(NULL, opt->output, "", filename, "");
+#endif
+#if defined(PLATFORM_IS_WINDOWS)
+  return suffix_filename(NULL, opt->output, "", filename, ".exe");
+#endif
+}
+
 static bool link_exe(compile_t* c, ast_t* program,
   const char* file_o)
 {
@@ -269,6 +281,8 @@ static bool link_exe(compile_t* c, ast_t* program,
 #else
     "-lponyrt";
 #endif
+    
+  const char * file_exe = target_exe(c->filename, c->opt);
 
 #if defined(PLATFORM_IS_MACOSX)
   char* arch = strchr(c->opt->triple, '-');
@@ -279,9 +293,6 @@ static bool link_exe(compile_t* c, ast_t* program,
       c->opt->triple);
     return false;
   }
-
-  const char* file_exe =
-    suffix_filename(c, c->opt->output, "", c->filename, "");
 
   if(c->opt->verbosity >= VERBOSITY_MINIMAL)
     fprintf(stderr, "Linking %s\n", file_exe);
@@ -339,8 +350,6 @@ static bool link_exe(compile_t* c, ast_t* program,
   }
 
 #elif defined(PLATFORM_IS_LINUX) || defined(PLATFORM_IS_BSD)
-  const char* file_exe =
-    suffix_filename(c, c->opt->output, "", c->filename, "");
 
   if(c->opt->verbosity >= VERBOSITY_MINIMAL)
     fprintf(stderr, "Linking %s\n", file_exe);
@@ -438,8 +447,6 @@ static bool link_exe(compile_t* c, ast_t* program,
     return false;
   }
 
-  const char* file_exe = suffix_filename(c, c->opt->output, "", c->filename,
-    ".exe");
   if(c->opt->verbosity >= VERBOSITY_MINIMAL)
     fprintf(stderr, "Linking %s\n", file_exe);
 

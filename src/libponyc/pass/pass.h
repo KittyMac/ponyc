@@ -312,6 +312,8 @@ typedef struct pass_opt_t
   typecheck_t check;
 
   plugins_t* plugins;
+  
+  time_t * most_recent_modified_date;
 
   void* data; // User-defined data for unit test callbacks.
 } pass_opt_t;

@@ -9,6 +9,9 @@
 #include "../libponyc/ast/treecheck.h"
 #include <platform.h>
 #include "../libponyrt/mem/pool.h"
+#include "../libponyc/codegen/genobj.h"
+#include "../libponyc/codegen/genexe.h"
+
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,10 +53,41 @@ static size_t get_width()
   return width;
 }
 
+static bool should_abort_compile_due_to_modification_dates(const char * file_path, time_t * most_recent_modified_date) {
+  struct stat attr;
+  if(stat(file_path, &attr) == 0){
+    if (attr.st_mtime > *most_recent_modified_date) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool compile_package(const char* path, pass_opt_t* opt,
   bool print_program_ast, bool print_package_ast)
 {
   ast_t* program = program_load(path, opt);
+  
+  if(opt->most_recent_modified_date) {
+    ast_t* package = ast_child(program);
+    const char * filename = package_filename(package);
+    if((opt->bin_name != NULL) && (strlen(opt->bin_name) > 0))
+      filename = opt->bin_name;
+    
+    // check if the most recent mod date of source files > mod date of target executable.  
+    // If not, bail out early because nothing has changed
+    if(should_abort_compile_due_to_modification_dates(target_exe(filename, opt), opt->most_recent_modified_date)) {
+      fprintf(stderr, "No compilation required, all source files are older than existing target\n");
+      return false;
+    }
+    if(should_abort_compile_due_to_modification_dates(target_obj(filename, opt), opt->most_recent_modified_date)) {
+      fprintf(stderr, "No compilation required, all source files are older than existing target\n");
+      return false;
+    }
+    
+    ast_free(program);
+    return true;
+  }
 
   if(program == NULL)
     return false;
@@ -80,7 +114,7 @@ int main(int argc, char* argv[])
   opt.output = ".";
   opt.ast_print_width = get_width();
   opt.argv0 = argv[0];
-
+  
   ponyc_opt_process_t exit_code;
   bool print_program_ast;
   bool print_package_ast;
@@ -104,13 +138,35 @@ int main(int argc, char* argv[])
   bool ok = true;
   if(ponyc_init(&opt))
   {
+    pass_opt_t mod_date_opt;
+    memcpy(&mod_date_opt, &opt, sizeof(pass_opt_t));
+    
+    time_t most_recent_modified_date = 0;
+    mod_date_opt.most_recent_modified_date = &most_recent_modified_date;
+    
+    // First we call compile_package with request for most_recent_modified_date.  Nothing actually gets
+    // compiled, it just gets quickly parsed and the most recent mod date of all source files is determined
+    if(argc == 1)
+    {
+      if(!compile_package(".", &mod_date_opt, false, false)){
+        return 0;
+      }
+    } else {
+      for(int i = 1; i < argc; i++){
+        if(!compile_package(argv[i], &mod_date_opt, false, false)){
+          return 0;
+        }
+      }
+    }
+    
+    // If we get here, we need to actually compile the program    
     if(argc == 1)
     {
       ok &= compile_package(".", &opt, print_program_ast, print_package_ast);
     } else {
-      for(int i = 1; i < argc; i++)
-        ok &= compile_package(argv[i], &opt, print_program_ast,
-          print_package_ast);
+      for(int i = 1; i < argc; i++){
+        ok &= compile_package(argv[i], &opt, print_program_ast, print_package_ast);
+      }
     }
   }
 

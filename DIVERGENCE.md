@@ -3,6 +3,62 @@
 This purpose of this file is to catalogue the changes this fork has implemented which differ from stock pony.  Please note that on my fork I don't actively keep up Windows support.  Linux will likely just work (or can be made to work with small changes).  Mac OS users should have no problem as that is my development platform.
 
 
+## Abort compile if no source files have been modified
+
+Stock pony will compile everything every time you ask, whether it actually needs to be compiled or not. Some would argue that you should use an intermediary like Make to abort unnecessary compiles.  While this is indeed possible, this is an unnecssary burden to place on the maintainer of the source base. ponyc knows all of the source files it needs to compile, and it knows where the output exectuable will be placed.  If none of the source file modification dates are newer than the target output, then there is no need to compile.
+
+## Immutable fields in primitives
+
+This feature is still a work-in-progress, but in essence this provides a mechanism for you to provide compile-time constants in primitives.
+
+In stock Pony the closest you can come to "enums" is this:
+
+```
+primitive Cats
+	fun calico():USize => 0
+	fun tabby():USize => 1
+	fun ocicat():USize => 2
+```
+
+which, if you use like you might initially think to:
+
+```
+if garfield == Cats.calico() then None end
+```
+
+Turn out to be horribly bad from a performance perspective. What is really happening in this scenario is this:
+
+```
+if garfield == Cats.create().calico() then None end
+```
+
+So instead of an easy, immutable, compile-time constant you end up with two function calls!
+
+This change allows you to do the following:
+
+```
+primitive Cats
+  let calico:USize = 0
+  let tabby:USize = 1
+  let ocicat:USize = 2
+```
+
+Let fields in primitives is very restrictive, since a primitive is a singleton object and we want to preserve immutability.  However, if you can live with the restrictions in place, utilizing these let primitive will result in this:
+
+```
+if garfield == Cats.calico then None end
+```
+
+Being optimized down to this:
+
+```
+if garfield == 0 then None end
+```
+
+Not only is it prettier, both function calls are removed and it becomes as optimal as it possibly could be.
+
+
+
 ## Narrowed scope inside if statements for union types
 
 In stock Pony, the official mechanism for accessing one kind of a union type is to use match, like this:

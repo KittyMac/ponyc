@@ -69,6 +69,11 @@ static bool compile_package(const char* path, pass_opt_t* opt,
   ast_t* program = program_load(path, opt);
   
   if(opt->most_recent_modified_date) {
+    if(program == NULL){
+      //fprintf(stderr, "Failed to load package at path: %s\n", path);
+      return true;
+    }
+    
     ast_t* package = ast_child(program);
     const char * filename = package_filename(package);
     if((opt->bin_name != NULL) && (strlen(opt->bin_name) > 0))

@@ -197,6 +197,7 @@ bool expr_fieldref(pass_opt_t* opt, ast_t* ast, ast_t* find, token_id tid)
 {
   AST_GET_CHILDREN(ast, left, right);
   ast_t* l_type = ast_type(left);
+  l_type = resolve_narrowed_union_type(l_type, left);
 
   if(is_typecheck_error(l_type))
     return false;

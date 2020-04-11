@@ -393,6 +393,17 @@ ast_t* get_uniontype_from_node(ast_t* type, ast_t* from) {
   return ast_type(from);
 }
 
+ast_t* resolve_narrowed_union_type(ast_t* type, ast_t* from) {
+  if(ast_id(type) == TK_UNIONTYPE){
+    int uniontypeidx = get_uniontypeidx_from_node(from, from);
+    if (uniontypeidx > 0) {
+      return ast_childidx(type, uniontypeidx-1);
+    }
+  }
+  return type;
+}
+
+
 static deferred_reification_t* lookup_union(pass_opt_t* opt, ast_t* from,
   ast_t* type, const char* name, bool errors, bool allow_private)
 {

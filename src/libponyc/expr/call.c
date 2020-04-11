@@ -38,6 +38,7 @@ bool method_check_type_params(pass_opt_t* opt, ast_t** astp)
 {
   ast_t* lhs = *astp;
   ast_t* type = ast_type(lhs);
+  type = resolve_narrowed_union_type(type, lhs);
 
   if(is_typecheck_error(type))
     return false;
@@ -236,12 +237,7 @@ static bool check_arg_types(pass_opt_t* opt, ast_t* params, ast_t* positional,
     ast_t* a_type = alias(arg_type);
     errorframe_t info = NULL;
     
-    if(ast_id(arg_type) == TK_UNIONTYPE) {
-      int uniontypeidx = get_uniontypeidx_from_node(arg, arg);
-      if (uniontypeidx > 0) {
-        a_type = ast_childidx(a_type, uniontypeidx-1);
-      }
-    }
+    a_type = resolve_narrowed_union_type(a_type, arg);
 
     if(!is_subtype(a_type, p_type, &info, opt))
     {
@@ -341,9 +337,9 @@ static ast_t* method_receiver_type(ast_t* method)
   if((ast_id(receiver) == TK_FUNREF) || (ast_id(receiver) == TK_FUNAPP) ||
      (ast_id(receiver) == TK_FUNCHAIN))
     receiver = ast_child(receiver);
-
-  ast_t* r_type = ast_type(receiver);
-
+    
+  ast_t* r_type = ast_type(receiver);  
+  r_type = resolve_narrowed_union_type(r_type, receiver);
   return r_type;
 }
 
@@ -352,6 +348,7 @@ static bool check_receiver_cap(pass_opt_t* opt, ast_t* ast, bool* recovered)
   AST_GET_CHILDREN(ast, lhs, positional, namedargs, question);
 
   ast_t* type = ast_type(lhs);
+  type = resolve_narrowed_union_type(type, lhs);
 
   if(is_typecheck_error(type))
     return false;
@@ -478,6 +475,7 @@ static bool check_nonsendable_recover(pass_opt_t* opt, ast_t* ast)
     AST_GET_CHILDREN(ast, lhs, positional, namedargs, question);
 
     ast_t* type = ast_type(lhs);
+    type = resolve_narrowed_union_type(type, lhs);
 
     AST_GET_CHILDREN(type, cap, typeparams, params, result);
 
@@ -532,6 +530,7 @@ static bool method_application(pass_opt_t* opt, ast_t* ast, bool partial)
     return false;
 
   ast_t* type = ast_type(lhs);
+  type = resolve_narrowed_union_type(type, lhs);
 
   if(is_typecheck_error(type))
     return false;
@@ -590,6 +589,7 @@ static bool method_call(pass_opt_t* opt, ast_t* ast)
 
   AST_GET_CHILDREN(ast, lhs, positional, namedargs, question);
   ast_t* type = ast_type(lhs);
+  type = resolve_narrowed_union_type(type, lhs);
 
   if(is_typecheck_error(type))
     return false;
@@ -698,6 +698,8 @@ static bool partial_application(pass_opt_t* opt, ast_t** astp)
 
   // The TK_FUNTYPE of the LHS.
   ast_t* type = ast_type(lhs);
+  type = resolve_narrowed_union_type(type, lhs);
+  
   pony_assert(ast_id(type) == TK_FUNTYPE);
 
   if(is_typecheck_error(type))
@@ -909,6 +911,8 @@ static bool method_chain(pass_opt_t* opt, ast_t* ast)
   AST_GET_CHILDREN(ast, lhs, positional, namedargs, question);
 
   ast_t* type = ast_type(lhs);
+  type = resolve_narrowed_union_type(type, lhs);
+  
   if(ast_id(ast_child(type)) == TK_AT)
   {
     ast_error(opt->check.errors, ast, "a bare method cannot be chained");
@@ -928,6 +932,8 @@ static bool method_chain(pass_opt_t* opt, ast_t* ast)
       return false;
 
     ast_t* f_type = ast_type(lhs);
+    f_type = resolve_narrowed_union_type(f_type, lhs);
+    
     token_id f_cap = ast_id(ast_child(f_type));
 
     ast_t* c_type = chain_type(r_type, f_cap, recovered);

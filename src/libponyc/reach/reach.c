@@ -160,14 +160,7 @@ static reach_method_name_t* add_method_name(reach_type_t* t, ast_t* type_from, c
       n->internal = true;
     } else {
       deferred_reification_t* fun = lookup(NULL, type_from, t->ast, name);
-      
-      if(fun == NULL) {
-        fprintf(stderr, "=========\n");
-        ast_print(type_from, 80);
-        ast_print(t->ast, 80);
-        fprintf(stderr, "=========\n");
-      }
-      
+            
       ast_t* fun_ast = fun->ast;
       n->id = ast_id(fun_ast);
       n->cap = ast_id(ast_child(fun_ast));

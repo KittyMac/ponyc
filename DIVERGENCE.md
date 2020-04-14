@@ -516,4 +516,4 @@ Here is a list of package repositories I have made while working with Pony.
 * **pony.fileExt** : file access mechanism that are tight wrappers around "normal" posix file access (my experience with File in pony is slow, these are fast). comptible with pony.flow.
 * **pony.lzip** : allow decompressing data using the lzip library. comptible with pony.flow.
 * **pony.bzip2** : allow decompressing data using the bzip2 library. comptible with pony.flow.
-* **pony.easings** : place to collect easing methods.  only easeInExpo() and easeOutExpo() implemented right now
+* **pony.easings** : place to collect easing methods.

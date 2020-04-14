@@ -461,7 +461,7 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
       }
 
       ast_setid(ast, TK_PACKAGEREF);
-	  ast_mark_used(ast, name);
+      ast_mark_used(ast, name);
       return true;
     }
 
@@ -478,8 +478,8 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
 
       ast_add(ast, ast_from(ast, TK_NONE));    // 1st child: package reference
       ast_append(ast, ast_from(ast, TK_NONE)); // 3rd child: type args
-	  
-	  ast_mark_used(ast, name);
+    
+      ast_mark_used(ast, name);
       return true;
     }
 
@@ -518,8 +518,8 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
         return false;
 
       ast_setid(ast, TK_PARAMREF);
-	  
-	  ast_mark_used(ast, name);
+    
+      ast_mark_used(ast, name);
       return true;
     }
 
@@ -537,8 +537,8 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
         ast_setid(ast, TK_VARREF);
       else
         ast_setid(ast, TK_LETREF);
-	  
-	  ast_mark_used(ast, name);
+    
+      ast_mark_used(ast, name);
       return true;
     }
 

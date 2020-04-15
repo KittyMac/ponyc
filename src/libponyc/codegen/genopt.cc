@@ -1343,7 +1343,11 @@ static void optimise(compile_t* c, bool pony_specific)
       fprintf(stderr, "Optimising\n");
 
     pmb.OptLevel = 2;
-    pmb.Inliner = createFunctionInliningPass(275);
+    if(target_is_arm(c->opt->triple) == false) {
+      // Rocco: this causes some arguments sent to ffi functions to get corrupted on iOS, so
+      // disabling it for ARM builds (I assume its ARM specific and not iOS specific)
+      pmb.Inliner = createFunctionInliningPass(275);
+    }
     pmb.MergeFunctions = true;
   } else {
     pmb.OptLevel = 0;

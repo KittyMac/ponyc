@@ -157,9 +157,9 @@ static void usage(void)
     "  --nopic                   Don't compile using position independent code.\n"
     "  --docs, -g                Generate code documentation.\n"
     "  --docs-public             Generate code documentation for public types only.\n"
-	"  --allow-unused-vars       Generate errors for unused local variables.\n"
-	"  --sync-actor-constructors Allow actor constructors will be called synchronously.\n"
-	"  --print-code              Print automatically generated code when it is transpiled.\n"
+	  "  --allow-unused-vars       Generate errors for unused local variables.\n"
+	  "  --sync-actor-constructors Allow actor constructors will be called synchronously.\n"
+	  "  --print-code              Print automatically generated code when it is transpiled.\n"
     ,
     "Rarely needed options:\n"
     "  --safe                    Allow only the listed packages to use C FFI.\n"

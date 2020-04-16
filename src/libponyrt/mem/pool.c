@@ -28,7 +28,7 @@
 #ifdef PLATFORM_IS_ILP32
 #  define POOL_MMAP (16 * 1024 * 1024) // 16 MB
 #else
-#  ifdef PLATFORM_IS_WINDOWS
+#  if defined(PLATFORM_IS_WINDOWS) || defined(PLATFORM_IS_IOS) || defined(PLATFORM_IS_MACOSX)
 #    define POOL_MMAP (16 * 1024 * 1024) // 16 MB
 #  else
 #    define POOL_MMAP (128 * 1024 * 1024) // 128 MB

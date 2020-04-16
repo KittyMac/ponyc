@@ -41,7 +41,7 @@ primitive _JsonPrint
     | let x: JsonObject box =>
       buf = x._show(consume buf, indent, level, pretty)
 
-    | let x': I64 =>
+    | let x': I32 =>
       var x = if x' < 0 then
         buf.push('-')
         -x'
@@ -70,7 +70,7 @@ primitive _JsonPrint
         end
       end
 
-    | let x: F64 =>
+    | let x: F32 =>
       // Make sure our printed floats can be distinguished from integers
       let basic = x.string()
 

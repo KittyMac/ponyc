@@ -78,34 +78,34 @@ class iso _TestParseNumber is UnitTest
     let doc: JsonDoc = JsonDoc
 
     doc.parse("0")?
-    h.assert_eq[I64](0, doc.data as I64)
+    h.assert_eq[I32](0, doc.data as I32)
 
     doc.parse("-0")?
-    h.assert_eq[I64](0, doc.data as I64)
+    h.assert_eq[I32](0, doc.data as I32)
 
     doc.parse("13")?
-    h.assert_eq[I64](13, doc.data as I64)
+    h.assert_eq[I32](13, doc.data as I32)
 
     doc.parse("-13")?
-    h.assert_eq[I64](-13, doc.data as I64)
+    h.assert_eq[I32](-13, doc.data as I32)
 
     doc.parse("1.5")?
-    h.assert_eq[F64](1.5, doc.data as F64)
+    h.assert_eq[F32](1.5, doc.data as F32)
 
     doc.parse("-1.125")?
-    h.assert_eq[F64](-1.125, doc.data as F64)
+    h.assert_eq[F32](-1.125, doc.data as F32)
 
     doc.parse("1e3")?
-    h.assert_eq[F64](1000, doc.data as F64)
+    h.assert_eq[F32](1000, doc.data as F32)
 
     doc.parse("1e+3")?
-    h.assert_eq[F64](1000, doc.data as F64)
+    h.assert_eq[F32](1000, doc.data as F32)
 
     doc.parse("1e-3")?
-    h.assert_eq[F64](0.001, doc.data as F64)
+    h.assert_eq[F32](0.001, doc.data as F32)
 
     doc.parse("1.23e3")?
-    h.assert_eq[F64](1230, doc.data as F64)
+    h.assert_eq[F32](1230, doc.data as F32)
 
     h.assert_error({() ? => JsonDoc.parse("0x4")? })
     h.assert_error({() ? => JsonDoc.parse("+1")? })
@@ -190,7 +190,7 @@ class iso _TestParseArray is UnitTest
     doc.parse("[true , 13,null]")?
     h.assert_eq[USize](3, (doc.data as JsonArray).data.size())
     h.assert_eq[Bool](true, (doc.data as JsonArray).data(0)? as Bool)
-    h.assert_eq[I64](13, (doc.data as JsonArray).data(1)? as I64)
+    h.assert_eq[I32](13, (doc.data as JsonArray).data(1)? as I32)
     h.assert_eq[None](None, (doc.data as JsonArray).data(2)? as None)
 
     doc.parse("[true, [52, null]]")?
@@ -198,8 +198,8 @@ class iso _TestParseArray is UnitTest
     h.assert_eq[Bool](true, (doc.data as JsonArray).data(0)? as Bool)
     h.assert_eq[USize](2,
       ((doc.data as JsonArray).data(1)? as JsonArray).data.size())
-    h.assert_eq[I64](52,
-      ((doc.data as JsonArray).data(1)? as JsonArray).data(0)? as I64)
+    h.assert_eq[I32](52,
+      ((doc.data as JsonArray).data(1)? as JsonArray).data(0)? as I32)
     h.assert_eq[None](None,
       ((doc.data as JsonArray).data(1)? as JsonArray).data(1)? as None)
 
@@ -242,7 +242,7 @@ class iso _TestParseObject is UnitTest
     doc.parse("""{"a": true , "b": 13,"c":null}""")?
     h.assert_eq[USize](3, (doc.data as JsonObject).data.size())
     h.assert_eq[Bool](true, (doc.data as JsonObject).data("a")? as Bool)
-    h.assert_eq[I64](13, (doc.data as JsonObject).data("b")? as I64)
+    h.assert_eq[I32](13, (doc.data as JsonObject).data("b")? as I32)
     h.assert_eq[None](None, (doc.data as JsonObject).data("c")? as None)
 
     doc.parse("""{"a": true, "b": {"c": 52, "d": null}}""")?
@@ -250,8 +250,8 @@ class iso _TestParseObject is UnitTest
     h.assert_eq[Bool](true, (doc.data as JsonObject).data("a")? as Bool)
     h.assert_eq[USize](2,
       ((doc.data as JsonObject).data("b")? as JsonObject).data.size())
-    h.assert_eq[I64](52,
-      ((doc.data as JsonObject).data("b")? as JsonObject).data("c")? as I64)
+    h.assert_eq[I32](52,
+      ((doc.data as JsonObject).data("b")? as JsonObject).data("c")? as I32)
     h.assert_eq[None](None,
       ((doc.data as JsonObject).data("b")? as JsonObject).data("d")? as None)
 
@@ -302,26 +302,26 @@ class iso _TestParseRFC1 is UnitTest
     let obj2 = obj1.data("Image")? as JsonObject
 
     h.assert_eq[USize](6, obj2.data.size())
-    h.assert_eq[I64](800, obj2.data("Width")? as I64)
-    h.assert_eq[I64](600, obj2.data("Height")? as I64)
+    h.assert_eq[I32](800, obj2.data("Width")? as I32)
+    h.assert_eq[I32](600, obj2.data("Height")? as I32)
     h.assert_eq[String]("View from 15th Floor", obj2.data("Title")? as String)
     h.assert_eq[Bool](false, obj2.data("Animated")? as Bool)
 
     let obj3 = obj2.data("Thumbnail")? as JsonObject
 
     h.assert_eq[USize](3, obj3.data.size())
-    h.assert_eq[I64](100, obj3.data("Width")? as I64)
-    h.assert_eq[I64](125, obj3.data("Height")? as I64)
+    h.assert_eq[I32](100, obj3.data("Width")? as I32)
+    h.assert_eq[I32](125, obj3.data("Height")? as I32)
     h.assert_eq[String]("http://www.example.com/image/481989943",
       obj3.data("Url")? as String)
 
     let array = obj2.data("IDs")? as JsonArray
 
     h.assert_eq[USize](4, array.data.size())
-    h.assert_eq[I64](116, array.data(0)? as I64)
-    h.assert_eq[I64](943, array.data(1)? as I64)
-    h.assert_eq[I64](234, array.data(2)? as I64)
-    h.assert_eq[I64](38793, array.data(3)? as I64)
+    h.assert_eq[I32](116, array.data(0)? as I32)
+    h.assert_eq[I32](943, array.data(1)? as I32)
+    h.assert_eq[I32](234, array.data(2)? as I32)
+    h.assert_eq[I32](38793, array.data(3)? as I32)
 
 class iso _TestParseRFC2 is UnitTest
   """
@@ -367,8 +367,8 @@ class iso _TestParseRFC2 is UnitTest
 
     h.assert_eq[USize](8, obj1.data.size())
     h.assert_eq[String]("zip", obj1.data("precision")? as String)
-    h.assert_true(((obj1.data("Latitude")? as F64) - 37.7668).abs() < 0.001)
-    h.assert_true(((obj1.data("Longitude")? as F64) + 122.3959).abs() < 0.001)
+    h.assert_true(((obj1.data("Latitude")? as F32) - 37.7668).abs() < 0.001)
+    h.assert_true(((obj1.data("Longitude")? as F32) + 122.3959).abs() < 0.001)
     h.assert_eq[String]("", obj1.data("Address")? as String)
     h.assert_eq[String]("SAN FRANCISCO", obj1.data("City")? as String)
     h.assert_eq[String]("CA", obj1.data("State")? as String)
@@ -379,8 +379,8 @@ class iso _TestParseRFC2 is UnitTest
 
     h.assert_eq[USize](8, obj2.data.size())
     h.assert_eq[String]("zip", obj2.data("precision")? as String)
-    h.assert_true(((obj2.data("Latitude")? as F64) - 37.371991).abs() < 0.001)
-    h.assert_true(((obj2.data("Longitude")? as F64) + 122.026020).abs() < 0.001)
+    h.assert_true(((obj2.data("Latitude")? as F32) - 37.371991).abs() < 0.001)
+    h.assert_true(((obj2.data("Longitude")? as F32) + 122.026020).abs() < 0.001)
     h.assert_eq[String]("", obj2.data("Address")? as String)
     h.assert_eq[String]("SUNNYVALE", obj2.data("City")? as String)
     h.assert_eq[String]("CA", obj2.data("State")? as String)
@@ -414,22 +414,22 @@ class iso _TestPrintNumber is UnitTest
   fun apply(h: TestHelper) =>
     let doc: JsonDoc = JsonDoc
 
-    doc.data = I64(0)
+    doc.data = I32(0)
     h.assert_eq[String]("0", doc.string())
 
-    doc.data = I64(13)
+    doc.data = I32(13)
     h.assert_eq[String]("13", doc.string())
 
-    doc.data = I64(-13)
+    doc.data = I32(-13)
     h.assert_eq[String]("-13", doc.string())
 
-    doc.data = F64(0)
+    doc.data = F32(0)
     h.assert_eq[String]("0.0", doc.string())
 
-    doc.data = F64(1.5)
+    doc.data = F32(1.5)
     h.assert_eq[String]("1.5", doc.string())
 
-    doc.data = F64(-1.5)
+    doc.data = F32(-1.5)
     h.assert_eq[String]("-1.5", doc.string())
 
     // We don't test exponent formatted output because it can be slightly
@@ -489,14 +489,14 @@ class iso _TestPrintArray is UnitTest
 
     array.data.clear()
     array.data.push(true)
-    array.data.push(I64(13))
+    array.data.push(I32(13))
     array.data.push(None)
     h.assert_eq[String]("[\n  true,\n  13,\n  null\n]", doc.string("  ", true))
 
     array.data.clear()
     array.data.push(true)
     var nested: JsonArray = JsonArray
-    nested.data.push(I64(52))
+    nested.data.push(I32(52))
     nested.data.push(None)
     array.data.push(nested)
     h.assert_eq[String]("[\n  true,\n  [\n    52,\n    null\n  ]\n]",
@@ -526,14 +526,14 @@ class iso _TestNoPrettyPrintArray is UnitTest
 
     array.data.clear()
     array.data.push(true)
-    array.data.push(I64(13))
+    array.data.push(I32(13))
     array.data.push(None)
     h.assert_eq[String]("[true,13,null]", doc.string())
 
     array.data.clear()
     array.data.push(true)
     var nested: JsonArray = JsonArray
-    nested.data.push(I64(52))
+    nested.data.push(I32(52))
     nested.data.push(None)
     array.data.push(nested)
     h.assert_eq[String]("[true,[52,null]]",
@@ -558,7 +558,7 @@ class iso _TestPrintObject is UnitTest
 
     obj.data.clear()
     obj.data("a") = true
-    obj.data("b") = I64(3)
+    obj.data("b") = I32(3)
     let s = doc.string("  ", true)
     h.assert_true((s == "{\n  \"a\": true,\n  \"b\": 3\n}") or
       (s == "{\n  \"b\": false,\n  \"a\": true\n}"))
@@ -585,7 +585,7 @@ class iso _TestNoPrettyPrintObject is UnitTest
 
     obj.data.clear()
     obj.data("a") = true
-    obj.data("b") = I64(3)
+    obj.data("b") = I32(3)
     let s = doc.string()
     h.assert_true((s == "{\"a\":true,\"b\":3}") or
       (s == "{\"b\":3,\"a\":true}"))

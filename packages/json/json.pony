@@ -11,8 +11,8 @@ JSON is represented in Pony as the following types:
 * object - [JsonObject](json-JsonObject.md)
 * array  - [JsonArray](json-JsonArray.md)
 * string - [String](builtin-String.md)
-* integer - [I64](builtin-I64.md)
-* float   - [F64](builtin-F64.md)
+* integer - [I32](builtin-I32.md)
+* float   - [F32](builtin-F32.md)
 * boolean - [Bool](builtin-Bool.md)
 * null    - [None](builtin-None.md)
 
@@ -42,8 +42,8 @@ let json: JsonObject  = doc.data as JsonObject
 let key: String       = json.data("key")? as String
 let property: Bool    = json.data("property")? as Bool
 let array: JsonArray  = json.data("array")? as JsonArray
-let first: I64        = array.data(0)? as I64
-let second: F64       = array.data(1)? as F64
+let first: I32        = array.data(0)? as I32
+let second: F32       = array.data(1)? as F32
 let last: Bool        = array.data(2)? as Bool
 ```
 
@@ -81,7 +81,7 @@ let doc = JsonDoc
 let obj = JsonObject
 obj.data("key") = "value"
 obj.data("property") = true
-obj.data("array") = JsonArray.from_array([ as JsonType: I64(1); F64(2.5); false])
+obj.data("array") = JsonArray.from_array([ as JsonType: I32(1); F32(2.5); false])
 doc.data = obj
 
 // writing to String

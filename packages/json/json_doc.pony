@@ -105,7 +105,7 @@ class JsonDoc
       error
     end
 
-  fun ref _parse_number(): (F64 | I64) ? =>
+  fun ref _parse_number(): (F32 | I32) ? =>
     """
     Parse a number, the leading character of which has already been peeked.
     """
@@ -118,9 +118,9 @@ class JsonDoc
 
     let leading_zero = _peek_char()? == '0'
 
-    var frac: I64 = 0
+    var frac: I32 = 0
     var frac_digits: U8 = 0
-    var exp: I64 = 0
+    var exp: I32 = 0
     var exp_digits: U8 = 0
 
     // Start with integer part
@@ -161,22 +161,22 @@ class JsonDoc
 
     // We have fractional part and/or exponent, make a float
     var f =
-      (int.f64() + (frac.f64() / F64(10).pow(frac_digits.f64())))
-        * (F64(10).pow(exp.f64()))
+      (int.f32() + (frac.f32() / F32(10).pow(frac_digits.f32())))
+        * (F32(10).pow(exp.f32()))
 
     if minus then -f else f end
 
-  fun ref _parse_decimal(): (I64 /* value */, U8 /* digit count */) ? =>
+  fun ref _parse_decimal(): (I32 /* value */, U8 /* digit count */) ? =>
     """
     Parse a decimal integer which must appear immediately in the source.
     """
-    var value: I64 = 0
+    var value: I32 = 0
     var digit_count: U8 = 0
     var c = _peek_char("number")?
 
     while (c >= '0') and (c <= '9') do
       _get_char()? // Consume peeked digit
-      value = (value * 10) + (c - '0').i64()
+      value = (value * 10) + (c - '0').i32()
       digit_count = digit_count + 1
       c = _peek_char()?
     end

@@ -15,6 +15,9 @@
   "Runtime options for Pony programs (not for use with ponyc):\n" \
   "  --ponyanalysis   Gather and report performance analysis of your pony\n" \
   "                   program. Valid values are 0 (off), 1 (normal), 2 (save to file).\n" \
+  "  --ponymainthread Note that your program relies on the feature to lock an actor to\n" \
+  "                   the 'main thread'. This allows the runtime to turn on specific\n" \
+  "                   optimizations when you utilize this feature\n" \
   "  --ponymaxthreads Use N scheduler threads. Defaults to the number of\n" \
   "                   cores (not hyperthreads) available.\n" \
   "                   This can't be larger than the number of cores available.\n" \

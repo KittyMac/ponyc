@@ -1156,7 +1156,7 @@ static void ponyint_sched_shutdown()
 }
 
 pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
-  bool pinasio, uint32_t min_threads, uint32_t thread_suspend_threshold, uint32_t thread_analysis_enabled)
+  bool pinasio, bool mainthread, uint32_t min_threads, uint32_t thread_suspend_threshold, uint32_t thread_analysis_enabled)
 {
   pony_register_thread();
 
@@ -1170,10 +1170,18 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
   if(threads == 0)
     threads = ponyint_cpu_count();
 
+  if(mainthread) {
+    // Why this?  Now that we have the concept of a "main thread" scheduler, it is
+    // possible (maybe even common) for that actor to never return controller to
+    // the scheduler.  Definitely not ideal, but for now let's give just one
+    // extra scheduler so that we can still make the most out of our cores
+    threads++;
+  }
+
   // If minimum thread count is > thread count, cap it at thread count
   if(min_threads > threads)
     min_threads = threads; // this becomes the equivalent of --ponynoscale
-
+  
   // convert to cycles for use with ponyint_cpu_tick()
   // 1 second = 2000000000 cycles (approx.)
   scheduler_suspend_threshold = thread_suspend_threshold * 1000000;

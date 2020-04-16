@@ -99,7 +99,7 @@ struct scheduler_t
 };
 
 pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
-  bool pinasio, uint32_t min_threads, uint32_t thread_suspend_threshold, uint32_t thread_analysis_enabled);
+  bool pinasio, bool mainthread, uint32_t min_threads, uint32_t thread_suspend_threshold, uint32_t thread_analysis_enabled);
 
 bool ponyint_sched_start(bool library);
 

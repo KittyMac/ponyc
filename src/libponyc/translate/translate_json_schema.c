@@ -215,16 +215,16 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
       }
       if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
         if (defaultValue != NULL) {
-          code = sdscatprintf(code, ":I64 = %s", defaultValue);
+          code = sdscatprintf(code, ":I32 = %s", defaultValue);
         } else {
-          code = sdscatprintf(code, ":I64 = 0");
+          code = sdscatprintf(code, ":I32 = 0");
         }
       }
       if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
         if (defaultValue != NULL) {
-          code = sdscatprintf(code, ":F64 = %s", defaultValue);
+          code = sdscatprintf(code, ":F32 = %s", defaultValue);
         } else {
-          code = sdscatprintf(code, ":F64 = 0.0");
+          code = sdscatprintf(code, ":F32 = 0.0");
         }
       }
       if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
@@ -254,10 +254,10 @@ sds translate_json_add_property(sds code, const char *js, jsmntok_t *t, size_t i
           code = sdscatprintf(code, ":Array[String] = Array[String]");
         }
         if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-          code = sdscatprintf(code, ":Array[I64] = Array[I64]");
+          code = sdscatprintf(code, ":Array[I32] = Array[I32]");
         }
         if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-          code = sdscatprintf(code, ":Array[F64] = Array[F64]");
+          code = sdscatprintf(code, ":Array[F32] = Array[F32]");
         }
         if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
           code = sdscatprintf(code, ":Array[Bool] = Array[Bool]");
@@ -431,10 +431,10 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
             arrayType = "String";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-            arrayType = "I64";
+            arrayType = "I32";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-            arrayType = "F64";
+            arrayType = "F32";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
             arrayType = "Boolean";
@@ -551,10 +551,10 @@ sds translate_json_add_create_constructor(sds code, const char *js, jsmntok_t *t
           propertyType = "String";
         }
         if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-          propertyType = "I64";
+          propertyType = "I32";
         }
         if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-          propertyType = "F64";
+          propertyType = "F32";
         }
         if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
           propertyType = "Bool";
@@ -600,10 +600,10 @@ sds translate_json_add_create_constructor(sds code, const char *js, jsmntok_t *t
             propertyType = "String";
           }
           if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-            propertyType = "I64";
+            propertyType = "I32";
           }
           if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-            propertyType = "F64";
+            propertyType = "F32";
           }
           if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
             propertyType = "Bool";
@@ -643,10 +643,10 @@ sds translate_json_add_getters_and_setters(sds code, const char *js, jsmntok_t *
           propertyType = "String";
         }
         if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-          propertyType = "I64";
+          propertyType = "I32";
         }
         if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-          propertyType = "F64";
+          propertyType = "F32";
         }
         if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
           propertyType = "Bool";
@@ -680,10 +680,10 @@ sds translate_json_add_getters_and_setters(sds code, const char *js, jsmntok_t *
             arrayType = "String";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-            arrayType = "I64";
+            arrayType = "I32";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-            arrayType = "F64";
+            arrayType = "F32";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
             arrayType = "Boolean";
@@ -777,11 +777,11 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
           }
         }
         if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-          code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I64 else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0") ));
+          code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as I32 else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0") ));
         }
         if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-          // Note: we want to accept both I64 and F64 (and convert to F64)
-          code = sdscatprintf(code, "    %s = try (obj.data(\"%s\")? as F64) else try (obj.data(\"%s\")? as I64).f64() else %s end end\n", propertyName, originalPropertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0.0") ));
+          // Note: we want to accept both I32 and F32 (and convert to F32)
+          code = sdscatprintf(code, "    %s = try (obj.data(\"%s\")? as F32) else try (obj.data(\"%s\")? as I32).f32() else %s end end\n", propertyName, originalPropertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "0.0") ));
         }
         if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
           code = sdscatprintf(code, "    %s = try obj.data(\"%s\")? as Bool else %s end\n", propertyName, originalPropertyName, (ponyDefaultValue != NULL ? ponyDefaultValue : (defaultValue != NULL ? defaultValue : "false") ));
@@ -812,10 +812,10 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
             arrayType = "String";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "integer") == 0) {
-            arrayType = "I64";
+            arrayType = "I32";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "number") == 0) {
-            arrayType = "F64";
+            arrayType = "F32";
           }
           if (jsoneq(js, &t[childTypeIdx + 1], "boolean") == 0) {
             arrayType = "Boolean";
@@ -932,10 +932,10 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
                 type = "String";
               }
               if (jsoneq(js, &t[typeIdx + 1], "integer") == 0) {
-                type = "I64";
+                type = "I32";
               }
               if (jsoneq(js, &t[typeIdx + 1], "number") == 0) {
-                type = "F64";
+                type = "F32";
               }
               if (jsoneq(js, &t[typeIdx + 1], "boolean") == 0) {
                 type = "Bool";

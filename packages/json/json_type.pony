@@ -1,6 +1,6 @@
 use "collections"
 
-type JsonType is (F64 | I64 | Bool | None | String | JsonArray | JsonObject)
+type JsonType is (F32 | I32 | Bool | None | String | JsonArray | JsonObject)
   """
   All JSON data types.
   """

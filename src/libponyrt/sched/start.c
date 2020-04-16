@@ -32,6 +32,7 @@ typedef struct options_t
   bool noyield;
   bool noblock;
   uint32_t analysis;
+  bool mainthread;
   bool pin;
   bool pinasio;
   bool version;
@@ -64,6 +65,7 @@ enum
   OPT_NOYIELD,
   OPT_NOBLOCK,
   OPT_ANALYSIS,
+  OPT_MAINTHREAD,
   OPT_PIN,
   OPT_PINASIO,
   OPT_VERSION,
@@ -82,6 +84,7 @@ static opt_arg_t args[] =
   {"ponynoyield", 0, OPT_ARG_NONE, OPT_NOYIELD},
   {"ponynoblock", 0, OPT_ARG_NONE, OPT_NOBLOCK},
   {"ponyanalysis", 0, OPT_ARG_OPTIONAL, OPT_ANALYSIS},
+  {"ponymainthread", 0, OPT_ARG_NONE, OPT_MAINTHREAD},
   {"ponypin", 0, OPT_ARG_NONE, OPT_PIN},
   {"ponypinasio", 0, OPT_ARG_NONE, OPT_PINASIO},
   {"ponyversion", 0, OPT_ARG_NONE, OPT_VERSION},
@@ -154,7 +157,8 @@ static int parse_opts(int argc, char** argv, options_t* opt)
       case OPT_GCFACTOR: if(parse_udouble(&opt->gc_factor, 1.0, s.arg_val)) err_out(id, "can't be less than 1.0"); break;
       case OPT_NOYIELD: opt->noyield = true; break;
       case OPT_NOBLOCK: opt->noblock = true; break;
-	  case OPT_ANALYSIS: if(parse_uint(&opt->analysis, 0, s.arg_val)) err_out(id, "can't be less than 0"); break; break;
+      case OPT_ANALYSIS: if(parse_uint(&opt->analysis, 0, s.arg_val)) err_out(id, "can't be less than 0"); break;
+      case OPT_MAINTHREAD: opt->mainthread = true; break;
       case OPT_PIN: opt->pin = true; break;
       case OPT_PINASIO: opt->pinasio = true; break;
       case OPT_VERSION: opt->version = true; break;
@@ -249,7 +253,7 @@ PONY_API int pony_init(int argc, char** argv)
   pony_exitcode(0);
 
   pony_ctx_t* ctx = ponyint_sched_init(opt.threads, opt.noyield, opt.pin,
-    opt.pinasio, opt.min_threads, opt.thread_suspend_threshold, opt.analysis);
+    opt.pinasio, opt.mainthread, opt.min_threads, opt.thread_suspend_threshold, opt.analysis);
 
   ponyint_cycle_create(ctx, opt.cd_detect_interval);
 

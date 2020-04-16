@@ -96,6 +96,11 @@ struct RuntimeOptions
     """
     Generate runtime analysis events
     """
+  
+  var ponymainthread: Bool = false
+    """
+    Hint to optimize the runtime for an actor which can lock the main thread
+    """
 
   var ponypin: Bool = false
     """

@@ -576,6 +576,19 @@ static bool set_uniontypeid_on_all_instances(ast_t* ast, const char* match_name,
   return true;
 }
 
+bool isCallForTheAndOperator(ast_t* ast) {
+  if (ast_id(ast) == TK_CALL) {
+    AST_GET_CHILDREN(ast, dot, positional, none, question);
+    if (ast_id(dot) == TK_DOT || ast_id(dot) == TK_FUNREF) {
+      AST_GET_CHILDREN(dot, seq, and);
+      if (ast_id(and) == TK_ID && !strcmp(ast_name(and), "op_and")) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool expr_as(pass_opt_t* opt, ast_t** astp)
 {
   pony_assert(astp != NULL);
@@ -615,8 +628,7 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
   ast_t* parent_seq = ast_parent(ast);
   ast_t* parent_if = ast_parent(parent_seq);
   while(parent_if != NULL && ast_id(parent_if) != TK_IF && 
-        (ast_id(parent_if) == TK_SEQ || ast_id(parent_if) == TK_DOT || ast_id(parent_if) == TK_POSITIONALARGS)) {
-          //  || ast_id(parent_if) == TK_CALL
+        (ast_id(parent_if) == TK_SEQ || ast_id(parent_if) == TK_DOT || ast_id(parent_if) == TK_POSITIONALARGS || isCallForTheAndOperator(parent_if) )) {
     parent_if = ast_parent(parent_if);
   }
     
@@ -625,7 +637,7 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
         ast_id(parent_if) == TK_IF && 
         (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF || ast_id(expr) == TK_PARAMREF)
       );
-  /*
+  /*  
   fprintf(stderr, "%d & %d & %d\n", (ast_id(parent_seq) == TK_SEQ), 
                                     (ast_id(parent_if) == TK_IF), 
                                     (ast_id(expr) == TK_FVARREF || ast_id(expr) == TK_FLETREF || ast_id(expr) == TK_VARREF || ast_id(expr) == TK_LETREF || ast_id(expr) == TK_PARAMREF));
@@ -705,7 +717,7 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
             NODE(TK_SEQ, TREE(body) NODE(TK_TRUE, NONE))))
         NODE(TK_SEQ, AST_SCOPE NODE(TK_FALSE, NONE))));
       
-    //ast_print(parent_if, 80);
+      //ast_print(parent_if, 80);
   }else{
     
     REPLACE(astp,

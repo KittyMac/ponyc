@@ -348,6 +348,21 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
   //   "description": "The person's first name."
   // },
   
+  code = sdscatprintf(code, "  fun appendEscapedString(json':String iso, buf: String):String iso^ =>\n");
+  code = sdscatprintf(code, "    var json = consume json'\n");
+  code = sdscatprintf(code, "    for c in buf.values() do\n");
+  code = sdscatprintf(code, "      match c\n");
+  code = sdscatprintf(code, "      | 34 => json.push('\\\\'); json.push('\"')\n");
+  code = sdscatprintf(code, "      | 92 => json.push('\\\\'); json.push('\\\\')\n");
+  code = sdscatprintf(code, "      | '\\b' => json.push('\\\\'); json.push('b')\n");
+  code = sdscatprintf(code, "      | '\\f' => json.push('\\\\'); json.push('f')\n");
+  code = sdscatprintf(code, "      | '\\t' => json.push('\\\\'); json.push('t')\n");
+  code = sdscatprintf(code, "      | '\\r' => json.push('\\\\'); json.push('r')\n");
+  code = sdscatprintf(code, "      | '\\n' => json.push('\\\\'); json.push('n')\n");
+  code = sdscatprintf(code, "      else json.push(c) end\n");
+  code = sdscatprintf(code, "    end\n");
+  code = sdscatprintf(code, "    consume json\n");
+
   code = sdscatprintf(code, "  fun string(): String iso^ =>\n");
   code = sdscatprintf(code, "    appendJson(recover String(1024) end)\n");
   code = sdscatprintf(code, "  fun appendJson(json':String iso):String iso^ =>\n");
@@ -377,16 +392,7 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
           code = sdscatprintf(code, "      json.append(\"\\\"%s\\\"\")\n", originalPropertyName);
           code = sdscatprintf(code, "      json.push(':')\n");
           code = sdscatprintf(code, "      json.push('\"')\n");
-          
-          // json strings need tabs converted to \t and newline converted to \n
-          //code = sdscatprintf(code, "      json.append(%s.string())\n", propertyName);
-          code = sdscatprintf(code, "      for v in %s.values() do\n", propertyName);
-          code = sdscatprintf(code, "        match v\n");
-          code = sdscatprintf(code, "        | '\n' => json.push(92); json.push(110)\n");
-          code = sdscatprintf(code, "        | '\t' => json.push(92); json.push(116)\n");
-          code = sdscatprintf(code, "        else json.push(v) end\n");
-          code = sdscatprintf(code, "      end\n");
-          
+          code = sdscatprintf(code, "      json = appendEscapedString(consume json, %s.string())\n", propertyName);          
           code = sdscatprintf(code, "      json.push('\"')\n");
           code = sdscatprintf(code, "    json.push(',')\n");
           if(defaultValue != NULL) { 
@@ -459,7 +465,7 @@ sds translate_json_add_append_json(sds code, const char *js, jsmntok_t *t, size_
           code = sdscatprintf(code, "      for item in %s.values() do\n", propertyName);
           if (!isObject) {
             code = sdscatprintf(code, "        json.push('\"')\n");
-            code = sdscatprintf(code, "        json.append(item.string())\n");
+            code = sdscatprintf(code, "        json = appendEscapedString(consume json, item.string())\n");
             code = sdscatprintf(code, "        json.push('\"')\n");
           } else {                               
             code = sdscatprintf(code, "        json = item.appendJson(consume json)\n");
@@ -985,6 +991,23 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
             }
             code = sdscatprintf(code, "    end\n");
             
+            code = sdscatprintf(code, "  fun appendEscapedString(json':String iso, buf: String):String iso^ =>\n");
+            code = sdscatprintf(code, "    var json = consume json'\n");
+            code = sdscatprintf(code, "    for c in buf.values() do\n");
+            code = sdscatprintf(code, "      match c\n");
+            code = sdscatprintf(code, "      | 34 => json.push('\\\\'); json.push('\"')\n");
+            code = sdscatprintf(code, "      | 92 => json.push('\\\\'); json.push('\\\\')\n");
+            code = sdscatprintf(code, "      | '\\b' => json.push('\\\\'); json.push('b')\n");
+            code = sdscatprintf(code, "      | '\\f' => json.push('\\\\'); json.push('f')\n");
+            code = sdscatprintf(code, "      | '\\t' => json.push('\\\\'); json.push('t')\n");
+            code = sdscatprintf(code, "      | '\\r' => json.push('\\\\'); json.push('r')\n");
+            code = sdscatprintf(code, "      | '\\n' => json.push('\\\\'); json.push('n')\n");
+            code = sdscatprintf(code, "      else json.push(c) end\n");
+            code = sdscatprintf(code, "    end\n");
+            code = sdscatprintf(code, "    consume json\n");
+            
+            
+            
             code = sdscatprintf(code, "  fun ref apply(i: USize):%s ? =>\n", type);
             code = sdscatprintf(code, "    array(i)?\n\n");
             code = sdscatprintf(code, "  fun values():ArrayValues[%s, this->Array[%s]]^ =>\n", type, type);
@@ -1003,7 +1026,7 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
             code = sdscatprintf(code, "    for item in array.values() do\n");
             if (!isObject) {
               code = sdscatprintf(code, "      json.push('\"')\n");
-              code = sdscatprintf(code, "      json.append(item.string())\n");
+              code = sdscatprintf(code, "      json = appendEscapedString(consume json, item.string())\n");
               code = sdscatprintf(code, "      json.push('\"')\n");
             } else {
               code = sdscatprintf(code, "      json = item.appendJson(consume json)\n");

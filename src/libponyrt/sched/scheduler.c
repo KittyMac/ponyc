@@ -83,9 +83,9 @@ size_t ponyint_sched_total_mem_size(pony_ctx_t* ctx)
   return
       // memory used for each actor struct
       // + memory used for actormaps for gc acquire/release messages
-      ctx->mem_used_actors
+      (size_t)(ctx->mem_used_actors
       // memory used for mutemap
-    + ctx->mem_used;
+      + ctx->mem_used);
 }
 
 size_t ponyint_sched_total_alloc_size(pony_ctx_t* ctx)
@@ -93,9 +93,9 @@ size_t ponyint_sched_total_alloc_size(pony_ctx_t* ctx)
   return
       // memory allocated for each actor struct
       // + memory allocated for actormaps for gc acquire/release messages
-      ctx->mem_allocated_actors
+      (size_t)(ctx->mem_allocated_actors
       // memory allocated for mutemap
-    + ctx->mem_allocated;
+      + ctx->mem_allocated);
 }
 #endif
 

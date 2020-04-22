@@ -231,15 +231,15 @@ typedef struct pony_language_features_init_t
  */
 #if INTPTR_MAX == INT64_MAX
 #ifdef USE_MEMTRACK
-#  define PONY_ACTOR_PAD_SIZE 280
+#  define PONY_ACTOR_PAD_SIZE 340
 #else
-#  define PONY_ACTOR_PAD_SIZE 320 - 8
+#  define PONY_ACTOR_PAD_SIZE 312
 #endif
 #elif INTPTR_MAX == INT32_MAX
 #ifdef USE_MEMTRACK
 #  define PONY_ACTOR_PAD_SIZE 176
 #else
-#  define PONY_ACTOR_PAD_SIZE 164 - 4
+#  define PONY_ACTOR_PAD_SIZE 160
 #endif
 #endif
 

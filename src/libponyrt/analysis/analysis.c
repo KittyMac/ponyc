@@ -288,7 +288,7 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
   char * darkGreyColor =  "\x1B[90m";
   char * orangeColor =  "\x1B[31m";
   
-  const int kMaxActorsPerReport = 50;
+  const int kMaxActorsPerReport = 20;
   
   const int kActorNameStart = 9000;
   const int kActorNameEnd = 9010;
@@ -413,6 +413,14 @@ DECLARE_THREAD_FN(analysisEventStorageThread)
     float to_mb = (1024 * 1024);
     for(uint64_t v = 0; v < max_reported; v++) {
       uint64_t i = max_actors[v];
+      
+      if (gc_counts[i] == 0) {
+        gc_counts[i] = 1;
+      }
+      if (run_counts[i] == 0) {
+        run_counts[i] = 1;
+      }
+      
       if (actor_tags[i] == 0) {
         fprintf(stderr, "%sactor [untagged] garbage collected %llu times (total %llu ms, avg %llu ms), avg run time of %llu ms and max heap size of %0.2f MB%s\n", 
           darkGreyColor, 

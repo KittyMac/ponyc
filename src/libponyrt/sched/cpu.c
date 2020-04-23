@@ -155,7 +155,8 @@ void ponyint_cpu_init()
   hw_cpu_count = cpus_online();
 #elif defined(PLATFORM_IS_MACOSX)
   hw_cpu_count = property("hw.physicalcpu");
-  //hw_cpu_count = property("hw.logicalcpu");
+#elif defined(PLATFORM_IS_IOS)
+  hw_cpu_count = property("hw.logicalcpu");
 #elif defined(PLATFORM_IS_WINDOWS)
   PSYSTEM_LOGICAL_PROCESSOR_INFORMATION info = NULL;
   PSYSTEM_LOGICAL_PROCESSOR_INFORMATION ptr = NULL;

@@ -301,6 +301,12 @@ static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
   if(!ponyint_heap_startgc(&actor->heap, actor->heap_is_dirty))
     return;
   
+#ifdef RUNTIME_ANALYSIS
+  if (ctx->analysis_enabled) {
+    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_GC_START);
+  }
+#endif
+  
   DTRACE1(GC_START, (uintptr_t)ctx->scheduler);
 
   ponyint_gc_mark(ctx);
@@ -323,7 +329,7 @@ static void try_gc(pony_ctx_t* ctx, pony_actor_t* actor)
   
 #ifdef RUNTIME_ANALYSIS
   if (ctx->analysis_enabled) {
-    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_GC_RAN);
+    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_GC_END);
   }
 #endif
 
@@ -420,7 +426,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   actor->yield = false;
 
 #ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled > 1) {
+  if (ctx->analysis_enabled) {
   	saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_START);
   }
 #endif
@@ -442,7 +448,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // maybe mute actor; returns true if mute occurs
       if(maybe_mute(actor)){
 #ifdef RUNTIME_ANALYSIS
-        if (ctx->analysis_enabled > 1) {
+        if (ctx->analysis_enabled) {
           saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
         }
 #endif
@@ -454,7 +460,7 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
       // or if we're polling where we want to stop after one app message
       if(actor->yield || app >= actor->batch || polling) {
 #ifdef RUNTIME_ANALYSIS
-        if (ctx->analysis_enabled > 1) {
+        if (ctx->analysis_enabled) {
           saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
         }
 #endif
@@ -469,6 +475,12 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     if(msg == head)
       break;
   }
+  
+#ifdef RUNTIME_ANALYSIS
+  if (ctx->analysis_enabled) {
+    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+  }
+#endif
   
   // We didn't hit our app message batch limit. We now believe our queue to be
   // empty, but we may have received further messages.
@@ -491,22 +503,12 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   {
     // When unscheduling, don't mark the queue as empty, since we don't want
     // to get rescheduled if we receive a message.
-#ifdef RUNTIME_ANALYSIS
-    if (ctx->analysis_enabled > 1) {
-      saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-    }
-#endif
     actor->running = false;
     return false;
   }
 
   // If we have processed any application level messages, defer blocking.
   if(app > 0) {
-#ifdef RUNTIME_ANALYSIS
-    if (ctx->analysis_enabled > 1) {
-      saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-    }
-#endif
     actor->running = false;
     return true;
   }
@@ -516,12 +518,6 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
   {
     set_flag(actor, FLAG_BLOCKED);
   }
-
-#ifdef RUNTIME_ANALYSIS
-  if (ctx->analysis_enabled > 1) {
-    saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-  }
-#endif
 
   bool empty = ponyint_messageq_markempty(&actor->q);
   if (empty && actor_noblock && (actor->gc.rc == 0))

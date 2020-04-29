@@ -227,19 +227,40 @@ void program_lib_build_args(ast_t* program, pass_opt_t* opt,
   data->lib_args_size = 0;
 
   // Library paths defined in the source code.
+  unsigned long previous_max = 9999999;
   for(strlist_t* p = data->libpaths; p != NULL; p = strlist_next(p))
   {
-    const char* libpath = strlist_data(p);
-    append_to_args(data, path_preamble);
-    append_to_args(data, libpath);
-    append_to_args(data, " ");
-
-    if(rpath_preamble != NULL)
+    unsigned long current_max = 0;
+    
+    // find max size string
+    for(strlist_t* p = data->libpaths; p != NULL; p = strlist_next(p))
     {
-      append_to_args(data, rpath_preamble);
-      append_to_args(data, libpath);
-      append_to_args(data, " ");
+      const char* libpath = strlist_data(p);
+      unsigned long l = strlen(libpath);
+      if(l > current_max && l < previous_max) {
+        current_max = l;
+      }
     }
+    
+    // add only paths that match current_max in length
+    for(strlist_t* p = data->libpaths; p != NULL; p = strlist_next(p))
+    {
+      const char* libpath = strlist_data(p);
+      if(strlen(libpath) == current_max) {
+        append_to_args(data, path_preamble);
+        append_to_args(data, libpath);
+        append_to_args(data, " ");
+
+        if(rpath_preamble != NULL)
+        {
+          append_to_args(data, rpath_preamble);
+          append_to_args(data, libpath);
+          append_to_args(data, " ");
+        }
+      }
+    }
+    
+    previous_max = current_max;
   }
 
   // Library paths from the command line and environment variable.

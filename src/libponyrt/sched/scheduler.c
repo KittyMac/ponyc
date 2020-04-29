@@ -754,8 +754,8 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
   scheduler_t* victim = NULL;
   
   int scaling_sleep = 0;
-  int scaling_sleep_delta = 50;
-  int scaling_sleep_min = 200;      // The minimum value we start actually sleeping at
+  int scaling_sleep_delta = 100;
+  int scaling_sleep_min = 50;      // The minimum value we start actually sleeping at
   int scaling_sleep_max = 5000;     // The maximimum amount of time we are allowed to sleep at any single call
   int64_t total_actors_waiting = 0;
   

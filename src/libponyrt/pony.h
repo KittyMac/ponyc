@@ -451,6 +451,15 @@ enum
  */
 PONY_API void pony_trace(pony_ctx_t* ctx, void* p);
 
+/** Trace an actor.
+ *
+ * This should only be called if the object supplied is an actor
+ *
+ * @param ctx The current context.
+ * @param p The pointer to the actor to be traced.
+ */
+PONY_API void pony_traceactor(pony_ctx_t* ctx, void* p);
+
 /** Trace an object.
  *
  * This should be called for every pointer field in an object when the object's

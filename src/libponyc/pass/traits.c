@@ -575,9 +575,27 @@ static bool add_default_initializers_from_trait(ast_t* entity, ast_t* trait, pas
         AST_GET_CHILDREN(member, n_cap, n_id, n_typeparam, n_params, n_result, n_partial, n_body);
         if(ast_id(n_body) == TK_SEQ) {
           ast_t* init = ast_child(trait_nbody);
-          while(init != NULL)
+          while(init != NULL && ast_id(init) == TK_ASSIGN)
           {
-            ast_add(n_body, init);
+            bool isDuplicated = false;
+            
+            const char * initName = ast_name(ast_childidx(ast_childidx(init, 0), 0));
+          
+            // run forward until a "true", make sure this one hasn't already been defined
+            ast_t* dup_set = ast_child(n_body);
+            while(dup_set != NULL && ast_id(dup_set) == TK_ASSIGN)
+            {
+              const char * dupName = ast_name(ast_childidx(ast_childidx(dup_set, 0), 0));
+              if(!strcmp(initName, dupName)) {
+                isDuplicated = true;
+                break;
+              }
+              dup_set = ast_sibling(dup_set);
+            }
+            
+            if(!isDuplicated) {
+              ast_add(n_body, init);
+            }
             init = ast_sibling(init);
           }
         }

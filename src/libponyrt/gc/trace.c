@@ -105,6 +105,11 @@ PONY_API void pony_trace(pony_ctx_t* ctx, void* p)
   ctx->trace_object(ctx, p, NULL, PONY_TRACE_OPAQUE);
 }
 
+PONY_API void pony_traceactor(pony_ctx_t* ctx, void* p)
+{
+  ctx->trace_actor(ctx, (pony_actor_t*)p);
+}
+
 PONY_API void pony_traceknown(pony_ctx_t* ctx, void* p, pony_type_t* t, int m)
 {
   if(t->dispatch != NULL)

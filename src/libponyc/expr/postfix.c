@@ -445,6 +445,16 @@ static bool member_access(pass_opt_t* opt, ast_t* ast)
       break;
 
     case TK_FLET:
+      // if r_find is a field on a trait, then this is not allowed
+      if (ast_id(left) != TK_THIS && ast_data(type) != NULL){
+        if( ast_id(ast_data(type)) == TK_TRAIT ) {
+          ast_error(opt->check.errors, right,
+            "can't access field on a trait at runtime. Either expose the field via a function or use the more real type.");
+          ret = false;
+          break;
+        }
+      }
+      
       if(!expr_fieldref(opt, ast, r_find, TK_FLETREF))
         return false;
       break;

@@ -631,8 +631,8 @@ static void init_runtime(compile_t* c)
 
 
   // void pony_error_int(i32, i8*)
-  params[0] = LLVMPointerType(c->i32, 0);
-  params[1] = LLVMPointerType(c->void_ptr, 0);
+  params[0] = c->i32;
+  params[1] = LLVMPointerType(c->i8, 0);
   type = LLVMFunctionType(c->void_type, params, 2, false);
   value = LLVMAddFunction(c->module, "pony_error_int", type);
 

@@ -261,20 +261,20 @@ actor PonyTest
   var _finished: USize = 0
   var _any_found: Bool = false
   var _all_started: Bool = false
-  var _list:TestList tag
+  var _list:(TestList tag|TestListCallback tag)
   
   // Filtering options
   var _exclude: String = ""
   var _label: String = ""
   var _only: String = ""
 
-  new create(env: Env, list: TestList tag) =>
+  new create(env: Env, list: (TestList tag|TestListCallback tag)) =>
     """
     Create a PonyTest object and use it to run the tests from the given
     TestList
     """
     _env = env
-	_list = list
+    _list = list
     _process_opts()
     _groups.push(("", _SimultaneousGroup))
     @ponyint_assert_disable_popups[None]()
@@ -488,7 +488,9 @@ actor PonyTest
 
     if fail_count == 0 then
       // Success, nothing failed.
-	  _list.testsFinished(this, true)
+      match _list
+      | let listCallback:TestListCallback tag => listCallback.testsFinished(this, true)
+      end
       return
     end
 
@@ -500,8 +502,10 @@ actor PonyTest
     for rec in _records.values() do
       rec._list_failed()
     end
-	
-	_list.testsFinished(this, false)
+    
+    match _list
+    | let listCallback:TestListCallback tag => listCallback.testsFinished(this, false)
+    end
 
     _env.exitcode(-1)
 

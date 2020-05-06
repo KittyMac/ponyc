@@ -19,6 +19,7 @@ typedef struct scheduler_t scheduler_t;
 // default actor priority
 #define PONY_DEFAULT_ACTOR_PRIORITY 0
 
+
 #define SPECIAL_THREADID_KQUEUE   -10
 #define SPECIAL_THREADID_IOCP     -11
 #define SPECIAL_THREADID_EPOLL    -12
@@ -86,6 +87,9 @@ struct scheduler_t
   bool asio_noisy;
   bool main_thread;
   pony_signal_event_t sleep_object;
+  
+  // These are changed primarily by the owning scheduler thread.
+  alignas(64) struct scheduler_t* last_victim;
 
   pony_ctx_t ctx;
   uint32_t block_count;

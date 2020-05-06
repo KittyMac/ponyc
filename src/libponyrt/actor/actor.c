@@ -440,34 +440,40 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 #endif
     )) != NULL)
   {
-    if(handle_message(ctx, actor, msg))
-    {
+    // fast path: quick detect if this is an application message
+    if (msg->id < ACTORMSG_MINIMUM_ID) {
+      actor->type->dispatch(ctx, actor, msg);
+      
       // If we handle an application message, try to gc.
       app++;
-
-      // maybe mute actor; returns true if mute occurs
-      if(maybe_mute(actor)){
-#ifdef RUNTIME_ANALYSIS
-        if (ctx->analysis_enabled) {
-          saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+      
+      if (app % 3 == 0) {
+        // maybe mute actor; returns true if mute occurs
+        if(maybe_mute(actor)){
+  #ifdef RUNTIME_ANALYSIS
+          if (ctx->analysis_enabled) {
+            saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+          }
+  #endif
+          try_gc(ctx, actor);
+          actor->running = false;
+          return false;
         }
-#endif
-        try_gc(ctx, actor);
-        actor->running = false;
-        return false;
+        // if we've reached our batch limit
+        // or if we're polling where we want to stop after one app message
+        if(actor->yield || app >= actor->batch || polling) {
+  #ifdef RUNTIME_ANALYSIS
+          if (ctx->analysis_enabled) {
+            saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+          }
+  #endif
+          try_gc(ctx, actor);
+          actor->running = false;
+          return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
+  	    }
       }
-      // if we've reached our batch limit
-      // or if we're polling where we want to stop after one app message
-      if(actor->yield || app >= actor->batch || polling) {
-#ifdef RUNTIME_ANALYSIS
-        if (ctx->analysis_enabled) {
-          saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-        }
-#endif
-        try_gc(ctx, actor);
-        actor->running = false;
-        return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
-	    }
+    } else {
+      handle_message(ctx, actor, msg);
     }
 
     // Stop handling a batch if we reach the head we found when we were
@@ -496,8 +502,11 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
     //    the receiver be overloaded or muted
     ponyint_actor_unsetoverloaded(actor);
   }
-
-  try_gc(ctx, actor);
+  
+  // if we processed an application message, then we should attempt to gc
+  if(app > 0) {
+    try_gc(ctx, actor);
+  }
 
   if(has_flag(actor, FLAG_UNSCHEDULED))
   {
@@ -674,7 +683,8 @@ void ponyint_actor_yield(pony_actor_t* actor)
 
 void ponyint_actor_flag_gc(pony_actor_t* actor)
 {
-	// setting to true will cause the actor to end its run early
+	// setting to true will cause the actor to force a garbage collect the 
+  // next time it tries
 	actor->heap_is_dirty = true;
 }
 

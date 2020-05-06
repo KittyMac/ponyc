@@ -1307,7 +1307,7 @@ static RegisterPass<MergeMessageSend>
 static void addMergeMessageSendPass(const PassManagerBuilder& pmb,
   PassManagerBase& pm)
 {
-  if(pmb.OptLevel >= 2)
+  if(pmb.OptLevel >= 3)
     pm.add(new MergeMessageSend());
 }
 
@@ -1339,10 +1339,11 @@ static void optimise(compile_t* c, bool pony_specific)
 
   if(c->opt->release)
   {
+    
     if(c->opt->verbosity >= VERBOSITY_MINIMAL)
       fprintf(stderr, "Optimising\n");
 
-    pmb.OptLevel = 2;
+    pmb.OptLevel = 3;
     if(target_is_arm(c->opt->triple) == false) {
       // Rocco: this causes some arguments sent to ffi functions to get corrupted on iOS, so
       // disabling it for ARM builds (I assume its ARM specific and not iOS specific)

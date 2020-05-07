@@ -113,7 +113,10 @@ actor ProcessMonitor
     filepath: FilePath,
     args: Array[String] val,
     vars: Array[String] val,
-    wdir: (FilePath | None) = None)
+    wdir: (FilePath | None) = None,
+    pipeStdin:Bool = true,
+    pipeStdout:Bool = true,
+    pipeStderr:Bool = true)
   =>
     """
     Create infrastructure to communicate with a forked child process and
@@ -144,34 +147,40 @@ actor ProcessMonitor
       return
     end
 
-    try
-      _stdin = _Pipe.outgoing()?
-    else
-      _stdin.close()
-      _notifier.failed(this, ProcessError(PipeError,
-        "Failed to open pipe for stdin."))
-      return
+    if pipeStdin then
+      try
+        _stdin = _Pipe.outgoing()?
+      else
+        _stdin.close()
+        _notifier.failed(this, ProcessError(PipeError,
+          "Failed to open pipe for stdin."))
+        return
+      end
     end
 
-    try
-      _stdout = _Pipe.incoming()?
-    else
-      _stdin.close()
-      _stdout.close()
-      _notifier.failed(this, ProcessError(PipeError,
-        "Failed to open pipe for stdout."))
-      return
+    if pipeStdout then
+      try
+        _stdout = _Pipe.incoming()?
+      else
+        _stdin.close()
+        _stdout.close()
+        _notifier.failed(this, ProcessError(PipeError,
+          "Failed to open pipe for stdout."))
+        return
+      end
     end
 
-    try
-      _stderr = _Pipe.incoming()?
-    else
-      _stdin.close()
-      _stdout.close()
-      _stderr.close()
-      _notifier.failed(this, ProcessError(PipeError,
-        "Failed to open pipe for stderr."))
-      return
+    if pipeStderr then
+      try
+        _stderr = _Pipe.incoming()?
+      else
+        _stdin.close()
+        _stdout.close()
+        _stderr.close()
+        _notifier.failed(this, ProcessError(PipeError,
+          "Failed to open pipe for stderr."))
+        return
+      end
     end
 
     try

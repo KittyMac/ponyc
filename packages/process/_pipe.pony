@@ -102,7 +102,10 @@ class _Pipe
     else
       compile_error "unsupported platform"
     end
-
+  
+  fun isNone():Bool =>
+    (event == AsioEvent.none()) and (near_fd == -1) and (far_fd == -1)
+  
   fun _set_fd(fd: U32, flags: I32) ? =>
     let result = @fcntl[I32](fd, _FSETFD(), flags)
     if result < 0 then error end

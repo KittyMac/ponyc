@@ -120,9 +120,15 @@ class _ProcessPosix is _Process
     loaded. We've set the FD_CLOEXEC flag on all file descriptors to ensure
     that they are all closed automatically once @execve gets called.
     """
-    _dup2(stdin.far_fd, _STDINFILENO())   // redirect stdin
-    _dup2(stdout.far_fd, _STDOUTFILENO()) // redirect stdout
-    _dup2(stderr.far_fd, _STDERRFILENO()) // redirect stderr
+    if stdin.isNone() == false then
+      _dup2(stdin.far_fd, _STDINFILENO())   // redirect stdin
+    end
+    if stdout.isNone() == false then
+      _dup2(stdout.far_fd, _STDOUTFILENO()) // redirect stdout
+    end
+    if stderr.isNone() == false then
+      _dup2(stderr.far_fd, _STDERRFILENO()) // redirect stderr
+    end
 
     var step: U8 = _StepChdir()
 

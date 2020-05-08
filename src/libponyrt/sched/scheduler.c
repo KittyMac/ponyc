@@ -481,47 +481,33 @@ static bool quiescent(scheduler_t* sched)
 
 
 
-static scheduler_t* choose_victim(scheduler_t* sched)
+static scheduler_t* choose_victim(scheduler_t* sched, int64_t* total_messages)
 {
   // we have work to do or the global inject does, we can return right away
-  if(sched->terminate || sched->q.num_messages > 0 || inject.num_messages > 0) {
-    return sched;
+  if(sched->terminate || sched->last_victim->q.num_messages > 0 || inject.num_messages > 0) {
+    *total_messages = 1;
+    return sched->last_victim;
   }
   
+  // Start with a quick scan of all schedulers to check their num_messages and see if any
+  // have waiting work.  If they do we can end quickly with a better guess as a victim.
   uint32_t current_active_scheduler_count = get_active_scheduler_count();
-      
-  scheduler_t* victim = sched->last_victim;  
-  while(true)
-  {
-    // Schedulers are laid out sequentially in memory
+  scheduler_t* max_victim = scheduler;
+  scheduler_t* last_victim = scheduler + current_active_scheduler_count;
+  scheduler_t* scan_victim = scheduler + 1;
 
-    // Back up one.
-    victim--;
-
-    if(victim < scheduler)
-      // victim is before the first scheduler location
-      // wrap around to the end.
-      victim = &scheduler[current_active_scheduler_count - 1];
-
-    if((victim == sched->last_victim) || (current_active_scheduler_count == 1))
-    {
-      // If we have tried all possible victims, return no victim. Set our last
-      // victim to ourself to indicate we've started over.
-      sched->last_victim = sched;
-      break;
+  *total_messages = 0;
+  while (scan_victim < last_victim) {
+    *total_messages += scan_victim->q.num_messages;
+    if(scan_victim->q.num_messages > max_victim->q.num_messages) {
+	    max_victim = scan_victim;
     }
-
-    // Don't try to steal from ourself.
-    if(victim == sched) {
-      continue;
-    }
-
-    // Record that this is our victim and return it.
-    sched->last_victim = victim;
-    return victim;
+    scan_victim++;
   }
-
-  return NULL;
+  
+  sched->last_victim = max_victim;
+  
+  return max_victim;
 }
 
 /**
@@ -770,23 +756,16 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
   pony_actor_t* actor;
   scheduler_t* victim = NULL;
   
-  
   int scaling_sleep = 0;
-  
-#ifdef PLATFORM_IS_IOS
   int scaling_sleep_delta = 100;
   int scaling_sleep_min = 50;      // The minimum value we start actually sleeping at
   int scaling_sleep_max = 5000;     // The maximimum amount of time we are allowed to sleep at any single call
-#else
-  int scaling_sleep_delta = 100;
-  int scaling_sleep_min = 50;      // The minimum value we start actually sleeping at
-  int scaling_sleep_max = 500;     // The maximimum amount of time we are allowed to sleep at any single call
-#endif
-    
+  int64_t total_actors_waiting = 0;
+  
   while(true)
   {
     // Choose the victim with the most work to do
-    victim = choose_victim(sched);
+    victim = choose_victim(sched, &total_actors_waiting);
     
     actor = pop_global(victim);
     if(actor != NULL)
@@ -796,6 +775,13 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
       actor = pop_global_main(victim);
       if(actor != NULL)
         break;
+    }
+    
+    if(total_actors_waiting > 0) {
+      // If we get here, it means we thought we had work on our victim but by the time
+      // we got there someone else had nabbed the work first.  We detect this case
+      // and fast track finding another victim to steal from.
+      continue;
     }
     
     if(read_msg(sched))
@@ -934,19 +920,16 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
       // 2. all other actors at the time I chose a victim have no waiting actors
       // 3. 1+2 have happened enough times in a row scaling_sleep >= scaling_sleep_min
       // 4. we reset if there is ever an indication there is work waiting to be done
-      scaling_sleep += scaling_sleep_delta;
-      if (scaling_sleep > scaling_sleep_max) {
-        scaling_sleep = scaling_sleep_max;
-      }
-      if(scaling_sleep >= scaling_sleep_min) {
-        ponyint_cpu_sleep(scaling_sleep);
-        
-        // After we're slept for a while, immediately check to see
-        // if we have any work to do. No need to waste time choosing
-        // the next victim if we got stuff to do!
-        actor = pop_global(sched);
-        if(actor != NULL)
-          break;
+      if(total_actors_waiting == 0) {
+        scaling_sleep += scaling_sleep_delta;
+        if (scaling_sleep > scaling_sleep_max) {
+          scaling_sleep = scaling_sleep_max;
+        }
+        if(scaling_sleep >= scaling_sleep_min) {
+          ponyint_cpu_sleep(scaling_sleep);
+        }
+      } else {
+        scaling_sleep = 0;
       }
     }
   }

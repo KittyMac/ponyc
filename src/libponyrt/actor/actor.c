@@ -459,21 +459,22 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
           actor->running = false;
           return false;
         }
-        // if we've reached our batch limit
-        // or if we're polling where we want to stop after one app message
-        if(actor->yield || app >= actor->batch || polling) {
-  #ifdef RUNTIME_ANALYSIS
-          if (ctx->analysis_enabled) {
-            saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-          }
-  #endif
-          try_gc(ctx, actor);
-          actor->running = false;
-          return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
-  	    }
       }
     } else {
       handle_message(ctx, actor, msg);
+    }
+    
+    // if we've reached our batch limit
+    // or if we're polling where we want to stop after one app message
+    if(actor->yield || app >= actor->batch || polling) {
+#ifdef RUNTIME_ANALYSIS
+      if (ctx->analysis_enabled) {
+        saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+      }
+#endif
+      try_gc(ctx, actor);
+      actor->running = false;
+      return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
     }
 
     // Stop handling a batch if we reach the head we found when we were

@@ -40,6 +40,7 @@ static uint64_t scheduler_suspend_threshold;
 static PONY_ATOMIC(uint32_t) active_scheduler_count;
 static PONY_ATOMIC(uint32_t) active_scheduler_count_check;
 static scheduler_t* scheduler;
+static pony_ctx_t* inject_context;
 static PONY_ATOMIC(bool) detect_quiescence;
 static bool use_yield;
 static mpmcq_t inject;
@@ -903,7 +904,7 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
     {
       // trigger cycle detector by sending it a message if it is time
       uint64_t current_tsc = ponyint_cpu_tick();
-      if(ponyint_cycle_check_blocked(&sched->ctx, last_cd_tsc, current_tsc))
+      if(ponyint_cycle_check_blocked(last_cd_tsc, current_tsc))
       {
         last_cd_tsc = current_tsc;
 
@@ -977,7 +978,7 @@ static void run(scheduler_t* sched)
       {
         // trigger cycle detector by sending it a message if it is time
         uint64_t current_tsc = ponyint_cpu_tick();
-        if(ponyint_cycle_check_blocked(&sched->ctx, last_cd_tsc, current_tsc))
+        if(ponyint_cycle_check_blocked(last_cd_tsc, current_tsc))
         {
           last_cd_tsc = current_tsc;
 
@@ -1154,6 +1155,7 @@ static void ponyint_sched_shutdown()
     * sizeof(scheduler_t)));
 #endif
   scheduler = NULL;
+  inject_context = NULL;
   scheduler_count = 0;
   atomic_store_explicit(&active_scheduler_count, 0, memory_order_relaxed);
 
@@ -1258,14 +1260,14 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
   ponyint_mpmcq_init(&inject_main);
   ponyint_asio_init(asio_cpu);
   
-  pony_ctx_t * main_ctx = pony_ctx();
-  main_ctx->analysis_enabled = thread_analysis_enabled;
+  inject_context = pony_ctx();
+  inject_context->analysis_enabled = thread_analysis_enabled;
   
 #ifdef RUNTIME_ANALYSIS
-  startRuntimeAnalysis(main_ctx);
+  startRuntimeAnalysis(inject_context);
 #endif
   
-  return main_ctx;
+  return inject_context;
 }
 
 bool ponyint_sched_start(bool library)
@@ -1384,6 +1386,10 @@ void ponyint_sched_noisy_asio(int32_t from)
 void ponyint_sched_unnoisy_asio(int32_t from)
 {
   send_msg_all(from, SCHED_UNNOISY_ASIO, 0);
+}
+
+pony_ctx_t* ponyint_sched_get_inject_context() {
+  return inject_context;
 }
 
 // Maybe wake up a scheduler thread if possible

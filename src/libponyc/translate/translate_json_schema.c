@@ -164,6 +164,7 @@ sds translate_json_add_global_interface(sds code)
     code = sdscatprintf(code, "  new empty()\n");
     code = sdscatprintf(code, "  new fromJson(obj:JsonObject val)?\n");
     code = sdscatprintf(code, "  new fromString(s:String val)?\n");
+    code = sdscatprintf(code, "  new fromArray(s:Array[U8] val)?\n");
     code = sdscatprintf(code, "  fun appendJson(json':String iso):String iso^\n\n");
   }
   return code;
@@ -737,6 +738,11 @@ sds translate_json_add_read_constructor(sds code, const char *js, jsmntok_t *t, 
   code = sdscatprintf(code, "    let obj = doc.data as JsonObject val\n");
   code = sdscatprintf(code, "    _read(obj)?\n");
   
+  code = sdscatprintf(code, "  new fromArray(jsonArray:Array[U8] val)? =>\n");
+  code = sdscatprintf(code, "    let doc: JsonDoc val = recover val JsonDoc.>parse(String.from_array(jsonArray))? end\n");
+  code = sdscatprintf(code, "    let obj = doc.data as JsonObject val\n");
+  code = sdscatprintf(code, "    _read(obj)?\n");
+  
   code = sdscatprintf(code, "  new fromJson(obj:JsonObject val)? =>\n");
   code = sdscatprintf(code, "    _read(obj)?\n");
   
@@ -976,6 +982,11 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
             
             code = sdscatprintf(code, "  new fromString(jsonString:String val)? =>\n");
             code = sdscatprintf(code, "    let doc: JsonDoc val = recover val JsonDoc.>parse(jsonString)? end\n");
+            code = sdscatprintf(code, "    let obj = doc.data as JsonArray val\n");
+            code = sdscatprintf(code, "    _read(obj)?\n");
+            
+            code = sdscatprintf(code, "  new fromArray(jsonArray:Array[U8] val)? =>\n");
+            code = sdscatprintf(code, "    let doc: JsonDoc val = recover val JsonDoc.>parse(String.from_array(jsonArray))? end\n");
             code = sdscatprintf(code, "    let obj = doc.data as JsonArray val\n");
             code = sdscatprintf(code, "    _read(obj)?\n");
             

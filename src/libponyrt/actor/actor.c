@@ -440,41 +440,37 @@ bool ponyint_actor_run(pony_ctx_t* ctx, pony_actor_t* actor, bool polling)
 #endif
     )) != NULL)
   {
-    // fast path: quick detect if this is an application message
     if (msg->id < ACTORMSG_MINIMUM_ID) {
-      actor->type->dispatch(ctx, actor, msg);
-      
+      actor->type->dispatch(ctx, actor, msg); 
       // If we handle an application message, try to gc.
       app++;
-      
-      if (app % 3 == 0) {
-        // maybe mute actor; returns true if mute occurs
-        if(maybe_mute(actor)){
-  #ifdef RUNTIME_ANALYSIS
-          if (ctx->analysis_enabled) {
-            saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-          }
-  #endif
-          try_gc(ctx, actor);
-          actor->running = false;
-          return false;
-        }
-      }
-    } else {
-      handle_message(ctx, actor, msg);
-    }
-    
-    // if we've reached our batch limit
-    // or if we're polling where we want to stop after one app message
-    if(actor->yield || app >= actor->batch || polling) {
+
+      // maybe mute actor; returns true if mute occurs
+      if(maybe_mute(actor)){
 #ifdef RUNTIME_ANALYSIS
-      if (ctx->analysis_enabled) {
-        saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
-      }
+        if (ctx->analysis_enabled) {
+          saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+        }
 #endif
-      try_gc(ctx, actor);
-      actor->running = false;
-      return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
+        try_gc(ctx, actor);
+        actor->running = false;
+        return false;
+      }
+
+      // if we've reached our batch limit
+      // or if we're polling where we want to stop after one app message
+      if(actor->yield || app == actor->batch || polling){
+#ifdef RUNTIME_ANALYSIS
+        if (ctx->analysis_enabled) {
+          saveRuntimeAnalyticForActor(ctx, actor, ANALYTIC_RUN_END);
+        }
+#endif
+        try_gc(ctx, actor);
+        actor->running = false;
+        return batch_limit_reached(actor, polling || (actor->yield && app < actor->batch));
+      }
+    }else{
+      handle_message(ctx, actor, msg);
     }
 
     // Stop handling a batch if we reach the head we found when we were
@@ -875,7 +871,7 @@ PONY_API void pony_sendv_single(pony_ctx_t* ctx, pony_actor_t* to,
   }
 
   if(has_app_msg) {
-	ponyint_maybe_mute(ctx, to);
+	  ponyint_maybe_mute(ctx, to);
   }
 
 #ifdef RUNTIME_ANALYSIS
@@ -1155,8 +1151,9 @@ PONY_API void pony_release_backpressure()
   pony_ctx_t* ctx = pony_ctx();
   unset_flag(ctx->current, FLAG_UNDER_PRESSURE);
   DTRACE1(ACTOR_PRESSURE_RELEASED, (uintptr_t)ctx->current);
-  if (!has_flag(ctx->current, FLAG_OVERLOADED))
+  if (!has_flag(ctx->current, FLAG_OVERLOADED)){
     ponyint_sched_start_global_unmute(ctx->scheduler->index, ctx->current);
+  }
 #ifdef RUNTIME_ANALYSIS
   if (ctx->analysis_enabled) {
     saveRuntimeAnalyticForActor(ctx, ctx->current, ANALYTIC_NOT_UNDERPRESSURE);

@@ -106,24 +106,24 @@ size_t ponyint_sched_total_alloc_size(pony_ctx_t* ctx)
  */
 scheduler_t* ponyint_sched_by_index(uint32_t index)
 {
-	if(index <= get_active_scheduler_count()){
-		return scheduler + index;
-	}
-	return NULL;
+  if(index <= get_active_scheduler_count()){
+    return scheduler + index;
+  }
+  return NULL;
 }
 
 /** Used by Pony analysis at SIGTERM time to report information regarding the state of the schedulers
  */
 int64_t ponyint_size_of_inject_queue()
 {
-	return inject.num_messages;
+  return inject.num_messages;
 }
 
 /** Used by Pony analysis at SIGTERM time to report information regarding the state of the schedulers
  */
 int64_t ponyint_size_of_inject_main_queue()
 {
-	return inject_main.num_messages;
+  return inject_main.num_messages;
 }
 
 #endif
@@ -501,7 +501,7 @@ static scheduler_t* choose_victim(scheduler_t* sched, int64_t* total_messages)
   while (scan_victim < last_victim) {
     *total_messages += scan_victim->q.num_messages;
     if(scan_victim->q.num_messages > max_victim->q.num_messages) {
-	    max_victim = scan_victim;
+      max_victim = scan_victim;
     }
     scan_victim++;
   }
@@ -853,7 +853,7 @@ static pony_actor_t* steal(scheduler_t* sched, bool local_ponyint_actor_getnoblo
       }
       else if ((clocks_elapsed > PONY_SCHED_BLOCK_THRESHOLD) &&
         (ponyint_mutemap_size(&sched->mute_mapping) == 0))
-      {
+      {        
         // only try and suspend if enough time has passed
         if(clocks_elapsed > scheduler_suspend_threshold)
         {
@@ -968,10 +968,10 @@ static void run(scheduler_t* sched)
     if(sched->index == 0)
     {
       static int not_all_the_time = 0;
-    not_all_the_time++;
+      not_all_the_time++;
       if((not_all_the_time % 100 == 0)) {
-      local_ponyint_actor_getnoblock = ponyint_actor_getnoblock();
-      ponyint_update_memory_usage();
+        local_ponyint_actor_getnoblock = ponyint_actor_getnoblock();
+        ponyint_update_memory_usage();
       }
       // if cycle detection is enabled
       if(!local_ponyint_actor_getnoblock)
@@ -1000,7 +1000,7 @@ static void run(scheduler_t* sched)
         signal_suspended_threads(current_active_scheduler_count, sched->index);
       }
     }
-	
+  
     // In response to reading a message, we might have unmuted an actor and
     // added it back to our queue. if we don't have an actor to run, we want
     // to pop from our queue to check for a recently unmuted actor
@@ -1067,15 +1067,15 @@ static void run(scheduler_t* sched)
               DTRACE2(ACTOR_SCHEDULED, (uintptr_t)sched, (uintptr_t)actor);
         }
           
-          // We have at least two actors worth of work; the one we just finished
-          // running a batch for that needs to be rescheduled and the next one we
-          // just `pop_global`d. This indicates that there is enough work in
-          // theory to have another scheduler thread be woken up to do work in
-          // parallel.
-          // Try and wake up a sleeping scheduler thread to help with the load.
-          // If there isn't enough work, they'll go back to sleep.
-          ponyint_sched_maybe_wakeup(sched->index);
-        }
+        // We have at least two actors worth of work; the one we just finished
+        // running a batch for that needs to be rescheduled and the next one we
+        // just `pop_global`d. This indicates that there is enough work in
+        // theory to have another scheduler thread be woken up to do work in
+        // parallel.
+        // Try and wake up a sleeping scheduler thread to help with the load.
+        // If there isn't enough work, they'll go back to sleep.
+        ponyint_sched_maybe_wakeup(sched->index);
+      }
       
     } else {
       // We aren't rescheduling, so run the next actor. This may be NULL if our
@@ -1533,7 +1533,7 @@ void ponyint_sched_mute(pony_ctx_t* ctx, pony_actor_t* sender, pony_actor_t* rec
     int64_t old_mset_alloc_size = ponyint_muteset_alloc_size(&mref->value);
 #endif
     ponyint_muteset_putindex(&mref->value, sender, index2);
-    atomic_fetch_add_explicit(&sender->muted, 1, memory_order_relaxed);
+    atomic_fetch_add_explicit(&sender->muted, 1, memory_order_acq_rel);
 #ifdef USE_MEMTRACK
     int64_t new_mset_mem_size = ponyint_muteset_mem_size(&mref->value);
     int64_t new_mset_alloc_size = ponyint_muteset_alloc_size(&mref->value);
@@ -1589,7 +1589,7 @@ bool ponyint_sched_unmute_senders(pony_ctx_t* ctx, pony_actor_t* actor)
     {
       // This is safe because an actor can only ever be in a single scheduler's
       // mutemap
-      size_t muted_count = atomic_fetch_sub_explicit(&muted->muted, 1, memory_order_relaxed);
+      size_t muted_count = atomic_fetch_sub_explicit(&muted->muted, 1, memory_order_acq_rel);
       pony_assert(muted_count > 0);
 
       // If muted_count used to be 1 before we decremented it; then the actor

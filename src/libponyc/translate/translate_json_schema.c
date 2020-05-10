@@ -1064,7 +1064,15 @@ sds translate_json_add_object(sds code, const char *js, jsmntok_t *t, size_t idx
           return translate_json_abort(code, "\"properties\" found but \"title\" or \"type\" are not defined");
         }
         else if (strcmp(type, "object") == 0)
-        {         
+        {
+          
+          code = sdscatprintf(code, "primitive %sParse\n", title);
+          code = sdscatprintf(code, "  fun apply(from:(String val|Array[U8] val)):(%s|None) =>\n", title);
+          code = sdscatprintf(code, "    match from\n");
+          code = sdscatprintf(code, "    | let string:String val => try %s.fromString(string)? else None end\n", title);
+          code = sdscatprintf(code, "    | let array:Array[U8] val => try %s.fromArray(array)? else None end\n", title);
+          code = sdscatprintf(code, "    end\n");
+          
           code = sdscatprintf(code, "class %s", title);
           
           if(pony_traits != NULL) {

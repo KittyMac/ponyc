@@ -18,7 +18,7 @@ trait TestList
 
 trait TestListCallback is TestList
   be testsFinished(test: PonyTest, success:Bool) =>
-	"""
-	Call when all tests have completed.  Success is only true if every test has passed
-	"""
-	None
+  	"""
+  	Call when all tests have completed.  Success is only true if every test has passed
+  	"""
+  	None
